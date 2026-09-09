@@ -274,10 +274,22 @@ async function resumeSupabaseSession() {
 async function liveDeactivateOtherSessions(courseCode){
   if(!LIVE_BACKEND) return;
   try {
+    // A Lecturer can only genuinely teach one live session at a time — if an
+    // earlier session for a DIFFERENT course was never explicitly ended
+    // (e.g. testing/navigating away instead of clicking "End Session Now"),
+    // it stayed active:true in the database forever. A Student's device
+    // discovering active sessions by looping through their own enrolled
+    // courses could then lock onto that stale old session instead of the
+    // Lecturer's actually-current one, showing a different course as "Live"
+    // on each side. Deactivating only same-course-code duplicates (the
+    // original behavior) didn't catch this — so this now also cleans up
+    // any other active session across every course this lecturer teaches.
+    const ownCourseCodes = COURSES.filter(c => c.lecturer === State.user?.name).map(c => c.code);
+    const codesToClear = [...new Set([courseCode, ...ownCourseCodes])];
     const { error } = await SUPABASE_CLIENT
       .from('live_qr_sessions')
       .update({ active: false, updated_at: new Date().toISOString() })
-      .eq('course_code', courseCode)
+      .in('course_code', codesToClear)
       .eq('active', true);
     if(error) console.warn('liveDeactivateOtherSessions failed:', error);
   } catch(e){
