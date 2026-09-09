@@ -1112,36 +1112,41 @@ const DEPT_COUNTS = [{"key": "cs", "label": "Computer Science", "facultyKey": "c
 
 // 520+ generated students across all programmes (legacy demo students reserved
 // at their original registration numbers — see datagen/generate.py)
-const STUDENTS = [{"id":1,"name":"Aisha Nakamya","reg":"VU-CSF-2401-0001-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":97,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":2,"name":"Brian Ssemwanga","reg":"VU-CSF-2401-0002-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":98,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":3,"name":"Christine Namboozo","reg":"VU-CSF-2401-0003-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":4,"name":"David Kiggundu","reg":"VU-CSF-2401-0004-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":55,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":5,"name":"Esther Nalubega","reg":"VU-CSF-2401-0005-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":91,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":6,"name":"Fred Kibirige","reg":"VU-CSF-2401-0006-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":8,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":7,"name":"Grace Nakirya","reg":"VU-CSF-2401-0007-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":8,"name":"Hassan Mbazira","reg":"VU-CSF-2401-0008-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":100,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":9,"name":"Irene Namukasa","reg":"VU-CSF-2401-0009-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":10,"name":"Joseph Ssebuliba","reg":"VU-CSF-2401-0010-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":97,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":11,"name":"Victor Mbazira","reg":"VU-CSF-2401-0021-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":12,"name":"Andrew Nambooze","reg":"VU-CSF-2401-0022-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":75,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":13,"name":"Hellen Emmanuel","reg":"VU-CSF-2401-0023-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":97,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":14,"name":"Immaculate Nansubuga","reg":"VU-CSF-2401-0024-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":15,"name":"Dennis Ssegawa","reg":"VU-CSF-2401-0025-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":70,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":16,"name":"Harriet Kibirige","reg":"VU-CSF-2401-0026-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":17,"name":"Mary Kizza","reg":"VU-CSF-2401-0027-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":87,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":18,"name":"Kenneth Wabwa","reg":"VU-CSF-2401-0028-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":93,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":19,"name":"Eric Nalubega","reg":"VU-CSF-2401-0029-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":77,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":20,"name":"Faridah Okwir","reg":"VU-CSF-2401-0030-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":80,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":21,"name":"Cissy Annet","reg":"VU-CSF-2401-0031-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":95,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":22,"name":"Robert Kabuye","reg":"VU-CSF-2401-0032-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":89,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":23,"name":"Olivia Kabuye","reg":"VU-CSF-2401-0033-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":99,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":24,"name":"Janet Namboozo","reg":"VU-CSF-2401-0034-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":58,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":25,"name":"Felix Mukasa","reg":"VU-CSF-2401-0035-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":95,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":26,"name":"Stella Ssali","reg":"VU-CSF-2401-0036-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":83,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":27,"name":"Oscar Namirembe","reg":"VU-CSF-2401-0037-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":91,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":28,"name":"Doreen Okello","reg":"VU-CSF-2401-0038-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":67,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":29,"name":"Benjamin Ssegawa","reg":"VU-CSF-2401-0039-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":30,"name":"Kenneth Nakamya","reg":"VU-CSF-2401-0040-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":92,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":31,"name":"Martin Mugisha","reg":"VU-CSF-2401-0041-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":32,"name":"Geoffrey Kizza","reg":"VU-CSF-2401-0042-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":91,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":33,"name":"Umar Nakaddwa","reg":"VU-CSF-2401-0043-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":70,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":34,"name":"Leo Sarah","reg":"VU-CSF-2401-0044-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":75,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":35,"name":"Charles Ssemwanga","reg":"VU-CSF-2401-0045-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":36,"name":"Kevin Kiggundu","reg":"VU-CSF-2401-0046-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":77,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":37,"name":"Sarah Okello","reg":"VU-CSF-2401-0047-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":55,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":38,"name":"Kenneth Sarah","reg":"VU-CSF-2401-0048-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":81,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":39,"name":"Felix Nakaddwa","reg":"VU-ITF-2401-0049-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":89,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":40,"name":"Lillian Namutebi","reg":"VU-ITF-2401-0050-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 1"},{"id":41,"name":"Kenneth Emmanuel","reg":"VU-ITF-2401-0051-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":60,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":42,"name":"Prossy Emmanuel","reg":"VU-ITF-2401-0052-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":77,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":43,"name":"Patricia Nankunda","reg":"VU-ITF-2401-0053-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":44,"name":"Nelson Byaruhanga","reg":"VU-ITF-2401-0054-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":81,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":45,"name":"Faridah Nankunda","reg":"VU-ITF-2401-0055-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":98,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":46,"name":"Andrew Mugisha","reg":"VU-ITF-2401-0056-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":85,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":47,"name":"Linda Tendo","reg":"VU-ITF-2401-0057-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":67,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":48,"name":"Patricia Wamala","reg":"VU-ITF-2401-0058-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":57,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":49,"name":"Faridah Kiggundu","reg":"VU-ITF-2401-0059-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":77,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":50,"name":"Betty Atim","reg":"VU-ITF-2401-0060-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":51,"name":"Faith Nakamya","reg":"VU-ITF-2401-0061-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":52,"name":"Joseph Wasswa","reg":"VU-ITF-2401-0062-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":97,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":53,"name":"Teddy Tendo","reg":"VU-ITF-2401-0063-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":54,"name":"Isaiah Achieng","reg":"VU-ITF-2401-0064-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":55,"name":"Oscar Byaruhanga","reg":"VU-ITF-2401-0065-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":56,"name":"Diana Nalubega","reg":"VU-ITF-2401-0066-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":57,"name":"Michael Namutebi","reg":"VU-ITF-2401-0067-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":88,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":58,"name":"Norah Annet","reg":"VU-ITF-2401-0068-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":59,"name":"Zack Mugisha","reg":"VU-ITF-2401-0069-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":77,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":60,"name":"Timothy Nantongo","reg":"VU-ITF-2401-0070-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":46,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":61,"name":"Emmanuel Ssali","reg":"VU-ITF-2401-0071-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":82,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":62,"name":"Queen Sarah","reg":"VU-ITF-2401-0072-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":63,"name":"Zack Lubega","reg":"VU-ITF-2401-0073-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":44,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":64,"name":"Norah Mbazira","reg":"VU-ITF-2401-0074-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":69,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":65,"name":"Robert Annet","reg":"VU-ITF-2401-0075-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":83,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":66,"name":"Margaret Kiggundu","reg":"VU-ITF-2401-0076-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":67,"name":"Zainab Tushabe","reg":"VU-ITF-2401-0077-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":98,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":68,"name":"Kenneth Naggayi","reg":"VU-ITF-2401-0078-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":62,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":69,"name":"Teddy Achieng","reg":"VU-ITF-2401-0079-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":79,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":70,"name":"Patience Namboozo","reg":"VU-ITF-2401-0080-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":71,"name":"Gloria Apio","reg":"VU-ITF-2401-0081-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":92,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":72,"name":"Tom Nambooze","reg":"VU-ITF-2401-0082-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":80,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":73,"name":"Fred Ssemwanga","reg":"VU-ITF-2401-0083-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":88,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":74,"name":"Olivia Sarah","reg":"VU-ITF-2401-0084-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":90,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":75,"name":"Florence Wamala","reg":"VU-ITF-2401-0085-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":82,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":76,"name":"Grace Nankunda","reg":"VU-ITF-2401-0086-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":77,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":77,"name":"Brenda Mugisha","reg":"VU-SWF-2401-0087-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":78,"name":"Grace Mbazira","reg":"VU-SWF-2401-0088-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":83,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":79,"name":"Harriet Bbosa","reg":"VU-SWF-2401-0089-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":80,"name":"Gertrude Namatovu","reg":"VU-SWF-2401-0090-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":75,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":81,"name":"Damalie Ssegawa","reg":"VU-SWF-2401-0091-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":94,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":82,"name":"Yusuf Mbazira","reg":"VU-SWF-2401-0092-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":96,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":83,"name":"Yvonne Namirembe","reg":"VU-SWF-2401-0093-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":53,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":84,"name":"Zack Okwir","reg":"VU-SWF-2401-0094-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":74,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":85,"name":"Susan Namirembe","reg":"VU-SWF-2401-0095-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":81,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":86,"name":"Oscar Bbosa","reg":"VU-SWF-2401-0096-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":96,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":87,"name":"Frank Byaruhanga","reg":"VU-SWF-2401-0097-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":56,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":88,"name":"Yusuf Kabuye","reg":"VU-SWF-2401-0098-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":89,"name":"Andrew Nakaddwa","reg":"VU-SWF-2401-0099-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":65,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":90,"name":"Linda Byaruhanga","reg":"VU-SWF-2401-0100-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":53,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":91,"name":"Umar Namatovu","reg":"VU-SWF-2401-0101-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":87,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":92,"name":"Stella Mugisha","reg":"VU-SWF-2401-0102-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":93,"name":"Nathan Ssegawa","reg":"VU-SWF-2401-0103-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":91,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":94,"name":"Nabaale Lubega","reg":"VU-SWF-2401-0104-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":44,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":95,"name":"Ivan Nankunda","reg":"VU-SWF-2401-0105-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":99,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":96,"name":"Simon Kizza","reg":"VU-SWF-2401-0106-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":97,"name":"Julius Byaruhanga","reg":"VU-SWF-2401-0107-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":95,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":98,"name":"Martin Tushabe","reg":"VU-SWF-2401-0108-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":99,"name":"Felix Wabwa","reg":"VU-SWF-2401-0109-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":92,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":100,"name":"Rachel Ssebuliba","reg":"VU-SWF-2401-0110-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":68,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":101,"name":"Sarah Atim","reg":"VU-SWF-2401-0111-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":76,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":102,"name":"Hassan Okwir","reg":"VU-SWF-2401-0112-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":103,"name":"Leo Namatovu","reg":"VU-SWF-2401-0113-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":84,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":104,"name":"Hassan Achieng","reg":"VU-SWF-2401-0114-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":82,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":105,"name":"Immaculate Nabukyeyo","reg":"VU-SWF-2401-0115-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":96,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":106,"name":"Geoffrey Sarah","reg":"VU-SWF-2401-0116-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":92,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":107,"name":"Brian Kyeyune","reg":"VU-SWF-2401-0117-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":53,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":108,"name":"Rachel Wamala","reg":"VU-SWF-2401-0118-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":81,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":109,"name":"Yvonne Akwango","reg":"VU-SWF-2401-0119-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":110,"name":"Brenda Byaruhanga","reg":"VU-SWF-2401-0120-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":111,"name":"Brenda Emmanuel","reg":"VU-SWF-2401-0121-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":112,"name":"Esther Nantongo","reg":"VU-SWF-2401-0122-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":78,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":113,"name":"Ivan Wasswa","reg":"VU-SWF-2401-0123-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":114,"name":"Kampire Sarah","reg":"VU-BAF-2401-0011-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":100,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":115,"name":"Lwanga Moses","reg":"VU-BAF-2401-0012-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":116,"name":"Mary Tendo","reg":"VU-BAF-2401-0013-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":100,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":117,"name":"Nabaale Annet","reg":"VU-BAF-2401-0014-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":118,"name":"Opio Emmanuel","reg":"VU-BAF-2401-0015-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":8,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":119,"name":"Prossy Namutebi","reg":"VU-BAF-2401-0016-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":120,"name":"Julius Naggayi","reg":"VU-BAF-2401-0124-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":69,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":121,"name":"Harriet Kyeyune","reg":"VU-BAF-2401-0125-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":87,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":122,"name":"Felix Tendo","reg":"VU-BAF-2401-0126-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":123,"name":"Dennis Tushabe","reg":"VU-BAF-2401-0127-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":124,"name":"Brenda Achieng","reg":"VU-BAF-2401-0128-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":60,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":125,"name":"Annet Nakamya","reg":"VU-BAF-2401-0129-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":51,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":126,"name":"Victor Wamala","reg":"VU-BAF-2401-0130-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":73,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":127,"name":"Xavier Nabukyeyo","reg":"VU-BAF-2401-0131-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":90,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":128,"name":"Lwanga Kizza","reg":"VU-BAF-2401-0132-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":129,"name":"Ronald Namutebi","reg":"VU-BAF-2401-0133-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":85,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":130,"name":"Daniel Mukasa","reg":"VU-BAF-2401-0134-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":83,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":131,"name":"Patricia Bbosa","reg":"VU-BAF-2401-0135-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":91,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":132,"name":"Brenda Namutebi","reg":"VU-BAF-2401-0136-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":82,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":133,"name":"Walter Naggayi","reg":"VU-BAF-2401-0137-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":134,"name":"Rose Emmanuel","reg":"VU-BAF-2401-0138-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":93,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":135,"name":"Alex Lubega","reg":"VU-BAF-2401-0139-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":136,"name":"Cissy Wasswa","reg":"VU-BAF-2401-0140-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":78,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":137,"name":"Viola Mbazira","reg":"VU-BAF-2401-0141-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":138,"name":"Hellen Nambooze","reg":"VU-BAF-2401-0142-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":99,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":139,"name":"Faridah Tendo","reg":"VU-BAF-2401-0143-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":65,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":140,"name":"Eric Achieng","reg":"VU-BAF-2401-0144-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":92,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":141,"name":"Dennis Namukasa","reg":"VU-BAF-2401-0145-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":142,"name":"Alex Byaruhanga","reg":"VU-BAF-2401-0146-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":83,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":143,"name":"Joan Nalubega","reg":"VU-BAF-2401-0147-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":96,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":144,"name":"Teddy Ssebuliba","reg":"VU-BAF-2401-0148-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":47,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":145,"name":"Lillian Lubega","reg":"VU-BAF-2401-0149-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":82,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":146,"name":"Ronald Nansubuga","reg":"VU-BAF-2401-0150-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":84,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":147,"name":"Simon Nambooze","reg":"VU-BAF-2401-0151-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":68,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":148,"name":"Norah Nankunda","reg":"VU-BAF-2401-0152-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":66,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":149,"name":"Agnes Nakamya","reg":"VU-BAF-2401-0153-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":84,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":150,"name":"Janet Wabwa","reg":"VU-BAF-2401-0154-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":151,"name":"Norah Kabuye","reg":"VU-ACF-2401-0155-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":88,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":152,"name":"James Emmanuel","reg":"VU-ACF-2401-0156-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":79,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":153,"name":"Prossy Sarah","reg":"VU-ACF-2401-0157-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":84,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":154,"name":"Lillian Wamala","reg":"VU-ACF-2401-0158-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":83,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":155,"name":"Opio Kibirige","reg":"VU-ACF-2401-0159-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":85,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":156,"name":"Grace Kibirige","reg":"VU-ACF-2401-0160-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":93,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":157,"name":"Leo Apio","reg":"VU-ACF-2401-0161-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":80,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":158,"name":"George Mugisha","reg":"VU-ACF-2401-0162-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":74,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":159,"name":"Lwanga Kabuye","reg":"VU-ACF-2401-0163-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":160,"name":"Yvonne Nankunda","reg":"VU-ACF-2401-0164-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":97,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":161,"name":"Queen Nankunda","reg":"VU-ACF-2401-0165-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":162,"name":"Viola Ssali","reg":"VU-ACF-2401-0166-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":91,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":163,"name":"Yusuf Achieng","reg":"VU-ACF-2401-0167-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":70,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":164,"name":"Tom Okello","reg":"VU-ACF-2401-0168-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":81,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":165,"name":"Kenneth Namukasa","reg":"VU-ACF-2401-0169-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":166,"name":"Umar Bbosa","reg":"VU-ACF-2401-0170-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":75,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":167,"name":"Doreen Emmanuel","reg":"VU-ACF-2401-0171-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":44,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":168,"name":"Daniel Naggayi","reg":"VU-ACF-2401-0172-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":90,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":169,"name":"Linda Wamala","reg":"VU-ACF-2401-0173-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":74,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":170,"name":"Frank Nambooze","reg":"VU-ACF-2401-0174-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":100,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":171,"name":"Annet Nankya","reg":"VU-ACF-2401-0175-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":84,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":172,"name":"Teddy Nansubuga","reg":"VU-ACF-2401-0176-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":99,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":173,"name":"Timothy Mukasa","reg":"VU-ACF-2401-0177-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":87,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":174,"name":"Nathan Atim","reg":"VU-ACF-2401-0178-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":100,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":175,"name":"Gertrude Nankunda","reg":"VU-ACF-2401-0179-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":176,"name":"Emmanuel Kyeyune","reg":"VU-ACF-2401-0180-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":89,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":177,"name":"Henry Wamala","reg":"VU-ACF-2401-0181-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":95,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":178,"name":"Winnie Byaruhanga","reg":"VU-ACF-2401-0182-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":95,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":179,"name":"Zainab Apio","reg":"VU-ACF-2401-0183-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":97,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":180,"name":"James Namboozo","reg":"VU-ACF-2401-0184-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":84,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":181,"name":"Julius Kibirige","reg":"VU-ACF-2401-0185-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":97,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":182,"name":"Opio Sarah","reg":"VU-ACF-2401-0186-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":183,"name":"Yvonne Kiggundu","reg":"VU-ACF-2401-0187-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":82,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":184,"name":"Michael Apio","reg":"VU-ACF-2401-0188-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":52,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":185,"name":"Tom Apio","reg":"VU-ACF-2401-0189-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":82,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":186,"name":"Victor Ssali","reg":"VU-ACF-2401-0190-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":187,"name":"Ivan Wabwa","reg":"VU-ACF-2401-0191-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":51,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":188,"name":"Peter Nakaddwa","reg":"VU-MKF-2401-0192-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":189,"name":"Florence Okwir","reg":"VU-MKF-2401-0193-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":86,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":190,"name":"Dennis Wabwa","reg":"VU-MKF-2401-0194-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":83,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":191,"name":"Nathan Nambooze","reg":"VU-MKF-2401-0195-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":84,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":192,"name":"Robert Tumwesigye","reg":"VU-MKF-2401-0196-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":96,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":193,"name":"Umar Nakirya","reg":"VU-MKF-2401-0197-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":194,"name":"Oscar Otim","reg":"VU-MKF-2401-0198-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":85,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":195,"name":"Carol Tendo","reg":"VU-MKF-2401-0199-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":86,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":196,"name":"Betty Ssali","reg":"VU-MKF-2401-0200-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":85,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":197,"name":"Ivan Nalubega","reg":"VU-MKF-2401-0201-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":96,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":198,"name":"Lawrence Otim","reg":"VU-MKF-2401-0202-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":199,"name":"Isaac Mbazira","reg":"VU-MKF-2401-0203-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":83,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":200,"name":"Victor Otim","reg":"VU-MKF-2401-0204-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":94,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":201,"name":"Simon Emmanuel","reg":"VU-MKF-2401-0205-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":97,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":202,"name":"Xavier Atim","reg":"VU-MKF-2401-0206-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":84,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":203,"name":"Joan Nakirya","reg":"VU-MKF-2401-0207-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":72,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":204,"name":"Eve Nankunda","reg":"VU-MKF-2401-0208-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":93,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":205,"name":"Hassan Mugisha","reg":"VU-MKF-2401-0209-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":83,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":206,"name":"Collins Otim","reg":"VU-MKF-2401-0210-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":86,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":207,"name":"Benjamin Otim","reg":"VU-MKF-2401-0211-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":76,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":208,"name":"Patricia Tendo","reg":"VU-MKF-2401-0212-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":77,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":209,"name":"Walter Kabuye","reg":"VU-MKF-2401-0213-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":210,"name":"Zainab Namutebi","reg":"VU-MKF-2401-0214-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":73,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":211,"name":"Gloria Kyeyune","reg":"VU-MKF-2401-0215-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":99,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":212,"name":"Quincy Nakamya","reg":"VU-MKF-2401-0216-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":67,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":213,"name":"James Ssali","reg":"VU-MKF-2401-0217-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":214,"name":"Cissy Namutebi","reg":"VU-MKF-2401-0218-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":65,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":215,"name":"Patience Nambooze","reg":"VU-MKF-2401-0219-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":90,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":216,"name":"Nathan Otim","reg":"VU-MKF-2401-0220-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":82,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":217,"name":"Herbert Nankunda","reg":"VU-MKF-2401-0221-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":218,"name":"Bob Namirembe","reg":"VU-MKF-2401-0222-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":89,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":219,"name":"Brenda Mukasa","reg":"VU-MKF-2401-0223-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":59,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":220,"name":"Victor Kyeyune","reg":"VU-MKF-2401-0224-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":94,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":221,"name":"Timothy Nankya","reg":"VU-MKF-2401-0225-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":78,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":222,"name":"Lwanga Nansubuga","reg":"VU-MKF-2401-0226-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":87,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":223,"name":"Herbert Nakirya","reg":"VU-MKF-2401-0227-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":86,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":224,"name":"Benjamin Byaruhanga","reg":"VU-MKF-2401-0228-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":53,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":225,"name":"Ronald Ssali","reg":"VU-ENG-2401-0017-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":226,"name":"Sarah Nabukyeyo","reg":"VU-ENG-2401-0018-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":227,"name":"Timothy Wabwa","reg":"VU-ENG-2401-0019-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 2"},{"id":228,"name":"Winnie Nakaddwa","reg":"VU-ENG-2401-0020-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 1"},{"id":229,"name":"Faridah Nambooze","reg":"VU-CVF-2401-0229-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":65,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":230,"name":"Peter Lubega","reg":"VU-CVF-2401-0230-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":51,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":231,"name":"Zack Okello","reg":"VU-CVF-2401-0231-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":84,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":232,"name":"Cissy Nakirya","reg":"VU-CVF-2401-0232-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":72,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":233,"name":"Immaculate Nakirya","reg":"VU-CVF-2401-0233-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":99,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":234,"name":"Nelson Emmanuel","reg":"VU-CVF-2401-0234-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":235,"name":"Robert Nankunda","reg":"VU-CVF-2401-0235-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":69,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":236,"name":"Annet Tumwesigye","reg":"VU-CVF-2401-0236-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":71,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":237,"name":"Sarah Ssebuliba","reg":"VU-CVF-2401-0237-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":238,"name":"Julius Ojok","reg":"VU-CVF-2401-0238-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":80,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":239,"name":"Tracy Kizza","reg":"VU-CVF-2401-0239-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":77,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":240,"name":"Teddy Sarah","reg":"VU-CVF-2401-0240-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":54,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":241,"name":"Yusuf Ssegawa","reg":"VU-CVF-2401-0241-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":81,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":242,"name":"Brenda Ssegawa","reg":"VU-CVF-2401-0242-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":90,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":243,"name":"Mary Emmanuel","reg":"VU-CVF-2401-0243-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 2"},{"id":244,"name":"Gloria Nakaddwa","reg":"VU-CVF-2401-0244-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":84,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":245,"name":"Lillian Nakamya","reg":"VU-CVF-2401-0245-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":71,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":246,"name":"Isaac Naggayi","reg":"VU-CVF-2401-0246-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":100,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":247,"name":"Winnie Namirembe","reg":"VU-CVF-2401-0247-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 2"},{"id":248,"name":"Winnie Mukasa","reg":"VU-CVF-2401-0248-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":95,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":249,"name":"Rose Mbazira","reg":"VU-CVF-2401-0249-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":100,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":250,"name":"Doreen Ssegawa","reg":"VU-CVF-2401-0250-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":91,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":251,"name":"Brian Nakaddwa","reg":"VU-CVF-2401-0251-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":252,"name":"Frank Kabuye","reg":"VU-CVF-2401-0252-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":70,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":253,"name":"Brenda Kizza","reg":"VU-CVF-2401-0253-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":79,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":254,"name":"Florence Moses","reg":"VU-CVF-2401-0254-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":255,"name":"Martin Kabuye","reg":"VU-CVF-2401-0255-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":93,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":256,"name":"Benjamin Namatovu","reg":"VU-CVF-2401-0256-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":95,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":257,"name":"Sarah Byaruhanga","reg":"VU-CVF-2401-0257-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":93,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":258,"name":"Cissy Nankya","reg":"VU-CVF-2401-0258-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":259,"name":"Queen Nalubega","reg":"VU-CVF-2401-0259-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":94,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":260,"name":"Ivan Kyeyune","reg":"VU-CVF-2401-0260-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":76,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":261,"name":"Nelson Mugisha","reg":"VU-CVF-2401-0261-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":262,"name":"Ronald Nakirya","reg":"VU-EEF-2401-0262-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":60,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":263,"name":"Carol Namboozo","reg":"VU-EEF-2401-0263-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":91,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":264,"name":"Damalie Otim","reg":"VU-EEF-2401-0264-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":96,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":265,"name":"Umar Mugisha","reg":"VU-EEF-2401-0265-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":61,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":266,"name":"Gertrude Wabwa","reg":"VU-EEF-2401-0266-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":267,"name":"Zainab Kibirige","reg":"VU-EEF-2401-0267-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":84,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":268,"name":"Patience Bbosa","reg":"VU-EEF-2401-0268-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":269,"name":"Patience Nankunda","reg":"VU-EEF-2401-0269-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":96,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":270,"name":"Walter Nankunda","reg":"VU-EEF-2401-0270-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":271,"name":"Tracy Moses","reg":"VU-EEF-2401-0271-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":81,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":272,"name":"Winnie Wabwa","reg":"VU-EEF-2401-0272-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":98,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":273,"name":"Yusuf Akwango","reg":"VU-EEF-2401-0273-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":274,"name":"Collins Tushabe","reg":"VU-EEF-2401-0274-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":72,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":275,"name":"Mary Atim","reg":"VU-EEF-2401-0275-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":276,"name":"Kelvin Nambooze","reg":"VU-EEF-2401-0276-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":100,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":277,"name":"Edith Otim","reg":"VU-EEF-2401-0277-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":278,"name":"Nathan Okwir","reg":"VU-EEF-2401-0278-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":81,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":279,"name":"Walter Byaruhanga","reg":"VU-EEF-2401-0279-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":56,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":280,"name":"Lillian Wabwa","reg":"VU-EEF-2401-0280-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":91,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":281,"name":"Lwanga Kibirige","reg":"VU-EEF-2401-0281-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":75,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":282,"name":"Nabaale Namirembe","reg":"VU-EEF-2401-0282-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":283,"name":"Immaculate Ssemwanga","reg":"VU-EEF-2401-0283-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":95,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":284,"name":"Stella Namukasa","reg":"VU-EEF-2401-0284-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":97,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":285,"name":"Leo Naggayi","reg":"VU-EEF-2401-0285-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":286,"name":"Brenda Ssemwanga","reg":"VU-EEF-2401-0286-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":74,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":287,"name":"Henry Ssegawa","reg":"VU-EEF-2401-0287-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":78,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":288,"name":"Kevin Atim","reg":"VU-EEF-2401-0288-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":78,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":289,"name":"Quincy Achieng","reg":"VU-EEF-2401-0289-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":97,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":290,"name":"Rose Ssegawa","reg":"VU-EEF-2401-0290-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":88,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":291,"name":"Zack Nankunda","reg":"VU-EEF-2401-0291-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":91,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":292,"name":"Gertrude Byaruhanga","reg":"VU-EEF-2401-0292-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":83,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":293,"name":"Cissy Nalubega","reg":"VU-EEF-2401-0293-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":294,"name":"Rachel Namboozo","reg":"VU-EEF-2401-0294-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":80,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":295,"name":"Dennis Byaruhanga","reg":"VU-EEF-2401-0295-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":72,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":296,"name":"Irene Wabwa","reg":"VU-EEF-2401-0296-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":65,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":297,"name":"Viola Nakaddwa","reg":"VU-EEF-2401-0297-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":90,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":298,"name":"Irene Okello","reg":"VU-EEF-2401-0298-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":299,"name":"Xavier Akwango","reg":"VU-MEF-2401-0299-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":87,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":300,"name":"Gertrude Akwango","reg":"VU-MEF-2401-0300-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":100,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":301,"name":"Joseph Kibirige","reg":"VU-MEF-2401-0301-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":92,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":302,"name":"Yvonne Nakirya","reg":"VU-MEF-2401-0302-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":89,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":303,"name":"Betty Wasswa","reg":"VU-MEF-2401-0303-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 2"},{"id":304,"name":"Cissy Nantongo","reg":"VU-MEF-2401-0304-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":305,"name":"Zack Kabuye","reg":"VU-MEF-2401-0305-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":96,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":306,"name":"Grace Ssebuliba","reg":"VU-MEF-2401-0306-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":79,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":307,"name":"Kevin Tushabe","reg":"VU-MEF-2401-0307-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":93,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":308,"name":"Robert Ssebuliba","reg":"VU-MEF-2401-0308-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":309,"name":"Nelson Namukasa","reg":"VU-MEF-2401-0309-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":83,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":310,"name":"Joan Ssemwanga","reg":"VU-MEF-2401-0310-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":92,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":311,"name":"Norah Tushabe","reg":"VU-MEF-2401-0311-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":312,"name":"Queen Wasswa","reg":"VU-MEF-2401-0312-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":66,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":313,"name":"Ronald Moses","reg":"VU-MEF-2401-0313-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":61,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":314,"name":"Viola Nankunda","reg":"VU-MEF-2401-0314-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":84,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":315,"name":"Agnes Naggayi","reg":"VU-MEF-2401-0315-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":316,"name":"Frank Emmanuel","reg":"VU-MEF-2401-0316-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":82,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":317,"name":"Grace Otim","reg":"VU-MEF-2401-0317-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":318,"name":"Simon Kibirige","reg":"VU-MEF-2401-0318-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":98,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":319,"name":"Henry Atim","reg":"VU-MEF-2401-0319-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":50,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":320,"name":"Walter Nalubega","reg":"VU-MEF-2401-0320-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":79,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":321,"name":"Martin Namukasa","reg":"VU-MEF-2401-0321-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":322,"name":"Susan Sarah","reg":"VU-MEF-2401-0322-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":86,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":323,"name":"Brenda Ssali","reg":"VU-MEF-2401-0323-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":324,"name":"Simon Achieng","reg":"VU-MEF-2401-0324-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":74,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":325,"name":"Yusuf Nantongo","reg":"VU-MEF-2401-0325-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":93,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":326,"name":"Mary Mugisha","reg":"VU-MEF-2401-0326-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":74,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":327,"name":"Hassan Nantongo","reg":"VU-MEF-2401-0327-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":328,"name":"Walter Nakaddwa","reg":"VU-MEF-2401-0328-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":87,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":329,"name":"Timothy Nalubega","reg":"VU-MEF-2401-0329-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":90,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":330,"name":"Gloria Akwango","reg":"VU-MEF-2401-0330-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":85,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":331,"name":"David Namukasa","reg":"VU-MEF-2401-0331-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":47,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":332,"name":"Ivan Mbazira","reg":"VU-MEF-2401-0332-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":65,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":333,"name":"Rose Okwir","reg":"VU-MEF-2401-0333-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":334,"name":"Nelson Kizza","reg":"VU-MEF-2401-0334-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":73,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":335,"name":"Ivan Kasule","reg":"VU-MEF-2401-0335-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":52,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":336,"name":"Emmanuel Wamala","reg":"VU-BIF-2401-0336-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":337,"name":"Daniel Bbosa","reg":"VU-BIF-2401-0337-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":338,"name":"Lwanga Namukasa","reg":"VU-BIF-2401-0338-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":86,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":339,"name":"Michael Lubega","reg":"VU-BIF-2401-0339-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":87,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":340,"name":"Leo Lubega","reg":"VU-BIF-2401-0340-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":341,"name":"Patience Nakirya","reg":"VU-BIF-2401-0341-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":92,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":342,"name":"Kelvin Ssebuliba","reg":"VU-BIF-2401-0342-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":343,"name":"Felix Akwango","reg":"VU-BIF-2401-0343-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":73,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":344,"name":"Rachel Mukasa","reg":"VU-BIF-2401-0344-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":94,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":345,"name":"Peter Akwango","reg":"VU-BIF-2401-0345-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":97,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":346,"name":"Alex Ssemwanga","reg":"VU-BIF-2401-0346-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":53,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":347,"name":"Oscar Nakaddwa","reg":"VU-BIF-2401-0347-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":94,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":348,"name":"Norah Mugisha","reg":"VU-BIF-2401-0348-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":93,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":349,"name":"Betty Ojok","reg":"VU-BIF-2401-0349-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":87,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":350,"name":"Benjamin Namutebi","reg":"VU-BIF-2401-0350-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":81,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":351,"name":"Opio Mukasa","reg":"VU-BIF-2401-0351-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":88,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":352,"name":"Isaiah Kizza","reg":"VU-BIF-2401-0352-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":92,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":353,"name":"Yusuf Byaruhanga","reg":"VU-BIF-2401-0353-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":354,"name":"James Tumwesigye","reg":"VU-BIF-2401-0354-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":95,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":355,"name":"Simon Byaruhanga","reg":"VU-BIF-2401-0355-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":84,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":356,"name":"Susan Tushabe","reg":"VU-BIF-2401-0356-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":90,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":357,"name":"Bob Tumwesigye","reg":"VU-BIF-2401-0357-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":83,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":358,"name":"Lillian Namatovu","reg":"VU-BIF-2401-0358-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":359,"name":"Martin Ssebuliba","reg":"VU-BIF-2401-0359-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":77,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":360,"name":"Opio Mugisha","reg":"VU-BIF-2401-0360-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":73,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":361,"name":"Olivia Lubega","reg":"VU-BIF-2401-0361-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":63,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":362,"name":"Peter Namutebi","reg":"VU-BIF-2401-0362-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":363,"name":"Nabaale Nakirya","reg":"VU-BIF-2401-0363-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":96,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":364,"name":"Aisha Lubega","reg":"VU-BIF-2401-0364-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":90,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":365,"name":"Xavier Tendo","reg":"VU-BIF-2401-0365-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":99,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":366,"name":"Xavier Namatovu","reg":"VU-BIF-2401-0366-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":367,"name":"Hassan Moses","reg":"VU-BIF-2401-0367-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":90,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":368,"name":"Julius Wabwa","reg":"VU-BIF-2401-0368-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":78,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":369,"name":"Queen Wamala","reg":"VU-BIF-2401-0369-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":79,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":370,"name":"Olivia Tendo","reg":"VU-BIF-2401-0370-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":95,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":371,"name":"Felix Moses","reg":"VU-BIF-2401-0371-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":93,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":372,"name":"Carol Nantongo","reg":"VU-BIF-2401-0372-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":91,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":373,"name":"Doreen Namirembe","reg":"VU-CHF-2401-0373-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":90,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":374,"name":"Linda Nakamya","reg":"VU-CHF-2401-0374-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":83,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":375,"name":"Susan Kyeyune","reg":"VU-CHF-2401-0375-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":86,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":376,"name":"Prossy Nankunda","reg":"VU-CHF-2401-0376-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":73,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":377,"name":"Eric Tushabe","reg":"VU-CHF-2401-0377-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":84,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":378,"name":"Immaculate Namukasa","reg":"VU-CHF-2401-0378-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":379,"name":"Hassan Wasswa","reg":"VU-CHF-2401-0379-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":380,"name":"Leo Namutebi","reg":"VU-CHF-2401-0380-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":77,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":381,"name":"Henry Naggayi","reg":"VU-CHF-2401-0381-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":76,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":382,"name":"Nelson Achieng","reg":"VU-CHF-2401-0382-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":89,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":383,"name":"Benjamin Annet","reg":"VU-CHF-2401-0383-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":56,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":384,"name":"Ronald Kiggundu","reg":"VU-CHF-2401-0384-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":93,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":385,"name":"Lawrence Wamala","reg":"VU-CHF-2401-0385-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":87,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":386,"name":"Aisha Nambooze","reg":"VU-CHF-2401-0386-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2"},{"id":387,"name":"Brenda Wasswa","reg":"VU-CHF-2401-0387-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":42,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":388,"name":"Alex Namboozo","reg":"VU-CHF-2401-0388-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":99,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":389,"name":"Eve Okwir","reg":"VU-CHF-2401-0389-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":87,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":390,"name":"Benjamin Nankunda","reg":"VU-CHF-2401-0390-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":78,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":391,"name":"Isaac Namirembe","reg":"VU-CHF-2401-0391-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":392,"name":"Susan Wamala","reg":"VU-CHF-2401-0392-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":393,"name":"Brenda Ssebuliba","reg":"VU-CHF-2401-0393-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":99,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":394,"name":"Irene Nankunda","reg":"VU-CHF-2401-0394-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":75,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":395,"name":"Gloria Nalubega","reg":"VU-CHF-2401-0395-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":96,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":396,"name":"Linda Nambooze","reg":"VU-CHF-2401-0396-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":81,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":397,"name":"Rachel Nankya","reg":"VU-CHF-2401-0397-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":93,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":398,"name":"Nelson Bbosa","reg":"VU-CHF-2401-0398-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":79,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":399,"name":"Fred Nakaddwa","reg":"VU-CHF-2401-0399-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":98,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":400,"name":"Umar Apio","reg":"VU-CHF-2401-0400-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":null,"trend":null,"gender":"Female","semester":"Semester 1"},{"id":401,"name":"Henry Mukasa","reg":"VU-CHF-2401-0401-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":71,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":402,"name":"Diana Okello","reg":"VU-CHF-2401-0402-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":84,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":403,"name":"Ivan Kiggundu","reg":"VU-CHF-2401-0403-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":91,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":404,"name":"Gertrude Namutebi","reg":"VU-CHF-2401-0404-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":89,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":405,"name":"Doreen Achieng","reg":"VU-CHF-2401-0405-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"},{"id":406,"name":"Faith Apio","reg":"VU-CHF-2401-0406-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":81,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":407,"name":"Bob Annet","reg":"VU-CHF-2401-0407-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":81,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":408,"name":"Isaiah Mbazira","reg":"VU-CHF-2401-0408-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":82,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":409,"name":"Brian Namutebi","reg":"VU-CHF-2401-0409-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":410,"name":"Tracy Ssali","reg":"VU-MSF-2401-0410-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":78,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":411,"name":"Leo Mukasa","reg":"VU-MSF-2401-0411-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":93,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":412,"name":"Isaiah Ssebuliba","reg":"VU-MSF-2401-0412-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":93,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":413,"name":"Rose Ssebuliba","reg":"VU-MSF-2401-0413-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":82,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":414,"name":"Kenneth Mugisha","reg":"VU-MSF-2401-0414-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":90,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":415,"name":"Timothy Sarah","reg":"VU-MSF-2401-0415-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":73,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":416,"name":"Charles Moses","reg":"VU-MSF-2401-0416-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":91,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":417,"name":"Winnie Nankunda","reg":"VU-MSF-2401-0417-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":95,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":418,"name":"Sarah Naggayi","reg":"VU-MSF-2401-0418-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":86,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":419,"name":"Tom Kabuye","reg":"VU-MSF-2401-0419-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":96,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":420,"name":"Esther Nakamya","reg":"VU-MSF-2401-0420-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 1"},{"id":421,"name":"Henry Kizza","reg":"VU-MSF-2401-0421-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":91,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":422,"name":"Carol Nakirya","reg":"VU-MSF-2401-0422-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":94,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":423,"name":"Cissy Nabukyeyo","reg":"VU-MSF-2401-0423-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":424,"name":"Dennis Emmanuel","reg":"VU-MSF-2401-0424-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":95,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":425,"name":"Faith Okwir","reg":"VU-MSF-2401-0425-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":97,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":426,"name":"Brenda Kasule","reg":"VU-MSF-2401-0426-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":78,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":427,"name":"Janet Annet","reg":"VU-MSF-2401-0427-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":428,"name":"Benjamin Nabukyeyo","reg":"VU-MSF-2401-0428-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 1"},{"id":429,"name":"Viola Ssemwanga","reg":"VU-MSF-2401-0429-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":97,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":430,"name":"Agnes Namatovu","reg":"VU-MSF-2401-0430-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":96,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":431,"name":"Gertrude Okello","reg":"VU-MSF-2401-0431-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":98,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":432,"name":"Emmanuel Nambooze","reg":"VU-MSF-2401-0432-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":77,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":433,"name":"Robert Tushabe","reg":"VU-MSF-2401-0433-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":99,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":434,"name":"Grace Kabuye","reg":"VU-MSF-2401-0434-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":82,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":435,"name":"Kenneth Okwir","reg":"VU-MSF-2401-0435-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":87,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":436,"name":"Martin Nantongo","reg":"VU-MSF-2401-0436-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":77,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":437,"name":"Teddy Okwir","reg":"VU-MSF-2401-0437-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":71,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":438,"name":"Viola Otim","reg":"VU-MSF-2401-0438-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":89,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":439,"name":"Leo Nabukyeyo","reg":"VU-MSF-2401-0439-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":72,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":440,"name":"Lawrence Lubega","reg":"VU-MSF-2401-0440-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 1"},{"id":441,"name":"Cissy Lubega","reg":"VU-MSF-2401-0441-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":87,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":442,"name":"Rose Atim","reg":"VU-MSF-2401-0442-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":92,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":443,"name":"Nelson Ojok","reg":"VU-MSF-2401-0443-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":69,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":444,"name":"Susan Nabukyeyo","reg":"VU-MSF-2401-0444-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":69,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":445,"name":"Hassan Nakaddwa","reg":"VU-MSF-2401-0445-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":82,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":446,"name":"Quincy Nantongo","reg":"VU-MSF-2401-0446-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":65,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":447,"name":"Brian Akwango","reg":"VU-EDF-2401-0447-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":448,"name":"Lwanga Mugisha","reg":"VU-EDF-2401-0448-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":97,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":449,"name":"Bob Mukasa","reg":"VU-EDF-2401-0449-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":84,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":450,"name":"Nelson Namutebi","reg":"VU-EDF-2401-0450-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":87,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":451,"name":"Joan Namatovu","reg":"VU-EDF-2401-0451-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":96,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":452,"name":"Herbert Wamala","reg":"VU-EDF-2401-0452-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":97,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":453,"name":"Fred Apio","reg":"VU-EDF-2401-0453-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":83,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":454,"name":"Felix Ssegawa","reg":"VU-EDF-2401-0454-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":90,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":455,"name":"Isaac Nankya","reg":"VU-EDF-2401-0455-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 2"},{"id":456,"name":"Damalie Wasswa","reg":"VU-EDF-2401-0456-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":78,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":457,"name":"Yusuf Nankunda","reg":"VU-EDF-2401-0457-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":93,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":458,"name":"Kelvin Akwango","reg":"VU-EDF-2401-0458-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":47,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":459,"name":"George Lubega","reg":"VU-EDF-2401-0459-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":86,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":460,"name":"Ivan Tushabe","reg":"VU-EDF-2401-0460-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":86,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":461,"name":"Bob Nakirya","reg":"VU-EDF-2401-0461-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":462,"name":"Brenda Nakaddwa","reg":"VU-EDF-2401-0462-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":72,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":463,"name":"Faridah Nansubuga","reg":"VU-EDF-2401-0463-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":84,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":464,"name":"Eric Mbazira","reg":"VU-EDF-2401-0464-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":96,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":465,"name":"Isaiah Namutebi","reg":"VU-EDF-2401-0465-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":73,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":466,"name":"Joseph Wamala","reg":"VU-EDF-2401-0466-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":80,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":467,"name":"Isaiah Nantongo","reg":"VU-EDF-2401-0467-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":75,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":468,"name":"Gloria Nabukyeyo","reg":"VU-EDF-2401-0468-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":43,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":469,"name":"Isaac Moses","reg":"VU-EDF-2401-0469-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":83,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":470,"name":"Henry Kabuye","reg":"VU-EDF-2401-0470-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":93,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":471,"name":"Brenda Tumwesigye","reg":"VU-EDF-2401-0471-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":97,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":472,"name":"Simon Kyeyune","reg":"VU-EDF-2401-0472-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":473,"name":"Joan Moses","reg":"VU-EDF-2401-0473-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":474,"name":"Nelson Okwir","reg":"VU-EDF-2401-0474-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":97,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":475,"name":"Lawrence Sarah","reg":"VU-EDF-2401-0475-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":72,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":476,"name":"Tom Kiggundu","reg":"VU-EDF-2401-0476-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":81,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":477,"name":"Lawrence Nankya","reg":"VU-EDF-2401-0477-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":88,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":478,"name":"Charles Sarah","reg":"VU-EDF-2401-0478-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":479,"name":"Irene Nabukyeyo","reg":"VU-EDF-2401-0479-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":72,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":480,"name":"Michael Nambooze","reg":"VU-EDF-2401-0480-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":43,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":481,"name":"Olivia Tushabe","reg":"VU-EDF-2401-0481-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":99,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":482,"name":"Leo Kizza","reg":"VU-EDF-2401-0482-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":78,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":483,"name":"Susan Namboozo","reg":"VU-EDF-2401-0483-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":77,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":484,"name":"Lillian Tushabe","reg":"VU-MCF-2401-0484-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":97,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":485,"name":"Eric Nantongo","reg":"VU-MCF-2401-0485-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":486,"name":"Gloria Kiggundu","reg":"VU-MCF-2401-0486-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":92,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":487,"name":"Yvonne Naggayi","reg":"VU-MCF-2401-0487-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":91,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":488,"name":"Rachel Okello","reg":"VU-MCF-2401-0488-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":95,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":489,"name":"Linda Ssebuliba","reg":"VU-MCF-2401-0489-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":96,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":490,"name":"Charles Ssebuliba","reg":"VU-MCF-2401-0490-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":87,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":491,"name":"Winnie Kabuye","reg":"VU-MCF-2401-0491-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":97,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":492,"name":"Timothy Kasule","reg":"VU-MCF-2401-0492-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":98,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":493,"name":"Victor Nankunda","reg":"VU-MCF-2401-0493-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":57,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":494,"name":"Brian Annet","reg":"VU-MCF-2401-0494-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":85,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":495,"name":"Annet Lubega","reg":"VU-MCF-2401-0495-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":496,"name":"Benjamin Okello","reg":"VU-MCF-2401-0496-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":89,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":497,"name":"Lillian Sarah","reg":"VU-MCF-2401-0497-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":498,"name":"Collins Namukasa","reg":"VU-MCF-2401-0498-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":83,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":499,"name":"Xavier Otim","reg":"VU-MCF-2401-0499-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":95,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":500,"name":"Geoffrey Wasswa","reg":"VU-MCF-2401-0500-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":43,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":501,"name":"Aisha Annet","reg":"VU-MCF-2401-0501-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":91,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":502,"name":"Christine Nakamya","reg":"VU-MCF-2401-0502-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":53,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":503,"name":"Bob Nalubega","reg":"VU-MCF-2401-0503-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":78,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":504,"name":"Susan Namukasa","reg":"VU-MCF-2401-0504-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":79,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":505,"name":"Sarah Ojok","reg":"VU-MCF-2401-0505-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":506,"name":"Geoffrey Annet","reg":"VU-MCF-2401-0506-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":94,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":507,"name":"Hellen Kibirige","reg":"VU-MCF-2401-0507-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":63,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":508,"name":"Gertrude Tumwesigye","reg":"VU-MCF-2401-0508-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":69,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":509,"name":"Walter Kibirige","reg":"VU-MCF-2401-0509-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":94,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":510,"name":"Nathan Wasswa","reg":"VU-MCF-2401-0510-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":84,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":511,"name":"George Bbosa","reg":"VU-MCF-2401-0511-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":95,"trend":"up","gender":"Male","semester":"Semester 2"},{"id":512,"name":"Kevin Kasule","reg":"VU-MCF-2401-0512-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":513,"name":"Henry Nakamya","reg":"VU-MCF-2401-0513-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 1"},{"id":514,"name":"Hassan Otim","reg":"VU-MCF-2401-0514-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 2"},{"id":515,"name":"Esther Kyeyune","reg":"VU-MCF-2401-0515-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":65,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":516,"name":"Brian Nankya","reg":"VU-MCF-2401-0516-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":88,"trend":"down","gender":"Female","semester":"Semester 1"},{"id":517,"name":"Dennis Namirembe","reg":"VU-MCF-2401-0517-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 1"},{"id":518,"name":"Brenda Nankya","reg":"VU-MCF-2401-0518-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":70,"trend":"down","gender":"Female","semester":"Semester 2"},{"id":519,"name":"Victor Okello","reg":"VU-MCF-2401-0519-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":62,"trend":"down","gender":"Male","semester":"Semester 2"},{"id":520,"name":"Linda Kibirige","reg":"VU-MCF-2401-0520-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 1"},{"id":521,"name":"Balinda Christopher","reg":"VU-CSF-2601-0521-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1"}];
+const STUDENTS = [{"id":1,"name":"Aisha Nakamya","reg":"VU-CSF-2401-0001-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":97,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"a.nakamya@vu.ac.ug"},{"id":2,"name":"Brian Ssemwanga","reg":"VU-CSF-2401-0002-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":98,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.ssemwanga@vu.ac.ug"},{"id":3,"name":"Christine Namboozo","reg":"VU-CSF-2401-0003-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"c.namboozo@vu.ac.ug"},{"id":4,"name":"David Kiggundu","reg":"VU-CSF-2401-0004-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":55,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"d.kiggundu@vu.ac.ug"},{"id":5,"name":"Esther Nalubega","reg":"VU-CSF-2401-0005-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":91,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"e.nalubega@vu.ac.ug"},{"id":6,"name":"Fred Kibirige","reg":"VU-CSF-2401-0006-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":8,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"f.kibirige@vu.ac.ug"},{"id":7,"name":"Grace Nakirya","reg":"VU-CSF-2401-0007-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"g.nakirya@vu.ac.ug"},{"id":8,"name":"Hassan Mbazira","reg":"VU-CSF-2401-0008-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":100,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"h.mbazira@vu.ac.ug"},{"id":9,"name":"Irene Namukasa","reg":"VU-CSF-2401-0009-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"i.namukasa@vu.ac.ug"},{"id":10,"name":"Joseph Ssebuliba","reg":"VU-CSF-2401-0010-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":97,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"j.ssebuliba@vu.ac.ug"},{"id":11,"name":"Victor Mbazira","reg":"VU-CSF-2401-0021-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"v.mbazira@vu.ac.ug"},{"id":12,"name":"Andrew Nambooze","reg":"VU-CSF-2401-0022-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":75,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"a.nambooze@vu.ac.ug"},{"id":13,"name":"Hellen Emmanuel","reg":"VU-CSF-2401-0023-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":97,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"h.emmanuel@vu.ac.ug"},{"id":14,"name":"Immaculate Nansubuga","reg":"VU-CSF-2401-0024-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"i.nansubuga@vu.ac.ug"},{"id":15,"name":"Dennis Ssegawa","reg":"VU-CSF-2401-0025-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":70,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"d.ssegawa@vu.ac.ug"},{"id":16,"name":"Harriet Kibirige","reg":"VU-CSF-2401-0026-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"h.kibirige@vu.ac.ug"},{"id":17,"name":"Mary Kizza","reg":"VU-CSF-2401-0027-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":87,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"m.kizza@vu.ac.ug"},{"id":18,"name":"Kenneth Wabwa","reg":"VU-CSF-2401-0028-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":93,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"k.wabwa@vu.ac.ug"},{"id":19,"name":"Eric Nalubega","reg":"VU-CSF-2401-0029-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":77,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"e.nalubega19@vu.ac.ug"},{"id":20,"name":"Faridah Okwir","reg":"VU-CSF-2401-0030-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":80,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"f.okwir@vu.ac.ug"},{"id":21,"name":"Cissy Annet","reg":"VU-CSF-2401-0031-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":95,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"c.annet@vu.ac.ug"},{"id":22,"name":"Robert Kabuye","reg":"VU-CSF-2401-0032-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":89,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"r.kabuye@vu.ac.ug"},{"id":23,"name":"Olivia Kabuye","reg":"VU-CSF-2401-0033-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":99,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"o.kabuye@vu.ac.ug"},{"id":24,"name":"Janet Namboozo","reg":"VU-CSF-2401-0034-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":58,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"j.namboozo@vu.ac.ug"},{"id":25,"name":"Felix Mukasa","reg":"VU-CSF-2401-0035-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":95,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"f.mukasa@vu.ac.ug"},{"id":26,"name":"Stella Ssali","reg":"VU-CSF-2401-0036-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":83,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"s.ssali@vu.ac.ug"},{"id":27,"name":"Oscar Namirembe","reg":"VU-CSF-2401-0037-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":91,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"o.namirembe@vu.ac.ug"},{"id":28,"name":"Doreen Okello","reg":"VU-CSF-2401-0038-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":67,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"d.okello@vu.ac.ug"},{"id":29,"name":"Benjamin Ssegawa","reg":"VU-CSF-2401-0039-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.ssegawa@vu.ac.ug"},{"id":30,"name":"Kenneth Nakamya","reg":"VU-CSF-2401-0040-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":92,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"k.nakamya@vu.ac.ug"},{"id":31,"name":"Martin Mugisha","reg":"VU-CSF-2401-0041-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"m.mugisha@vu.ac.ug"},{"id":32,"name":"Geoffrey Kizza","reg":"VU-CSF-2401-0042-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":91,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"g.kizza@vu.ac.ug"},{"id":33,"name":"Umar Nakaddwa","reg":"VU-CSF-2401-0043-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":70,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"u.nakaddwa@vu.ac.ug"},{"id":34,"name":"Leo Sarah","reg":"VU-CSF-2401-0044-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":75,"trend":"up","gender":"Female","semester":"Semester 2","mode":"evening","email":"l.sarah@vu.ac.ug"},{"id":35,"name":"Charles Ssemwanga","reg":"VU-CSF-2401-0045-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"c.ssemwanga@vu.ac.ug"},{"id":36,"name":"Kevin Kiggundu","reg":"VU-CSF-2401-0046-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 1","pct":77,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"k.kiggundu@vu.ac.ug"},{"id":37,"name":"Sarah Okello","reg":"VU-CSF-2401-0047-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":55,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"s.okello@vu.ac.ug"},{"id":38,"name":"Kenneth Sarah","reg":"VU-CSF-2401-0048-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 2","pct":81,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"k.sarah@vu.ac.ug"},{"id":39,"name":"Felix Nakaddwa","reg":"VU-ITF-2401-0049-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":89,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"f.nakaddwa@vu.ac.ug"},{"id":40,"name":"Lillian Namutebi","reg":"VU-ITF-2401-0050-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 1","mode":"day","email":"l.namutebi@vu.ac.ug"},{"id":41,"name":"Kenneth Emmanuel","reg":"VU-ITF-2401-0051-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":60,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"k.emmanuel@vu.ac.ug"},{"id":42,"name":"Prossy Emmanuel","reg":"VU-ITF-2401-0052-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":77,"trend":"up","gender":"Female","semester":"Semester 2","mode":"evening","email":"p.emmanuel@vu.ac.ug"},{"id":43,"name":"Patricia Nankunda","reg":"VU-ITF-2401-0053-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"p.nankunda@vu.ac.ug"},{"id":44,"name":"Nelson Byaruhanga","reg":"VU-ITF-2401-0054-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":81,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"n.byaruhanga@vu.ac.ug"},{"id":45,"name":"Faridah Nankunda","reg":"VU-ITF-2401-0055-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":98,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"f.nankunda@vu.ac.ug"},{"id":46,"name":"Andrew Mugisha","reg":"VU-ITF-2401-0056-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":85,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"a.mugisha@vu.ac.ug"},{"id":47,"name":"Linda Tendo","reg":"VU-ITF-2401-0057-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":67,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"l.tendo@vu.ac.ug"},{"id":48,"name":"Patricia Wamala","reg":"VU-ITF-2401-0058-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":57,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"p.wamala@vu.ac.ug"},{"id":49,"name":"Faridah Kiggundu","reg":"VU-ITF-2401-0059-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":77,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"f.kiggundu@vu.ac.ug"},{"id":50,"name":"Betty Atim","reg":"VU-ITF-2401-0060-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.atim@vu.ac.ug"},{"id":51,"name":"Faith Nakamya","reg":"VU-ITF-2401-0061-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"f.nakamya@vu.ac.ug"},{"id":52,"name":"Joseph Wasswa","reg":"VU-ITF-2401-0062-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":97,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"j.wasswa@vu.ac.ug"},{"id":53,"name":"Teddy Tendo","reg":"VU-ITF-2401-0063-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"day","email":"t.tendo@vu.ac.ug"},{"id":54,"name":"Isaiah Achieng","reg":"VU-ITF-2401-0064-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"i.achieng@vu.ac.ug"},{"id":55,"name":"Oscar Byaruhanga","reg":"VU-ITF-2401-0065-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"o.byaruhanga@vu.ac.ug"},{"id":56,"name":"Diana Nalubega","reg":"VU-ITF-2401-0066-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"d.nalubega@vu.ac.ug"},{"id":57,"name":"Michael Namutebi","reg":"VU-ITF-2401-0067-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":88,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"m.namutebi@vu.ac.ug"},{"id":58,"name":"Norah Annet","reg":"VU-ITF-2401-0068-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.annet@vu.ac.ug"},{"id":59,"name":"Zack Mugisha","reg":"VU-ITF-2401-0069-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":77,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"z.mugisha@vu.ac.ug"},{"id":60,"name":"Timothy Nantongo","reg":"VU-ITF-2401-0070-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":46,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"t.nantongo@vu.ac.ug"},{"id":61,"name":"Emmanuel Ssali","reg":"VU-ITF-2401-0071-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":82,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"e.ssali@vu.ac.ug"},{"id":62,"name":"Queen Sarah","reg":"VU-ITF-2401-0072-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"q.sarah@vu.ac.ug"},{"id":63,"name":"Zack Lubega","reg":"VU-ITF-2401-0073-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":44,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"z.lubega@vu.ac.ug"},{"id":64,"name":"Norah Mbazira","reg":"VU-ITF-2401-0074-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":69,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"n.mbazira@vu.ac.ug"},{"id":65,"name":"Robert Annet","reg":"VU-ITF-2401-0075-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":83,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"r.annet@vu.ac.ug"},{"id":66,"name":"Margaret Kiggundu","reg":"VU-ITF-2401-0076-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"m.kiggundu@vu.ac.ug"},{"id":67,"name":"Zainab Tushabe","reg":"VU-ITF-2401-0077-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":98,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"z.tushabe@vu.ac.ug"},{"id":68,"name":"Kenneth Naggayi","reg":"VU-ITF-2401-0078-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":62,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"k.naggayi@vu.ac.ug"},{"id":69,"name":"Teddy Achieng","reg":"VU-ITF-2401-0079-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":79,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"t.achieng@vu.ac.ug"},{"id":70,"name":"Patience Namboozo","reg":"VU-ITF-2401-0080-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"p.namboozo@vu.ac.ug"},{"id":71,"name":"Gloria Apio","reg":"VU-ITF-2401-0081-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":92,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"g.apio@vu.ac.ug"},{"id":72,"name":"Tom Nambooze","reg":"VU-ITF-2401-0082-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":80,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"t.nambooze@vu.ac.ug"},{"id":73,"name":"Fred Ssemwanga","reg":"VU-ITF-2401-0083-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":88,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"f.ssemwanga@vu.ac.ug"},{"id":74,"name":"Olivia Sarah","reg":"VU-ITF-2401-0084-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 3","pct":90,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"o.sarah@vu.ac.ug"},{"id":75,"name":"Florence Wamala","reg":"VU-ITF-2401-0085-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 2","pct":82,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"f.wamala@vu.ac.ug"},{"id":76,"name":"Grace Nankunda","reg":"VU-ITF-2401-0086-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Information Technology","deptKey":"it","year":"Year 1","pct":77,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"g.nankunda@vu.ac.ug"},{"id":77,"name":"Brenda Mugisha","reg":"VU-SWF-2401-0087-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.mugisha@vu.ac.ug"},{"id":78,"name":"Grace Mbazira","reg":"VU-SWF-2401-0088-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":83,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"g.mbazira@vu.ac.ug"},{"id":79,"name":"Harriet Bbosa","reg":"VU-SWF-2401-0089-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"h.bbosa@vu.ac.ug"},{"id":80,"name":"Gertrude Namatovu","reg":"VU-SWF-2401-0090-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":75,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"g.namatovu@vu.ac.ug"},{"id":81,"name":"Damalie Ssegawa","reg":"VU-SWF-2401-0091-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":94,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"d.ssegawa81@vu.ac.ug"},{"id":82,"name":"Yusuf Mbazira","reg":"VU-SWF-2401-0092-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":96,"trend":"down","gender":"Female","semester":"Semester 2","mode":"evening","email":"y.mbazira@vu.ac.ug"},{"id":83,"name":"Yvonne Namirembe","reg":"VU-SWF-2401-0093-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":53,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"y.namirembe@vu.ac.ug"},{"id":84,"name":"Zack Okwir","reg":"VU-SWF-2401-0094-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":74,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"z.okwir@vu.ac.ug"},{"id":85,"name":"Susan Namirembe","reg":"VU-SWF-2401-0095-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":81,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"s.namirembe@vu.ac.ug"},{"id":86,"name":"Oscar Bbosa","reg":"VU-SWF-2401-0096-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":96,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"o.bbosa@vu.ac.ug"},{"id":87,"name":"Frank Byaruhanga","reg":"VU-SWF-2401-0097-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":56,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"f.byaruhanga@vu.ac.ug"},{"id":88,"name":"Yusuf Kabuye","reg":"VU-SWF-2401-0098-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"y.kabuye@vu.ac.ug"},{"id":89,"name":"Andrew Nakaddwa","reg":"VU-SWF-2401-0099-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":65,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"a.nakaddwa@vu.ac.ug"},{"id":90,"name":"Linda Byaruhanga","reg":"VU-SWF-2401-0100-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":53,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"l.byaruhanga@vu.ac.ug"},{"id":91,"name":"Umar Namatovu","reg":"VU-SWF-2401-0101-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":87,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"u.namatovu@vu.ac.ug"},{"id":92,"name":"Stella Mugisha","reg":"VU-SWF-2401-0102-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.mugisha@vu.ac.ug"},{"id":93,"name":"Nathan Ssegawa","reg":"VU-SWF-2401-0103-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":91,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"n.ssegawa@vu.ac.ug"},{"id":94,"name":"Nabaale Lubega","reg":"VU-SWF-2401-0104-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":44,"trend":"down","gender":"Female","semester":"Semester 2","mode":"evening","email":"n.lubega@vu.ac.ug"},{"id":95,"name":"Ivan Nankunda","reg":"VU-SWF-2401-0105-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":99,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"i.nankunda@vu.ac.ug"},{"id":96,"name":"Simon Kizza","reg":"VU-SWF-2401-0106-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.kizza@vu.ac.ug"},{"id":97,"name":"Julius Byaruhanga","reg":"VU-SWF-2401-0107-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":95,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"j.byaruhanga@vu.ac.ug"},{"id":98,"name":"Martin Tushabe","reg":"VU-SWF-2401-0108-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"m.tushabe@vu.ac.ug"},{"id":99,"name":"Felix Wabwa","reg":"VU-SWF-2401-0109-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":92,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"f.wabwa@vu.ac.ug"},{"id":100,"name":"Rachel Ssebuliba","reg":"VU-SWF-2401-0110-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":68,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"r.ssebuliba@vu.ac.ug"},{"id":101,"name":"Sarah Atim","reg":"VU-SWF-2401-0111-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":76,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"s.atim@vu.ac.ug"},{"id":102,"name":"Hassan Okwir","reg":"VU-SWF-2401-0112-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"evening","email":"h.okwir@vu.ac.ug"},{"id":103,"name":"Leo Namatovu","reg":"VU-SWF-2401-0113-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":84,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"l.namatovu@vu.ac.ug"},{"id":104,"name":"Hassan Achieng","reg":"VU-SWF-2401-0114-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":82,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"h.achieng@vu.ac.ug"},{"id":105,"name":"Immaculate Nabukyeyo","reg":"VU-SWF-2401-0115-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":96,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"i.nabukyeyo@vu.ac.ug"},{"id":106,"name":"Geoffrey Sarah","reg":"VU-SWF-2401-0116-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":92,"trend":"up","gender":"Female","semester":"Semester 2","mode":"evening","email":"g.sarah@vu.ac.ug"},{"id":107,"name":"Brian Kyeyune","reg":"VU-SWF-2401-0117-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":53,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"b.kyeyune@vu.ac.ug"},{"id":108,"name":"Rachel Wamala","reg":"VU-SWF-2401-0118-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":81,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"r.wamala@vu.ac.ug"},{"id":109,"name":"Yvonne Akwango","reg":"VU-SWF-2401-0119-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"y.akwango@vu.ac.ug"},{"id":110,"name":"Brenda Byaruhanga","reg":"VU-SWF-2401-0120-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"b.byaruhanga@vu.ac.ug"},{"id":111,"name":"Brenda Emmanuel","reg":"VU-SWF-2401-0121-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.emmanuel@vu.ac.ug"},{"id":112,"name":"Esther Nantongo","reg":"VU-SWF-2401-0122-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 1","pct":78,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"e.nantongo@vu.ac.ug"},{"id":113,"name":"Ivan Wasswa","reg":"VU-SWF-2401-0123-DAY","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Software Engineering","deptKey":"swe","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"i.wasswa@vu.ac.ug"},{"id":114,"name":"Kampire Sarah","reg":"VU-BAF-2401-0011-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":100,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"k.sarah114@vu.ac.ug"},{"id":115,"name":"Lwanga Moses","reg":"VU-BAF-2401-0012-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"l.moses@vu.ac.ug"},{"id":116,"name":"Mary Tendo","reg":"VU-BAF-2401-0013-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":100,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"m.tendo@vu.ac.ug"},{"id":117,"name":"Nabaale Annet","reg":"VU-BAF-2401-0014-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":100,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"n.annet117@vu.ac.ug"},{"id":118,"name":"Opio Emmanuel","reg":"VU-BAF-2401-0015-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":8,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"o.emmanuel@vu.ac.ug"},{"id":119,"name":"Prossy Namutebi","reg":"VU-BAF-2401-0016-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"p.namutebi@vu.ac.ug"},{"id":120,"name":"Julius Naggayi","reg":"VU-BAF-2401-0124-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":69,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"j.naggayi@vu.ac.ug"},{"id":121,"name":"Harriet Kyeyune","reg":"VU-BAF-2401-0125-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":87,"trend":"down","gender":"Male","semester":"Semester 1","mode":"evening","email":"h.kyeyune@vu.ac.ug"},{"id":122,"name":"Felix Tendo","reg":"VU-BAF-2401-0126-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"f.tendo@vu.ac.ug"},{"id":123,"name":"Dennis Tushabe","reg":"VU-BAF-2401-0127-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"d.tushabe@vu.ac.ug"},{"id":124,"name":"Brenda Achieng","reg":"VU-BAF-2401-0128-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":60,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"b.achieng@vu.ac.ug"},{"id":125,"name":"Annet Nakamya","reg":"VU-BAF-2401-0129-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":51,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"a.nakamya125@vu.ac.ug"},{"id":126,"name":"Victor Wamala","reg":"VU-BAF-2401-0130-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":73,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"v.wamala@vu.ac.ug"},{"id":127,"name":"Xavier Nabukyeyo","reg":"VU-BAF-2401-0131-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":90,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"x.nabukyeyo@vu.ac.ug"},{"id":128,"name":"Lwanga Kizza","reg":"VU-BAF-2401-0132-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.kizza@vu.ac.ug"},{"id":129,"name":"Ronald Namutebi","reg":"VU-BAF-2401-0133-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":85,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"r.namutebi@vu.ac.ug"},{"id":130,"name":"Daniel Mukasa","reg":"VU-BAF-2401-0134-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":83,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"d.mukasa@vu.ac.ug"},{"id":131,"name":"Patricia Bbosa","reg":"VU-BAF-2401-0135-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":91,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"p.bbosa@vu.ac.ug"},{"id":132,"name":"Brenda Namutebi","reg":"VU-BAF-2401-0136-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":82,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"b.namutebi@vu.ac.ug"},{"id":133,"name":"Walter Naggayi","reg":"VU-BAF-2401-0137-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"day","email":"w.naggayi@vu.ac.ug"},{"id":134,"name":"Rose Emmanuel","reg":"VU-BAF-2401-0138-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":93,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"r.emmanuel@vu.ac.ug"},{"id":135,"name":"Alex Lubega","reg":"VU-BAF-2401-0139-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"a.lubega@vu.ac.ug"},{"id":136,"name":"Cissy Wasswa","reg":"VU-BAF-2401-0140-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":78,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"c.wasswa@vu.ac.ug"},{"id":137,"name":"Viola Mbazira","reg":"VU-BAF-2401-0141-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"v.mbazira137@vu.ac.ug"},{"id":138,"name":"Hellen Nambooze","reg":"VU-BAF-2401-0142-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":99,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"h.nambooze@vu.ac.ug"},{"id":139,"name":"Faridah Tendo","reg":"VU-BAF-2401-0143-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":65,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"f.tendo139@vu.ac.ug"},{"id":140,"name":"Eric Achieng","reg":"VU-BAF-2401-0144-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":92,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"e.achieng@vu.ac.ug"},{"id":141,"name":"Dennis Namukasa","reg":"VU-BAF-2401-0145-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"d.namukasa@vu.ac.ug"},{"id":142,"name":"Alex Byaruhanga","reg":"VU-BAF-2401-0146-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":83,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"a.byaruhanga@vu.ac.ug"},{"id":143,"name":"Joan Nalubega","reg":"VU-BAF-2401-0147-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":96,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"j.nalubega@vu.ac.ug"},{"id":144,"name":"Teddy Ssebuliba","reg":"VU-BAF-2401-0148-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":47,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"t.ssebuliba@vu.ac.ug"},{"id":145,"name":"Lillian Lubega","reg":"VU-BAF-2401-0149-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":82,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.lubega@vu.ac.ug"},{"id":146,"name":"Ronald Nansubuga","reg":"VU-BAF-2401-0150-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":84,"trend":"up","gender":"Female","semester":"Semester 2","mode":"evening","email":"r.nansubuga@vu.ac.ug"},{"id":147,"name":"Simon Nambooze","reg":"VU-BAF-2401-0151-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":68,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"s.nambooze@vu.ac.ug"},{"id":148,"name":"Norah Nankunda","reg":"VU-BAF-2401-0152-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 1","pct":66,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"n.nankunda@vu.ac.ug"},{"id":149,"name":"Agnes Nakamya","reg":"VU-BAF-2401-0153-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 2","pct":84,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"a.nakamya149@vu.ac.ug"},{"id":150,"name":"Janet Wabwa","reg":"VU-BAF-2401-0154-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Business Administration","deptKey":"biz","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"j.wabwa@vu.ac.ug"},{"id":151,"name":"Norah Kabuye","reg":"VU-ACF-2401-0155-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":88,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"n.kabuye@vu.ac.ug"},{"id":152,"name":"James Emmanuel","reg":"VU-ACF-2401-0156-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":79,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"j.emmanuel@vu.ac.ug"},{"id":153,"name":"Prossy Sarah","reg":"VU-ACF-2401-0157-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":84,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"p.sarah@vu.ac.ug"},{"id":154,"name":"Lillian Wamala","reg":"VU-ACF-2401-0158-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":83,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"l.wamala@vu.ac.ug"},{"id":155,"name":"Opio Kibirige","reg":"VU-ACF-2401-0159-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":85,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"o.kibirige@vu.ac.ug"},{"id":156,"name":"Grace Kibirige","reg":"VU-ACF-2401-0160-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":93,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"g.kibirige@vu.ac.ug"},{"id":157,"name":"Leo Apio","reg":"VU-ACF-2401-0161-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":80,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.apio@vu.ac.ug"},{"id":158,"name":"George Mugisha","reg":"VU-ACF-2401-0162-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":74,"trend":"down","gender":"Female","semester":"Semester 2","mode":"evening","email":"g.mugisha@vu.ac.ug"},{"id":159,"name":"Lwanga Kabuye","reg":"VU-ACF-2401-0163-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"l.kabuye@vu.ac.ug"},{"id":160,"name":"Yvonne Nankunda","reg":"VU-ACF-2401-0164-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":97,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"y.nankunda@vu.ac.ug"},{"id":161,"name":"Queen Nankunda","reg":"VU-ACF-2401-0165-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"q.nankunda@vu.ac.ug"},{"id":162,"name":"Viola Ssali","reg":"VU-ACF-2401-0166-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":91,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"v.ssali@vu.ac.ug"},{"id":163,"name":"Yusuf Achieng","reg":"VU-ACF-2401-0167-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":70,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"y.achieng@vu.ac.ug"},{"id":164,"name":"Tom Okello","reg":"VU-ACF-2401-0168-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":81,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"t.okello@vu.ac.ug"},{"id":165,"name":"Kenneth Namukasa","reg":"VU-ACF-2401-0169-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"k.namukasa@vu.ac.ug"},{"id":166,"name":"Umar Bbosa","reg":"VU-ACF-2401-0170-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":75,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"u.bbosa@vu.ac.ug"},{"id":167,"name":"Doreen Emmanuel","reg":"VU-ACF-2401-0171-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":44,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"d.emmanuel@vu.ac.ug"},{"id":168,"name":"Daniel Naggayi","reg":"VU-ACF-2401-0172-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":90,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"d.naggayi@vu.ac.ug"},{"id":169,"name":"Linda Wamala","reg":"VU-ACF-2401-0173-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":74,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.wamala169@vu.ac.ug"},{"id":170,"name":"Frank Nambooze","reg":"VU-ACF-2401-0174-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":100,"trend":"down","gender":"Female","semester":"Semester 2","mode":"evening","email":"f.nambooze@vu.ac.ug"},{"id":171,"name":"Annet Nankya","reg":"VU-ACF-2401-0175-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":84,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"a.nankya@vu.ac.ug"},{"id":172,"name":"Teddy Nansubuga","reg":"VU-ACF-2401-0176-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":99,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"t.nansubuga@vu.ac.ug"},{"id":173,"name":"Timothy Mukasa","reg":"VU-ACF-2401-0177-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":87,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"t.mukasa@vu.ac.ug"},{"id":174,"name":"Nathan Atim","reg":"VU-ACF-2401-0178-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":100,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"n.atim@vu.ac.ug"},{"id":175,"name":"Gertrude Nankunda","reg":"VU-ACF-2401-0179-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"g.nankunda175@vu.ac.ug"},{"id":176,"name":"Emmanuel Kyeyune","reg":"VU-ACF-2401-0180-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":89,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"e.kyeyune@vu.ac.ug"},{"id":177,"name":"Henry Wamala","reg":"VU-ACF-2401-0181-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":95,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"h.wamala@vu.ac.ug"},{"id":178,"name":"Winnie Byaruhanga","reg":"VU-ACF-2401-0182-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":95,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"w.byaruhanga@vu.ac.ug"},{"id":179,"name":"Zainab Apio","reg":"VU-ACF-2401-0183-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":97,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"z.apio@vu.ac.ug"},{"id":180,"name":"James Namboozo","reg":"VU-ACF-2401-0184-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":84,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"j.namboozo180@vu.ac.ug"},{"id":181,"name":"Julius Kibirige","reg":"VU-ACF-2401-0185-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":97,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"j.kibirige@vu.ac.ug"},{"id":182,"name":"Opio Sarah","reg":"VU-ACF-2401-0186-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"o.sarah182@vu.ac.ug"},{"id":183,"name":"Yvonne Kiggundu","reg":"VU-ACF-2401-0187-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":82,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"y.kiggundu@vu.ac.ug"},{"id":184,"name":"Michael Apio","reg":"VU-ACF-2401-0188-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":52,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"m.apio@vu.ac.ug"},{"id":185,"name":"Tom Apio","reg":"VU-ACF-2401-0189-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 1","pct":82,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"t.apio@vu.ac.ug"},{"id":186,"name":"Victor Ssali","reg":"VU-ACF-2401-0190-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 2","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"v.ssali186@vu.ac.ug"},{"id":187,"name":"Ivan Wabwa","reg":"VU-ACF-2401-0191-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Accounting & Finance","deptKey":"acc","year":"Year 3","pct":51,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"i.wabwa@vu.ac.ug"},{"id":188,"name":"Peter Nakaddwa","reg":"VU-MKF-2401-0192-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"p.nakaddwa@vu.ac.ug"},{"id":189,"name":"Florence Okwir","reg":"VU-MKF-2401-0193-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":86,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"f.okwir189@vu.ac.ug"},{"id":190,"name":"Dennis Wabwa","reg":"VU-MKF-2401-0194-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":83,"trend":"up","gender":"Female","semester":"Semester 2","mode":"evening","email":"d.wabwa@vu.ac.ug"},{"id":191,"name":"Nathan Nambooze","reg":"VU-MKF-2401-0195-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":84,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"n.nambooze@vu.ac.ug"},{"id":192,"name":"Robert Tumwesigye","reg":"VU-MKF-2401-0196-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":96,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"r.tumwesigye@vu.ac.ug"},{"id":193,"name":"Umar Nakirya","reg":"VU-MKF-2401-0197-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"u.nakirya@vu.ac.ug"},{"id":194,"name":"Oscar Otim","reg":"VU-MKF-2401-0198-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":85,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"o.otim@vu.ac.ug"},{"id":195,"name":"Carol Tendo","reg":"VU-MKF-2401-0199-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":86,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"c.tendo@vu.ac.ug"},{"id":196,"name":"Betty Ssali","reg":"VU-MKF-2401-0200-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":85,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"b.ssali@vu.ac.ug"},{"id":197,"name":"Ivan Nalubega","reg":"VU-MKF-2401-0201-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":96,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"i.nalubega@vu.ac.ug"},{"id":198,"name":"Lawrence Otim","reg":"VU-MKF-2401-0202-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"l.otim@vu.ac.ug"},{"id":199,"name":"Isaac Mbazira","reg":"VU-MKF-2401-0203-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":83,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"i.mbazira@vu.ac.ug"},{"id":200,"name":"Victor Otim","reg":"VU-MKF-2401-0204-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":94,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"v.otim@vu.ac.ug"},{"id":201,"name":"Simon Emmanuel","reg":"VU-MKF-2401-0205-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":97,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"s.emmanuel@vu.ac.ug"},{"id":202,"name":"Xavier Atim","reg":"VU-MKF-2401-0206-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":84,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"x.atim@vu.ac.ug"},{"id":203,"name":"Joan Nakirya","reg":"VU-MKF-2401-0207-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":72,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"j.nakirya@vu.ac.ug"},{"id":204,"name":"Eve Nankunda","reg":"VU-MKF-2401-0208-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":93,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"e.nankunda@vu.ac.ug"},{"id":205,"name":"Hassan Mugisha","reg":"VU-MKF-2401-0209-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":83,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"h.mugisha@vu.ac.ug"},{"id":206,"name":"Collins Otim","reg":"VU-MKF-2401-0210-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":86,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"c.otim@vu.ac.ug"},{"id":207,"name":"Benjamin Otim","reg":"VU-MKF-2401-0211-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":76,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"b.otim@vu.ac.ug"},{"id":208,"name":"Patricia Tendo","reg":"VU-MKF-2401-0212-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":77,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"p.tendo@vu.ac.ug"},{"id":209,"name":"Walter Kabuye","reg":"VU-MKF-2401-0213-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"evening","email":"w.kabuye@vu.ac.ug"},{"id":210,"name":"Zainab Namutebi","reg":"VU-MKF-2401-0214-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":73,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"z.namutebi@vu.ac.ug"},{"id":211,"name":"Gloria Kyeyune","reg":"VU-MKF-2401-0215-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":99,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"g.kyeyune@vu.ac.ug"},{"id":212,"name":"Quincy Nakamya","reg":"VU-MKF-2401-0216-EVE","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":67,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"q.nakamya@vu.ac.ug"},{"id":213,"name":"James Ssali","reg":"VU-MKF-2401-0217-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"j.ssali@vu.ac.ug"},{"id":214,"name":"Cissy Namutebi","reg":"VU-MKF-2401-0218-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":65,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"c.namutebi@vu.ac.ug"},{"id":215,"name":"Patience Nambooze","reg":"VU-MKF-2401-0219-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":90,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"p.nambooze@vu.ac.ug"},{"id":216,"name":"Nathan Otim","reg":"VU-MKF-2401-0220-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":82,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"n.otim@vu.ac.ug"},{"id":217,"name":"Herbert Nankunda","reg":"VU-MKF-2401-0221-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"h.nankunda@vu.ac.ug"},{"id":218,"name":"Bob Namirembe","reg":"VU-MKF-2401-0222-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":89,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.namirembe@vu.ac.ug"},{"id":219,"name":"Brenda Mukasa","reg":"VU-MKF-2401-0223-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":59,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"b.mukasa@vu.ac.ug"},{"id":220,"name":"Victor Kyeyune","reg":"VU-MKF-2401-0224-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":94,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"v.kyeyune@vu.ac.ug"},{"id":221,"name":"Timothy Nankya","reg":"VU-MKF-2401-0225-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 3","pct":78,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"t.nankya@vu.ac.ug"},{"id":222,"name":"Lwanga Nansubuga","reg":"VU-MKF-2401-0226-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":87,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"l.nansubuga@vu.ac.ug"},{"id":223,"name":"Herbert Nakirya","reg":"VU-MKF-2401-0227-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 2","pct":86,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"h.nakirya@vu.ac.ug"},{"id":224,"name":"Benjamin Byaruhanga","reg":"VU-MKF-2401-0228-DAY","facultyKey":"business","faculty":"Faculty of Business & Management","dept":"Marketing","deptKey":"mkt","year":"Year 1","pct":53,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"b.byaruhanga224@vu.ac.ug"},{"id":225,"name":"Ronald Ssali","reg":"VU-ENG-2401-0017-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"day","email":"r.ssali@vu.ac.ug"},{"id":226,"name":"Sarah Nabukyeyo","reg":"VU-ENG-2401-0018-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"s.nabukyeyo@vu.ac.ug"},{"id":227,"name":"Timothy Wabwa","reg":"VU-ENG-2401-0019-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 2","mode":"day","email":"t.wabwa@vu.ac.ug"},{"id":228,"name":"Winnie Nakaddwa","reg":"VU-ENG-2401-0020-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 1","mode":"day","email":"w.nakaddwa@vu.ac.ug"},{"id":229,"name":"Faridah Nambooze","reg":"VU-CVF-2401-0229-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":65,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"f.nambooze229@vu.ac.ug"},{"id":230,"name":"Peter Lubega","reg":"VU-CVF-2401-0230-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":51,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"p.lubega@vu.ac.ug"},{"id":231,"name":"Zack Okello","reg":"VU-CVF-2401-0231-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":84,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"z.okello@vu.ac.ug"},{"id":232,"name":"Cissy Nakirya","reg":"VU-CVF-2401-0232-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":72,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"c.nakirya@vu.ac.ug"},{"id":233,"name":"Immaculate Nakirya","reg":"VU-CVF-2401-0233-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":99,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"i.nakirya@vu.ac.ug"},{"id":234,"name":"Nelson Emmanuel","reg":"VU-CVF-2401-0234-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.emmanuel@vu.ac.ug"},{"id":235,"name":"Robert Nankunda","reg":"VU-CVF-2401-0235-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":69,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"r.nankunda@vu.ac.ug"},{"id":236,"name":"Annet Tumwesigye","reg":"VU-CVF-2401-0236-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":71,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"a.tumwesigye@vu.ac.ug"},{"id":237,"name":"Sarah Ssebuliba","reg":"VU-CVF-2401-0237-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"day","email":"s.ssebuliba@vu.ac.ug"},{"id":238,"name":"Julius Ojok","reg":"VU-CVF-2401-0238-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":80,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"j.ojok@vu.ac.ug"},{"id":239,"name":"Tracy Kizza","reg":"VU-CVF-2401-0239-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":77,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"t.kizza@vu.ac.ug"},{"id":240,"name":"Teddy Sarah","reg":"VU-CVF-2401-0240-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":54,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"t.sarah@vu.ac.ug"},{"id":241,"name":"Yusuf Ssegawa","reg":"VU-CVF-2401-0241-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":81,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"y.ssegawa@vu.ac.ug"},{"id":242,"name":"Brenda Ssegawa","reg":"VU-CVF-2401-0242-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":90,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.ssegawa242@vu.ac.ug"},{"id":243,"name":"Mary Emmanuel","reg":"VU-CVF-2401-0243-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 2","mode":"evening","email":"m.emmanuel@vu.ac.ug"},{"id":244,"name":"Gloria Nakaddwa","reg":"VU-CVF-2401-0244-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":84,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"g.nakaddwa@vu.ac.ug"},{"id":245,"name":"Lillian Nakamya","reg":"VU-CVF-2401-0245-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":71,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.nakamya@vu.ac.ug"},{"id":246,"name":"Isaac Naggayi","reg":"VU-CVF-2401-0246-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":100,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"i.naggayi@vu.ac.ug"},{"id":247,"name":"Winnie Namirembe","reg":"VU-CVF-2401-0247-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 2","mode":"day","email":"w.namirembe@vu.ac.ug"},{"id":248,"name":"Winnie Mukasa","reg":"VU-CVF-2401-0248-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":95,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"w.mukasa@vu.ac.ug"},{"id":249,"name":"Rose Mbazira","reg":"VU-CVF-2401-0249-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":100,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"r.mbazira@vu.ac.ug"},{"id":250,"name":"Doreen Ssegawa","reg":"VU-CVF-2401-0250-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":91,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"d.ssegawa250@vu.ac.ug"},{"id":251,"name":"Brian Nakaddwa","reg":"VU-CVF-2401-0251-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.nakaddwa@vu.ac.ug"},{"id":252,"name":"Frank Kabuye","reg":"VU-CVF-2401-0252-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":70,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"f.kabuye@vu.ac.ug"},{"id":253,"name":"Brenda Kizza","reg":"VU-CVF-2401-0253-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":79,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.kizza@vu.ac.ug"},{"id":254,"name":"Florence Moses","reg":"VU-CVF-2401-0254-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"f.moses@vu.ac.ug"},{"id":255,"name":"Martin Kabuye","reg":"VU-CVF-2401-0255-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":93,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"m.kabuye@vu.ac.ug"},{"id":256,"name":"Benjamin Namatovu","reg":"VU-CVF-2401-0256-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":95,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"b.namatovu@vu.ac.ug"},{"id":257,"name":"Sarah Byaruhanga","reg":"VU-CVF-2401-0257-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 2","pct":93,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"s.byaruhanga@vu.ac.ug"},{"id":258,"name":"Cissy Nankya","reg":"VU-CVF-2401-0258-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"c.nankya@vu.ac.ug"},{"id":259,"name":"Queen Nalubega","reg":"VU-CVF-2401-0259-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":94,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"q.nalubega@vu.ac.ug"},{"id":260,"name":"Ivan Kyeyune","reg":"VU-CVF-2401-0260-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 3","pct":76,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"i.kyeyune@vu.ac.ug"},{"id":261,"name":"Nelson Mugisha","reg":"VU-CVF-2401-0261-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Civil Engineering","deptKey":"civ","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"n.mugisha@vu.ac.ug"},{"id":262,"name":"Ronald Nakirya","reg":"VU-EEF-2401-0262-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":60,"trend":"down","gender":"Female","semester":"Semester 2","mode":"evening","email":"r.nakirya@vu.ac.ug"},{"id":263,"name":"Carol Namboozo","reg":"VU-EEF-2401-0263-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":91,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"c.namboozo263@vu.ac.ug"},{"id":264,"name":"Damalie Otim","reg":"VU-EEF-2401-0264-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":96,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"d.otim@vu.ac.ug"},{"id":265,"name":"Umar Mugisha","reg":"VU-EEF-2401-0265-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":61,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"u.mugisha@vu.ac.ug"},{"id":266,"name":"Gertrude Wabwa","reg":"VU-EEF-2401-0266-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"g.wabwa@vu.ac.ug"},{"id":267,"name":"Zainab Kibirige","reg":"VU-EEF-2401-0267-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":84,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"z.kibirige@vu.ac.ug"},{"id":268,"name":"Patience Bbosa","reg":"VU-EEF-2401-0268-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"p.bbosa268@vu.ac.ug"},{"id":269,"name":"Patience Nankunda","reg":"VU-EEF-2401-0269-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":96,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"p.nankunda269@vu.ac.ug"},{"id":270,"name":"Walter Nankunda","reg":"VU-EEF-2401-0270-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"w.nankunda@vu.ac.ug"},{"id":271,"name":"Tracy Moses","reg":"VU-EEF-2401-0271-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":81,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"t.moses@vu.ac.ug"},{"id":272,"name":"Winnie Wabwa","reg":"VU-EEF-2401-0272-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":98,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"w.wabwa@vu.ac.ug"},{"id":273,"name":"Yusuf Akwango","reg":"VU-EEF-2401-0273-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"y.akwango273@vu.ac.ug"},{"id":274,"name":"Collins Tushabe","reg":"VU-EEF-2401-0274-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":72,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"c.tushabe@vu.ac.ug"},{"id":275,"name":"Mary Atim","reg":"VU-EEF-2401-0275-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"m.atim@vu.ac.ug"},{"id":276,"name":"Kelvin Nambooze","reg":"VU-EEF-2401-0276-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":100,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"k.nambooze@vu.ac.ug"},{"id":277,"name":"Edith Otim","reg":"VU-EEF-2401-0277-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"e.otim@vu.ac.ug"},{"id":278,"name":"Nathan Okwir","reg":"VU-EEF-2401-0278-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":81,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.okwir@vu.ac.ug"},{"id":279,"name":"Walter Byaruhanga","reg":"VU-EEF-2401-0279-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":56,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"w.byaruhanga279@vu.ac.ug"},{"id":280,"name":"Lillian Wabwa","reg":"VU-EEF-2401-0280-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":91,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.wabwa@vu.ac.ug"},{"id":281,"name":"Lwanga Kibirige","reg":"VU-EEF-2401-0281-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":75,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.kibirige@vu.ac.ug"},{"id":282,"name":"Nabaale Namirembe","reg":"VU-EEF-2401-0282-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":77,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.namirembe@vu.ac.ug"},{"id":283,"name":"Immaculate Ssemwanga","reg":"VU-EEF-2401-0283-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":95,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"i.ssemwanga@vu.ac.ug"},{"id":284,"name":"Stella Namukasa","reg":"VU-EEF-2401-0284-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":97,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.namukasa@vu.ac.ug"},{"id":285,"name":"Leo Naggayi","reg":"VU-EEF-2401-0285-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"day","email":"l.naggayi@vu.ac.ug"},{"id":286,"name":"Brenda Ssemwanga","reg":"VU-EEF-2401-0286-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":74,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"b.ssemwanga286@vu.ac.ug"},{"id":287,"name":"Henry Ssegawa","reg":"VU-EEF-2401-0287-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":78,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"h.ssegawa@vu.ac.ug"},{"id":288,"name":"Kevin Atim","reg":"VU-EEF-2401-0288-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":78,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"k.atim@vu.ac.ug"},{"id":289,"name":"Quincy Achieng","reg":"VU-EEF-2401-0289-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":97,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"q.achieng@vu.ac.ug"},{"id":290,"name":"Rose Ssegawa","reg":"VU-EEF-2401-0290-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":88,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"r.ssegawa@vu.ac.ug"},{"id":291,"name":"Zack Nankunda","reg":"VU-EEF-2401-0291-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":91,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"z.nankunda@vu.ac.ug"},{"id":292,"name":"Gertrude Byaruhanga","reg":"VU-EEF-2401-0292-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":83,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"g.byaruhanga@vu.ac.ug"},{"id":293,"name":"Cissy Nalubega","reg":"VU-EEF-2401-0293-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"c.nalubega@vu.ac.ug"},{"id":294,"name":"Rachel Namboozo","reg":"VU-EEF-2401-0294-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 2","pct":80,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"r.namboozo@vu.ac.ug"},{"id":295,"name":"Dennis Byaruhanga","reg":"VU-EEF-2401-0295-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":72,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"d.byaruhanga@vu.ac.ug"},{"id":296,"name":"Irene Wabwa","reg":"VU-EEF-2401-0296-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 1","pct":65,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"i.wabwa296@vu.ac.ug"},{"id":297,"name":"Viola Nakaddwa","reg":"VU-EEF-2401-0297-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":90,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"v.nakaddwa@vu.ac.ug"},{"id":298,"name":"Irene Okello","reg":"VU-EEF-2401-0298-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Electrical Engineering","deptKey":"eee","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"i.okello@vu.ac.ug"},{"id":299,"name":"Xavier Akwango","reg":"VU-MEF-2401-0299-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":87,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"x.akwango@vu.ac.ug"},{"id":300,"name":"Gertrude Akwango","reg":"VU-MEF-2401-0300-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":100,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"g.akwango@vu.ac.ug"},{"id":301,"name":"Joseph Kibirige","reg":"VU-MEF-2401-0301-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":92,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"j.kibirige301@vu.ac.ug"},{"id":302,"name":"Yvonne Nakirya","reg":"VU-MEF-2401-0302-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":89,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"y.nakirya@vu.ac.ug"},{"id":303,"name":"Betty Wasswa","reg":"VU-MEF-2401-0303-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":null,"trend":null,"gender":"Male","semester":"Semester 2","mode":"day","email":"b.wasswa@vu.ac.ug"},{"id":304,"name":"Cissy Nantongo","reg":"VU-MEF-2401-0304-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"c.nantongo@vu.ac.ug"},{"id":305,"name":"Zack Kabuye","reg":"VU-MEF-2401-0305-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":96,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"z.kabuye@vu.ac.ug"},{"id":306,"name":"Grace Ssebuliba","reg":"VU-MEF-2401-0306-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":79,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"g.ssebuliba@vu.ac.ug"},{"id":307,"name":"Kevin Tushabe","reg":"VU-MEF-2401-0307-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":93,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"k.tushabe@vu.ac.ug"},{"id":308,"name":"Robert Ssebuliba","reg":"VU-MEF-2401-0308-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":89,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"r.ssebuliba308@vu.ac.ug"},{"id":309,"name":"Nelson Namukasa","reg":"VU-MEF-2401-0309-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":83,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"n.namukasa@vu.ac.ug"},{"id":310,"name":"Joan Ssemwanga","reg":"VU-MEF-2401-0310-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":92,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"j.ssemwanga@vu.ac.ug"},{"id":311,"name":"Norah Tushabe","reg":"VU-MEF-2401-0311-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"n.tushabe@vu.ac.ug"},{"id":312,"name":"Queen Wasswa","reg":"VU-MEF-2401-0312-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":66,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"q.wasswa@vu.ac.ug"},{"id":313,"name":"Ronald Moses","reg":"VU-MEF-2401-0313-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":61,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"r.moses@vu.ac.ug"},{"id":314,"name":"Viola Nankunda","reg":"VU-MEF-2401-0314-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":84,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"v.nankunda@vu.ac.ug"},{"id":315,"name":"Agnes Naggayi","reg":"VU-MEF-2401-0315-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"a.naggayi@vu.ac.ug"},{"id":316,"name":"Frank Emmanuel","reg":"VU-MEF-2401-0316-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":82,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"f.emmanuel@vu.ac.ug"},{"id":317,"name":"Grace Otim","reg":"VU-MEF-2401-0317-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"g.otim@vu.ac.ug"},{"id":318,"name":"Simon Kibirige","reg":"VU-MEF-2401-0318-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":98,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"s.kibirige@vu.ac.ug"},{"id":319,"name":"Henry Atim","reg":"VU-MEF-2401-0319-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":50,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"h.atim@vu.ac.ug"},{"id":320,"name":"Walter Nalubega","reg":"VU-MEF-2401-0320-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":79,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"w.nalubega@vu.ac.ug"},{"id":321,"name":"Martin Namukasa","reg":"VU-MEF-2401-0321-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"m.namukasa@vu.ac.ug"},{"id":322,"name":"Susan Sarah","reg":"VU-MEF-2401-0322-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":86,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"s.sarah@vu.ac.ug"},{"id":323,"name":"Brenda Ssali","reg":"VU-MEF-2401-0323-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.ssali323@vu.ac.ug"},{"id":324,"name":"Simon Achieng","reg":"VU-MEF-2401-0324-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 1","pct":74,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"s.achieng@vu.ac.ug"},{"id":325,"name":"Yusuf Nantongo","reg":"VU-MEF-2401-0325-EVE","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":93,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"y.nantongo@vu.ac.ug"},{"id":326,"name":"Mary Mugisha","reg":"VU-MEF-2401-0326-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":74,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"m.mugisha326@vu.ac.ug"},{"id":327,"name":"Hassan Nantongo","reg":"VU-MEF-2401-0327-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":92,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"h.nantongo@vu.ac.ug"},{"id":328,"name":"Walter Nakaddwa","reg":"VU-MEF-2401-0328-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":87,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"w.nakaddwa328@vu.ac.ug"},{"id":329,"name":"Timothy Nalubega","reg":"VU-MEF-2401-0329-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":90,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"t.nalubega@vu.ac.ug"},{"id":330,"name":"Gloria Akwango","reg":"VU-MEF-2401-0330-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":85,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"g.akwango330@vu.ac.ug"},{"id":331,"name":"David Namukasa","reg":"VU-MEF-2401-0331-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":47,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"d.namukasa331@vu.ac.ug"},{"id":332,"name":"Ivan Mbazira","reg":"VU-MEF-2401-0332-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":65,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"i.mbazira332@vu.ac.ug"},{"id":333,"name":"Rose Okwir","reg":"VU-MEF-2401-0333-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 3","pct":80,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"r.okwir@vu.ac.ug"},{"id":334,"name":"Nelson Kizza","reg":"VU-MEF-2401-0334-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":73,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"n.kizza@vu.ac.ug"},{"id":335,"name":"Ivan Kasule","reg":"VU-MEF-2401-0335-DAY","facultyKey":"engineering","faculty":"Faculty of Engineering","dept":"Mechanical Engineering","deptKey":"mech","year":"Year 2","pct":52,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"i.kasule@vu.ac.ug"},{"id":336,"name":"Emmanuel Wamala","reg":"VU-BIF-2401-0336-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"e.wamala@vu.ac.ug"},{"id":337,"name":"Daniel Bbosa","reg":"VU-BIF-2401-0337-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"d.bbosa@vu.ac.ug"},{"id":338,"name":"Lwanga Namukasa","reg":"VU-BIF-2401-0338-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":86,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"l.namukasa@vu.ac.ug"},{"id":339,"name":"Michael Lubega","reg":"VU-BIF-2401-0339-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":87,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"m.lubega@vu.ac.ug"},{"id":340,"name":"Leo Lubega","reg":"VU-BIF-2401-0340-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.lubega340@vu.ac.ug"},{"id":341,"name":"Patience Nakirya","reg":"VU-BIF-2401-0341-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":92,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"p.nakirya@vu.ac.ug"},{"id":342,"name":"Kelvin Ssebuliba","reg":"VU-BIF-2401-0342-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"k.ssebuliba@vu.ac.ug"},{"id":343,"name":"Felix Akwango","reg":"VU-BIF-2401-0343-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":73,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"f.akwango@vu.ac.ug"},{"id":344,"name":"Rachel Mukasa","reg":"VU-BIF-2401-0344-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":94,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"r.mukasa@vu.ac.ug"},{"id":345,"name":"Peter Akwango","reg":"VU-BIF-2401-0345-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":97,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"p.akwango@vu.ac.ug"},{"id":346,"name":"Alex Ssemwanga","reg":"VU-BIF-2401-0346-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":53,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"a.ssemwanga@vu.ac.ug"},{"id":347,"name":"Oscar Nakaddwa","reg":"VU-BIF-2401-0347-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":94,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"o.nakaddwa@vu.ac.ug"},{"id":348,"name":"Norah Mugisha","reg":"VU-BIF-2401-0348-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":93,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"n.mugisha348@vu.ac.ug"},{"id":349,"name":"Betty Ojok","reg":"VU-BIF-2401-0349-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":87,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.ojok@vu.ac.ug"},{"id":350,"name":"Benjamin Namutebi","reg":"VU-BIF-2401-0350-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":81,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.namutebi350@vu.ac.ug"},{"id":351,"name":"Opio Mukasa","reg":"VU-BIF-2401-0351-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":88,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"o.mukasa@vu.ac.ug"},{"id":352,"name":"Isaiah Kizza","reg":"VU-BIF-2401-0352-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":92,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"i.kizza@vu.ac.ug"},{"id":353,"name":"Yusuf Byaruhanga","reg":"VU-BIF-2401-0353-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"y.byaruhanga@vu.ac.ug"},{"id":354,"name":"James Tumwesigye","reg":"VU-BIF-2401-0354-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":95,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"j.tumwesigye@vu.ac.ug"},{"id":355,"name":"Simon Byaruhanga","reg":"VU-BIF-2401-0355-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":84,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"s.byaruhanga355@vu.ac.ug"},{"id":356,"name":"Susan Tushabe","reg":"VU-BIF-2401-0356-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":90,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.tushabe@vu.ac.ug"},{"id":357,"name":"Bob Tumwesigye","reg":"VU-BIF-2401-0357-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":83,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"b.tumwesigye@vu.ac.ug"},{"id":358,"name":"Lillian Namatovu","reg":"VU-BIF-2401-0358-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"l.namatovu358@vu.ac.ug"},{"id":359,"name":"Martin Ssebuliba","reg":"VU-BIF-2401-0359-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":77,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"m.ssebuliba@vu.ac.ug"},{"id":360,"name":"Opio Mugisha","reg":"VU-BIF-2401-0360-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":73,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"o.mugisha@vu.ac.ug"},{"id":361,"name":"Olivia Lubega","reg":"VU-BIF-2401-0361-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":63,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"o.lubega@vu.ac.ug"},{"id":362,"name":"Peter Namutebi","reg":"VU-BIF-2401-0362-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"p.namutebi362@vu.ac.ug"},{"id":363,"name":"Nabaale Nakirya","reg":"VU-BIF-2401-0363-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":96,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"n.nakirya@vu.ac.ug"},{"id":364,"name":"Aisha Lubega","reg":"VU-BIF-2401-0364-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":90,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"a.lubega364@vu.ac.ug"},{"id":365,"name":"Xavier Tendo","reg":"VU-BIF-2401-0365-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 2","pct":99,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"x.tendo@vu.ac.ug"},{"id":366,"name":"Xavier Namatovu","reg":"VU-BIF-2401-0366-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":76,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"x.namatovu@vu.ac.ug"},{"id":367,"name":"Hassan Moses","reg":"VU-BIF-2401-0367-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":90,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"h.moses@vu.ac.ug"},{"id":368,"name":"Julius Wabwa","reg":"VU-BIF-2401-0368-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":78,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"j.wabwa368@vu.ac.ug"},{"id":369,"name":"Queen Wamala","reg":"VU-BIF-2401-0369-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":79,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"q.wamala@vu.ac.ug"},{"id":370,"name":"Olivia Tendo","reg":"VU-BIF-2401-0370-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":95,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"o.tendo@vu.ac.ug"},{"id":371,"name":"Felix Moses","reg":"VU-BIF-2401-0371-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 1","pct":93,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"f.moses371@vu.ac.ug"},{"id":372,"name":"Carol Nantongo","reg":"VU-BIF-2401-0372-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Biology","deptKey":"bio","year":"Year 3","pct":91,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"c.nantongo372@vu.ac.ug"},{"id":373,"name":"Doreen Namirembe","reg":"VU-CHF-2401-0373-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":90,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"d.namirembe@vu.ac.ug"},{"id":374,"name":"Linda Nakamya","reg":"VU-CHF-2401-0374-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":83,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"l.nakamya374@vu.ac.ug"},{"id":375,"name":"Susan Kyeyune","reg":"VU-CHF-2401-0375-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":86,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"s.kyeyune@vu.ac.ug"},{"id":376,"name":"Prossy Nankunda","reg":"VU-CHF-2401-0376-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":73,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"p.nankunda376@vu.ac.ug"},{"id":377,"name":"Eric Tushabe","reg":"VU-CHF-2401-0377-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":84,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"e.tushabe@vu.ac.ug"},{"id":378,"name":"Immaculate Namukasa","reg":"VU-CHF-2401-0378-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"i.namukasa378@vu.ac.ug"},{"id":379,"name":"Hassan Wasswa","reg":"VU-CHF-2401-0379-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"h.wasswa@vu.ac.ug"},{"id":380,"name":"Leo Namutebi","reg":"VU-CHF-2401-0380-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":77,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"l.namutebi380@vu.ac.ug"},{"id":381,"name":"Henry Naggayi","reg":"VU-CHF-2401-0381-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":76,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"h.naggayi@vu.ac.ug"},{"id":382,"name":"Nelson Achieng","reg":"VU-CHF-2401-0382-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":89,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.achieng@vu.ac.ug"},{"id":383,"name":"Benjamin Annet","reg":"VU-CHF-2401-0383-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":56,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"b.annet@vu.ac.ug"},{"id":384,"name":"Ronald Kiggundu","reg":"VU-CHF-2401-0384-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":93,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"r.kiggundu@vu.ac.ug"},{"id":385,"name":"Lawrence Wamala","reg":"VU-CHF-2401-0385-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":87,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"l.wamala385@vu.ac.ug"},{"id":386,"name":"Aisha Nambooze","reg":"VU-CHF-2401-0386-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":null,"trend":null,"gender":"Female","semester":"Semester 2","mode":"day","email":"a.nambooze386@vu.ac.ug"},{"id":387,"name":"Brenda Wasswa","reg":"VU-CHF-2401-0387-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":42,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"b.wasswa387@vu.ac.ug"},{"id":388,"name":"Alex Namboozo","reg":"VU-CHF-2401-0388-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":99,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"a.namboozo@vu.ac.ug"},{"id":389,"name":"Eve Okwir","reg":"VU-CHF-2401-0389-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":87,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"e.okwir@vu.ac.ug"},{"id":390,"name":"Benjamin Nankunda","reg":"VU-CHF-2401-0390-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":78,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.nankunda@vu.ac.ug"},{"id":391,"name":"Isaac Namirembe","reg":"VU-CHF-2401-0391-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":75,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"i.namirembe@vu.ac.ug"},{"id":392,"name":"Susan Wamala","reg":"VU-CHF-2401-0392-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":87,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.wamala@vu.ac.ug"},{"id":393,"name":"Brenda Ssebuliba","reg":"VU-CHF-2401-0393-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":99,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.ssebuliba@vu.ac.ug"},{"id":394,"name":"Irene Nankunda","reg":"VU-CHF-2401-0394-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":75,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"i.nankunda394@vu.ac.ug"},{"id":395,"name":"Gloria Nalubega","reg":"VU-CHF-2401-0395-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":96,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"g.nalubega@vu.ac.ug"},{"id":396,"name":"Linda Nambooze","reg":"VU-CHF-2401-0396-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 1","pct":81,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.nambooze@vu.ac.ug"},{"id":397,"name":"Rachel Nankya","reg":"VU-CHF-2401-0397-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":93,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"r.nankya@vu.ac.ug"},{"id":398,"name":"Nelson Bbosa","reg":"VU-CHF-2401-0398-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":79,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.bbosa@vu.ac.ug"},{"id":399,"name":"Fred Nakaddwa","reg":"VU-CHF-2401-0399-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":98,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"f.nakaddwa399@vu.ac.ug"},{"id":400,"name":"Umar Apio","reg":"VU-CHF-2401-0400-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":null,"trend":null,"gender":"Female","semester":"Semester 1","mode":"day","email":"u.apio@vu.ac.ug"},{"id":401,"name":"Henry Mukasa","reg":"VU-CHF-2401-0401-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":71,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"h.mukasa@vu.ac.ug"},{"id":402,"name":"Diana Okello","reg":"VU-CHF-2401-0402-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":84,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"d.okello402@vu.ac.ug"},{"id":403,"name":"Ivan Kiggundu","reg":"VU-CHF-2401-0403-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":91,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"i.kiggundu@vu.ac.ug"},{"id":404,"name":"Gertrude Namutebi","reg":"VU-CHF-2401-0404-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":89,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"g.namutebi@vu.ac.ug"},{"id":405,"name":"Doreen Achieng","reg":"VU-CHF-2401-0405-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"day","email":"d.achieng@vu.ac.ug"},{"id":406,"name":"Faith Apio","reg":"VU-CHF-2401-0406-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":81,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"f.apio@vu.ac.ug"},{"id":407,"name":"Bob Annet","reg":"VU-CHF-2401-0407-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 2","pct":81,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.annet407@vu.ac.ug"},{"id":408,"name":"Isaiah Mbazira","reg":"VU-CHF-2401-0408-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":82,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"i.mbazira408@vu.ac.ug"},{"id":409,"name":"Brian Namutebi","reg":"VU-CHF-2401-0409-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Chemistry","deptKey":"chem","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.namutebi409@vu.ac.ug"},{"id":410,"name":"Tracy Ssali","reg":"VU-MSF-2401-0410-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":78,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"t.ssali@vu.ac.ug"},{"id":411,"name":"Leo Mukasa","reg":"VU-MSF-2401-0411-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":93,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"l.mukasa@vu.ac.ug"},{"id":412,"name":"Isaiah Ssebuliba","reg":"VU-MSF-2401-0412-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":93,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"i.ssebuliba@vu.ac.ug"},{"id":413,"name":"Rose Ssebuliba","reg":"VU-MSF-2401-0413-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":82,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"r.ssebuliba413@vu.ac.ug"},{"id":414,"name":"Kenneth Mugisha","reg":"VU-MSF-2401-0414-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":90,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"k.mugisha@vu.ac.ug"},{"id":415,"name":"Timothy Sarah","reg":"VU-MSF-2401-0415-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":73,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"t.sarah415@vu.ac.ug"},{"id":416,"name":"Charles Moses","reg":"VU-MSF-2401-0416-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":91,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"c.moses@vu.ac.ug"},{"id":417,"name":"Winnie Nankunda","reg":"VU-MSF-2401-0417-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":95,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"w.nankunda417@vu.ac.ug"},{"id":418,"name":"Sarah Naggayi","reg":"VU-MSF-2401-0418-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":86,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"s.naggayi@vu.ac.ug"},{"id":419,"name":"Tom Kabuye","reg":"VU-MSF-2401-0419-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":96,"trend":"down","gender":"Male","semester":"Semester 2","mode":"evening","email":"t.kabuye@vu.ac.ug"},{"id":420,"name":"Esther Nakamya","reg":"VU-MSF-2401-0420-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 1","mode":"day","email":"e.nakamya@vu.ac.ug"},{"id":421,"name":"Henry Kizza","reg":"VU-MSF-2401-0421-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":91,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"h.kizza@vu.ac.ug"},{"id":422,"name":"Carol Nakirya","reg":"VU-MSF-2401-0422-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":94,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"c.nakirya422@vu.ac.ug"},{"id":423,"name":"Cissy Nabukyeyo","reg":"VU-MSF-2401-0423-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":89,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"c.nabukyeyo@vu.ac.ug"},{"id":424,"name":"Dennis Emmanuel","reg":"VU-MSF-2401-0424-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":95,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"d.emmanuel424@vu.ac.ug"},{"id":425,"name":"Faith Okwir","reg":"VU-MSF-2401-0425-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":97,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"f.okwir425@vu.ac.ug"},{"id":426,"name":"Brenda Kasule","reg":"VU-MSF-2401-0426-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":78,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.kasule@vu.ac.ug"},{"id":427,"name":"Janet Annet","reg":"VU-MSF-2401-0427-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":76,"trend":"up","gender":"Male","semester":"Semester 2","mode":"evening","email":"j.annet@vu.ac.ug"},{"id":428,"name":"Benjamin Nabukyeyo","reg":"VU-MSF-2401-0428-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 1","mode":"day","email":"b.nabukyeyo@vu.ac.ug"},{"id":429,"name":"Viola Ssemwanga","reg":"VU-MSF-2401-0429-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":97,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"v.ssemwanga@vu.ac.ug"},{"id":430,"name":"Agnes Namatovu","reg":"VU-MSF-2401-0430-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":96,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"a.namatovu@vu.ac.ug"},{"id":431,"name":"Gertrude Okello","reg":"VU-MSF-2401-0431-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":98,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"g.okello@vu.ac.ug"},{"id":432,"name":"Emmanuel Nambooze","reg":"VU-MSF-2401-0432-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":77,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"e.nambooze@vu.ac.ug"},{"id":433,"name":"Robert Tushabe","reg":"VU-MSF-2401-0433-EVE","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":99,"trend":"up","gender":"Male","semester":"Semester 1","mode":"evening","email":"r.tushabe@vu.ac.ug"},{"id":434,"name":"Grace Kabuye","reg":"VU-MSF-2401-0434-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":82,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"g.kabuye@vu.ac.ug"},{"id":435,"name":"Kenneth Okwir","reg":"VU-MSF-2401-0435-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":87,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"k.okwir@vu.ac.ug"},{"id":436,"name":"Martin Nantongo","reg":"VU-MSF-2401-0436-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":77,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"m.nantongo@vu.ac.ug"},{"id":437,"name":"Teddy Okwir","reg":"VU-MSF-2401-0437-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":71,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"t.okwir@vu.ac.ug"},{"id":438,"name":"Viola Otim","reg":"VU-MSF-2401-0438-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":89,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"v.otim438@vu.ac.ug"},{"id":439,"name":"Leo Nabukyeyo","reg":"VU-MSF-2401-0439-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":72,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"l.nabukyeyo@vu.ac.ug"},{"id":440,"name":"Lawrence Lubega","reg":"VU-MSF-2401-0440-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 3","pct":null,"trend":null,"gender":"Female","semester":"Semester 1","mode":"day","email":"l.lubega440@vu.ac.ug"},{"id":441,"name":"Cissy Lubega","reg":"VU-MSF-2401-0441-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":87,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"c.lubega@vu.ac.ug"},{"id":442,"name":"Rose Atim","reg":"VU-MSF-2401-0442-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":92,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"r.atim@vu.ac.ug"},{"id":443,"name":"Nelson Ojok","reg":"VU-MSF-2401-0443-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":69,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"n.ojok@vu.ac.ug"},{"id":444,"name":"Susan Nabukyeyo","reg":"VU-MSF-2401-0444-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":69,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"s.nabukyeyo444@vu.ac.ug"},{"id":445,"name":"Hassan Nakaddwa","reg":"VU-MSF-2401-0445-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 2","pct":82,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"h.nakaddwa@vu.ac.ug"},{"id":446,"name":"Quincy Nantongo","reg":"VU-MSF-2401-0446-DAY","facultyKey":"science","faculty":"Faculty of Science","dept":"Mathematics & Statistics","deptKey":"math","year":"Year 1","pct":65,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"q.nantongo@vu.ac.ug"},{"id":447,"name":"Brian Akwango","reg":"VU-EDF-2401-0447-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.akwango@vu.ac.ug"},{"id":448,"name":"Lwanga Mugisha","reg":"VU-EDF-2401-0448-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":97,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.mugisha@vu.ac.ug"},{"id":449,"name":"Bob Mukasa","reg":"VU-EDF-2401-0449-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":84,"trend":"down","gender":"Male","semester":"Semester 1","mode":"evening","email":"b.mukasa449@vu.ac.ug"},{"id":450,"name":"Nelson Namutebi","reg":"VU-EDF-2401-0450-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":87,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.namutebi@vu.ac.ug"},{"id":451,"name":"Joan Namatovu","reg":"VU-EDF-2401-0451-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":96,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"j.namatovu@vu.ac.ug"},{"id":452,"name":"Herbert Wamala","reg":"VU-EDF-2401-0452-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":97,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"h.wamala452@vu.ac.ug"},{"id":453,"name":"Fred Apio","reg":"VU-EDF-2401-0453-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":83,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"f.apio453@vu.ac.ug"},{"id":454,"name":"Felix Ssegawa","reg":"VU-EDF-2401-0454-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":90,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"f.ssegawa@vu.ac.ug"},{"id":455,"name":"Isaac Nankya","reg":"VU-EDF-2401-0455-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 2","mode":"day","email":"i.nankya@vu.ac.ug"},{"id":456,"name":"Damalie Wasswa","reg":"VU-EDF-2401-0456-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":78,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"d.wasswa@vu.ac.ug"},{"id":457,"name":"Yusuf Nankunda","reg":"VU-EDF-2401-0457-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":93,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"y.nankunda457@vu.ac.ug"},{"id":458,"name":"Kelvin Akwango","reg":"VU-EDF-2401-0458-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":47,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"k.akwango@vu.ac.ug"},{"id":459,"name":"George Lubega","reg":"VU-EDF-2401-0459-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":86,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"g.lubega@vu.ac.ug"},{"id":460,"name":"Ivan Tushabe","reg":"VU-EDF-2401-0460-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":86,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"i.tushabe@vu.ac.ug"},{"id":461,"name":"Bob Nakirya","reg":"VU-EDF-2401-0461-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":78,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"b.nakirya@vu.ac.ug"},{"id":462,"name":"Brenda Nakaddwa","reg":"VU-EDF-2401-0462-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":72,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"b.nakaddwa462@vu.ac.ug"},{"id":463,"name":"Faridah Nansubuga","reg":"VU-EDF-2401-0463-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":84,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"f.nansubuga@vu.ac.ug"},{"id":464,"name":"Eric Mbazira","reg":"VU-EDF-2401-0464-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":96,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"e.mbazira@vu.ac.ug"},{"id":465,"name":"Isaiah Namutebi","reg":"VU-EDF-2401-0465-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":73,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"i.namutebi@vu.ac.ug"},{"id":466,"name":"Joseph Wamala","reg":"VU-EDF-2401-0466-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":80,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"j.wamala@vu.ac.ug"},{"id":467,"name":"Isaiah Nantongo","reg":"VU-EDF-2401-0467-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":75,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"i.nantongo@vu.ac.ug"},{"id":468,"name":"Gloria Nabukyeyo","reg":"VU-EDF-2401-0468-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":43,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"g.nabukyeyo@vu.ac.ug"},{"id":469,"name":"Isaac Moses","reg":"VU-EDF-2401-0469-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":83,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"i.moses@vu.ac.ug"},{"id":470,"name":"Henry Kabuye","reg":"VU-EDF-2401-0470-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":93,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"h.kabuye@vu.ac.ug"},{"id":471,"name":"Brenda Tumwesigye","reg":"VU-EDF-2401-0471-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":97,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.tumwesigye471@vu.ac.ug"},{"id":472,"name":"Simon Kyeyune","reg":"VU-EDF-2401-0472-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.kyeyune472@vu.ac.ug"},{"id":473,"name":"Joan Moses","reg":"VU-EDF-2401-0473-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"j.moses@vu.ac.ug"},{"id":474,"name":"Nelson Okwir","reg":"VU-EDF-2401-0474-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":97,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.okwir474@vu.ac.ug"},{"id":475,"name":"Lawrence Sarah","reg":"VU-EDF-2401-0475-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":72,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"l.sarah475@vu.ac.ug"},{"id":476,"name":"Tom Kiggundu","reg":"VU-EDF-2401-0476-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":81,"trend":"down","gender":"Female","semester":"Semester 1","mode":"evening","email":"t.kiggundu@vu.ac.ug"},{"id":477,"name":"Lawrence Nankya","reg":"VU-EDF-2401-0477-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":88,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.nankya@vu.ac.ug"},{"id":478,"name":"Charles Sarah","reg":"VU-EDF-2401-0478-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":82,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"c.sarah@vu.ac.ug"},{"id":479,"name":"Irene Nabukyeyo","reg":"VU-EDF-2401-0479-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 1","pct":72,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"i.nabukyeyo479@vu.ac.ug"},{"id":480,"name":"Michael Nambooze","reg":"VU-EDF-2401-0480-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":43,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"m.nambooze@vu.ac.ug"},{"id":481,"name":"Olivia Tushabe","reg":"VU-EDF-2401-0481-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 3","pct":99,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"o.tushabe@vu.ac.ug"},{"id":482,"name":"Leo Kizza","reg":"VU-EDF-2401-0482-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":78,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"l.kizza482@vu.ac.ug"},{"id":483,"name":"Susan Namboozo","reg":"VU-EDF-2401-0483-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Education","deptKey":"edu","year":"Year 2","pct":77,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"s.namboozo@vu.ac.ug"},{"id":484,"name":"Lillian Tushabe","reg":"VU-MCF-2401-0484-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":97,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.tushabe@vu.ac.ug"},{"id":485,"name":"Eric Nantongo","reg":"VU-MCF-2401-0485-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"e.nantongo485@vu.ac.ug"},{"id":486,"name":"Gloria Kiggundu","reg":"VU-MCF-2401-0486-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":92,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"g.kiggundu@vu.ac.ug"},{"id":487,"name":"Yvonne Naggayi","reg":"VU-MCF-2401-0487-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":91,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"y.naggayi@vu.ac.ug"},{"id":488,"name":"Rachel Okello","reg":"VU-MCF-2401-0488-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":95,"trend":"up","gender":"Female","semester":"Semester 1","mode":"evening","email":"r.okello@vu.ac.ug"},{"id":489,"name":"Linda Ssebuliba","reg":"VU-MCF-2401-0489-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":96,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"l.ssebuliba@vu.ac.ug"},{"id":490,"name":"Charles Ssebuliba","reg":"VU-MCF-2401-0490-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":87,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"c.ssebuliba@vu.ac.ug"},{"id":491,"name":"Winnie Kabuye","reg":"VU-MCF-2401-0491-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":97,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"w.kabuye491@vu.ac.ug"},{"id":492,"name":"Timothy Kasule","reg":"VU-MCF-2401-0492-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":98,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"t.kasule@vu.ac.ug"},{"id":493,"name":"Victor Nankunda","reg":"VU-MCF-2401-0493-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":57,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"v.nankunda493@vu.ac.ug"},{"id":494,"name":"Brian Annet","reg":"VU-MCF-2401-0494-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":85,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"b.annet494@vu.ac.ug"},{"id":495,"name":"Annet Lubega","reg":"VU-MCF-2401-0495-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":100,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"a.lubega495@vu.ac.ug"},{"id":496,"name":"Benjamin Okello","reg":"VU-MCF-2401-0496-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":89,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"b.okello@vu.ac.ug"},{"id":497,"name":"Lillian Sarah","reg":"VU-MCF-2401-0497-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":88,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"l.sarah497@vu.ac.ug"},{"id":498,"name":"Collins Namukasa","reg":"VU-MCF-2401-0498-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":83,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"c.namukasa@vu.ac.ug"},{"id":499,"name":"Xavier Otim","reg":"VU-MCF-2401-0499-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":95,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"x.otim@vu.ac.ug"},{"id":500,"name":"Geoffrey Wasswa","reg":"VU-MCF-2401-0500-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":43,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"g.wasswa@vu.ac.ug"},{"id":501,"name":"Aisha Annet","reg":"VU-MCF-2401-0501-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":91,"trend":"down","gender":"Male","semester":"Semester 1","mode":"day","email":"a.annet@vu.ac.ug"},{"id":502,"name":"Christine Nakamya","reg":"VU-MCF-2401-0502-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":53,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"c.nakamya@vu.ac.ug"},{"id":503,"name":"Bob Nalubega","reg":"VU-MCF-2401-0503-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":78,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"b.nalubega@vu.ac.ug"},{"id":504,"name":"Susan Namukasa","reg":"VU-MCF-2401-0504-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":79,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"s.namukasa504@vu.ac.ug"},{"id":505,"name":"Sarah Ojok","reg":"VU-MCF-2401-0505-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":89,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"s.ojok@vu.ac.ug"},{"id":506,"name":"Geoffrey Annet","reg":"VU-MCF-2401-0506-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":94,"trend":"down","gender":"Female","semester":"Semester 2","mode":"day","email":"g.annet@vu.ac.ug"},{"id":507,"name":"Hellen Kibirige","reg":"VU-MCF-2401-0507-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":63,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"h.kibirige507@vu.ac.ug"},{"id":508,"name":"Gertrude Tumwesigye","reg":"VU-MCF-2401-0508-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":69,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"g.tumwesigye@vu.ac.ug"},{"id":509,"name":"Walter Kibirige","reg":"VU-MCF-2401-0509-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":94,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"w.kibirige@vu.ac.ug"},{"id":510,"name":"Nathan Wasswa","reg":"VU-MCF-2401-0510-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":84,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"n.wasswa@vu.ac.ug"},{"id":511,"name":"George Bbosa","reg":"VU-MCF-2401-0511-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":95,"trend":"up","gender":"Male","semester":"Semester 2","mode":"day","email":"g.bbosa@vu.ac.ug"},{"id":512,"name":"Kevin Kasule","reg":"VU-MCF-2401-0512-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":94,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"k.kasule@vu.ac.ug"},{"id":513,"name":"Henry Nakamya","reg":"VU-MCF-2401-0513-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":74,"trend":"down","gender":"Male","semester":"Semester 1","mode":"evening","email":"h.nakamya@vu.ac.ug"},{"id":514,"name":"Hassan Otim","reg":"VU-MCF-2401-0514-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":99,"trend":"up","gender":"Female","semester":"Semester 2","mode":"day","email":"h.otim@vu.ac.ug"},{"id":515,"name":"Esther Kyeyune","reg":"VU-MCF-2401-0515-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":65,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"e.kyeyune515@vu.ac.ug"},{"id":516,"name":"Brian Nankya","reg":"VU-MCF-2401-0516-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":88,"trend":"down","gender":"Female","semester":"Semester 1","mode":"day","email":"b.nankya@vu.ac.ug"},{"id":517,"name":"Dennis Namirembe","reg":"VU-MCF-2401-0517-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":79,"trend":"up","gender":"Male","semester":"Semester 1","mode":"day","email":"d.namirembe517@vu.ac.ug"},{"id":518,"name":"Brenda Nankya","reg":"VU-MCF-2401-0518-EVE","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 1","pct":70,"trend":"down","gender":"Female","semester":"Semester 2","mode":"evening","email":"b.nankya518@vu.ac.ug"},{"id":519,"name":"Victor Okello","reg":"VU-MCF-2401-0519-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 3","pct":62,"trend":"down","gender":"Male","semester":"Semester 2","mode":"day","email":"v.okello@vu.ac.ug"},{"id":520,"name":"Linda Kibirige","reg":"VU-MCF-2401-0520-DAY","facultyKey":"arts","faculty":"Faculty of Arts & Education","dept":"Mass Communication","deptKey":"mc","year":"Year 2","pct":76,"trend":"up","gender":"Female","semester":"Semester 1","mode":"day","email":"l.kibirige520@vu.ac.ug"},{"id":521,"name":"Balinda Christopher","reg":"VU-CSF-2601-0521-EVE","facultyKey":"computing","faculty":"Faculty of Computing & Informatics","dept":"Computer Science","deptKey":"cs","year":"Year 3","pct":null,"trend":null,"gender":"Male","semester":"Semester 1","mode":"evening","email":"b.christopher@vu.ac.ug"}];
 
+// Sept 2026 handoff, Part 2: every lecture slot now carries a `mode` field —
+// 'day' | 'evening' | null ("no restriction", the default for every
+// pre-existing slot below, since none of them were ever mode-restricted
+// before this). Students only see slots where mode is null or matches their
+// own State.user.mode — see filterLecturesForStudentMode() below.
 const SCHEDULE = [
   { day:"Monday", isToday:false, lectures:[
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00" },
-    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"10:30 – 12:30" },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", mode:null },
+    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"10:30 – 12:30", mode:null },
   ]},
   { day:"Tuesday", isToday:false, lectures:[
-    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"07:00 – 11:00" },
-    { code:"BAR4302", name:"Engineering Mathematics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"14:00 – 16:00" },
+    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"07:00 – 11:00", mode:null },
+    { code:"BAR4302", name:"Engineering Mathematics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"14:00 – 16:00", mode:null },
   ]},
   { day:"Wednesday", isToday:true, lectures:[
-    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", status:"pending" },
-    { code:"BAR4303", name:"Marketing Management", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"11:00 – 13:00" },
+    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", status:"pending", mode:null },
+    { code:"BAR4303", name:"Marketing Management", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"11:00 – 13:00", mode:null },
     // Sept 2026 handoff, Part 1: the demo Lecturer account (Dr. Patrick
     // Mukasa) previously had only one lecture on the "today" mock day, so
     // the multi-course session-selection flow had nothing to actually pick
     // between. Added a second one of his own assigned courses (see
     // LECTURER_COURSES) later the same day so the picker/greyed-list flow
     // is real to test, not just theoretical.
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00" },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00", mode:null },
   ]},
   { day:"Thursday", isToday:false, lectures:[
-    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"14:00 – 16:00" },
-    { code:"BAR4304", name:"Entrepreneurship", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"08:00 – 11:00" },
-    { code:"ENG4101", name:"Mechanics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"13:00 – 15:00" },
+    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"14:00 – 16:00", mode:null },
+    { code:"BAR4304", name:"Entrepreneurship", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"08:00 – 11:00", mode:null },
+    { code:"ENG4101", name:"Mechanics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"13:00 – 15:00", mode:null },
   ]},
   { day:"Friday", isToday:false, lectures:[
-    { code:"CSC3105", name:"Operating Systems", dept:"Computer Science", lecturer:"Mr. Ivan Tumwesigye", room:"LT1 - Main Building", time:"09:00 – 11:00" },
-    { code:"BAR4305", name:"Business Statistics", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"08:00 – 10:00" },
+    { code:"CSC3105", name:"Operating Systems", dept:"Computer Science", lecturer:"Mr. Ivan Tumwesigye", room:"LT1 - Main Building", time:"09:00 – 11:00", mode:null },
+    { code:"BAR4305", name:"Business Statistics", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"08:00 – 10:00", mode:null },
   ]},
 ];
 
@@ -1284,7 +1289,10 @@ function getStaffDirectory(){
   const students = STUDENTS.map(s => {
     const account = USERS[s.reg];
     return {
-      id:s.reg, name:s.name, role:"student", dept:s.dept, email:vuEmail(s.name),
+      // Sept 2026 handoff, Part 1: STUDENTS records now carry a real `email`
+      // field (and `mode`) rather than only ever deriving it on the fly —
+      // fall back to vuEmail() for any legacy record that somehow lacks one.
+      id:s.reg, name:s.name, role:"student", dept:s.dept, email: s.email || vuEmail(s.name),
       status: account ? (account.status || 'active') : 'unprovisioned',
       hasAccount: !!account,
     };
@@ -2286,6 +2294,19 @@ function scopedStudents(){
   return STUDENTS.filter(s => s.facultyKey === fk);
 }
 
+// Sept 2026 handoff (Register/Timetable/Records), Part 2: Registrars can now
+// reach the Course Catalog too, scoped to their own faculty (courses carry
+// programmeKey, not facultyKey directly, so this resolves through PROGRAMMES
+// the same way facultyKeyForProgrammeName() does for RECORDS/appeals above).
+function scopedCourses(){
+  const fk = currentRegistrarFacultyKey();
+  if(!fk) return COURSES;
+  return COURSES.filter(c => {
+    const prog = PROGRAMMES.find(p => p.key === c.programmeKey);
+    return prog && prog.facultyKey === fk;
+  });
+}
+
 function scopedProgrammeAnalytics(){
   const fk = currentRegistrarFacultyKey();
   if(!fk) return PROGRAMME_ANALYTICS;
@@ -2745,6 +2766,13 @@ function logout(){
   // on both login and logout, or it leaks between accounts).
   stopStudentBannerTicker();
   _lastStudentBannerMode = null;
+  // Sept 2026 handoff, Part 4: the Attendance Records catalog's drill-down
+  // selections are module-level state too (same reasoning as
+  // _lastStudentBannerMode above) — clear them so the next login never
+  // opens straight into a faculty/course the new account may not even
+  // have access to.
+  _recordsCatalogFacultyKey = null;
+  _recordsCatalogCourseCode = null;
   renderApp();
 }
 
@@ -2892,6 +2920,11 @@ function renderLecturerDashboard(){
     <a class="quick-action" onclick="navigate('announcements')">
       <div class="qa-icon">${ICONS.megaphone}</div>
       <div class="qa-text"><div class="t">Announcements</div><div class="s">Post updates to your courses</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('attendanceCatalog')">
+      <div class="qa-icon">${ICONS.records}</div>
+      <div class="qa-text"><div class="t">Attendance Records</div><div class="s">Browse records by course</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('reports')">
@@ -3173,7 +3206,7 @@ function renderSchedule(opts){
       </div>` : ''}
     </div>
     <div id="scheduleList">
-      ${SCHEDULE.map(d=>scheduleDayGroup(d, showDeptFilter)).join('')}
+      ${SCHEDULE.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession)).join('')}
     </div>
   </div>
   ${showCreateSession ? `
@@ -3186,14 +3219,21 @@ function renderSchedule(opts){
   <div class="sheet" id="newSessionSheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">
-      <span>New Class Session</span>
+      <span id="newSessionSheetTitle">New Class Session</span>
       <button onclick="closeSheet('newSessionSheet')">${ICONS.close}</button>
     </div>
     <div id="newSessionBody">${renderNewSessionFormBody()}</div>
   </div>` : ''}`;
 }
 
-function scheduleDayGroup(d, showDept){
+// Sept 2026 handoff (Register/Timetable/Records), Part 2: `editable` (true
+// only on the showCreateSession screens — Administrator/Registrar's "All
+// Schedules") adds real per-slot edit/delete, not just the existing
+// create-only flow. SCHEDULE lectures aren't uniquely keyed (the same course
+// code can legitimately appear on more than one day), so slots are targeted
+// by (day, index within that day) rather than by code — recomputed fresh on
+// every re-render, so it stays correct even as slots are added/removed.
+function scheduleDayGroup(d, showDept, editable){
   return `
   <div class="day-group" data-day-group data-day="${d.day}">
     <div class="day-header ${d.isToday?'today-day':''}">
@@ -3201,10 +3241,10 @@ function scheduleDayGroup(d, showDept){
       <span class="day-count">${d.lectures.length} lecture${d.lectures.length>1?'s':''}</span>
     </div>
     <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
-      ${d.lectures.map(l=>`
+      ${d.lectures.map((l,i)=>`
       <div class="lecture-row" data-lecture-row data-dept="${l.dept}" data-search="${(l.code+' '+l.name+' '+l.lecturer+' '+l.room).toLowerCase()}">
         <div>
-          <div class="lecture-code">${l.code} <span class="badge dept ${l.dept.includes('Business')?'biz':l.dept.includes('Engineering')?'eng':''}" style="margin-left:4px;">${l.dept.split(' ')[0]}</span></div>
+          <div class="lecture-code">${l.code} <span class="badge dept ${l.dept.includes('Business')?'biz':l.dept.includes('Engineering')?'eng':''}" style="margin-left:4px;">${l.dept.split(' ')[0]}</span>${l.mode ? `<span class="badge dept" style="margin-left:4px;background:#f1f5f9;color:#64748b;">${l.mode==='day'?'Day':'Evening'}</span>` : ''}</div>
           <div class="lecture-name">${l.name}</div>
           <div class="lecture-meta">${ICONS.user} ${l.lecturer}</div>
           <div class="lecture-meta">${ICONS.pin} ${l.room}</div>
@@ -3212,8 +3252,14 @@ function scheduleDayGroup(d, showDept){
         <div style="text-align:right;flex-shrink:0;">
           <div class="lecture-meta" style="margin-top:0;font-weight:700;color:var(--ink-soft);">${l.time}</div>
           ${l.status==='pending' ? '<span class="badge pending" style="margin-top:8px;display:inline-block;">Pending</span>' : ''}
+          ${editable ? `
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
+            <button class="icon-btn" style="width:28px;height:28px;background:var(--unmarked-bg);" onclick="event.stopPropagation();openNewSessionSheet('${d.day}', ${i})" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
+            <button class="icon-btn" style="width:28px;height:28px;background:#fee2e2;color:#b91c1c;" onclick="event.stopPropagation();confirmDeleteSlot('${d.day}', ${i})" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
+          </div>` : ''}
         </div>
       </div>`).join('')}
+      ${!d.lectures.length ? `<div style="font-size:12px;color:var(--ink-faint);padding:6px 2px;">No sessions scheduled</div>` : ''}
     </div>
   </div>`;
 }
@@ -3242,103 +3288,18 @@ function filterSchedule(){
 }
 
 // ============================================================
-// SHARED: STUDENT REGISTER
+// SHARED: REGISTER (Administrator/Registrar/Lecturer)
+// ------------------------------------------------------------
+// Sept 2026 handoff, Part 1: renderStudents() (Admin/Registrar student list),
+// renderStaffDirectory() (Admin read-only People catalog) and
+// renderUserManagement() (Admin account lifecycle) have been merged into one
+// screen — Register — scoped per role below. renderRegister() and its
+// supporting functions live further down (just before "STUDENT: HOME"), once
+// the enroll-sheet plumbing they depend on (renderEnrollFormBody, handleEnroll,
+// etc, kept below) has been defined.
 // ============================================================
 
 let regNoCounter = 522;
-
-function renderStudents(opts){
-  opts = opts || {};
-  const backTarget = opts.backTarget || 'dashboard';
-  const isRegistrar = State.role === 'registrar';
-  const fk = currentRegistrarFacultyKey();
-  const students = scopedStudents();
-  const facultyChips = isRegistrar
-    ? FACULTY_COUNTS.filter(d => d.key === fk)
-    : FACULTY_COUNTS;
-  const programmeOptions = isRegistrar
-    ? PROGRAMMES.filter(p => p.facultyKey === fk)
-    : PROGRAMMES;
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('${backTarget}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">${isRegistrar ? facultyName(fk).replace('Faculty of ','') + ' Students' : 'Student Register'}</div>
-    </div>
-  </div>
-  <div class="content" style="padding-bottom:90px;">
-    <div class="dept-chip-row">
-      ${facultyChips.map((d,i)=>`
-      <div class="dept-chip ${palClass(d.key, FACULTIES.map(f=>f.key))}">
-        <div class="n">${d.count}</div>
-        <div class="l">${d.label.replace('Faculty of ','')}</div>
-      </div>`).join('')}
-    </div>
-
-    <div class="search-wrap">
-      ${ICONS.search}
-      <input class="input" placeholder="Search by name or registration number..." oninput="filterStudents()" id="studentRegSearch" />
-    </div>
-    <div class="field-row">
-      ${!isRegistrar ? `
-      <div class="field">
-        <select class="select" id="studentFacultyFilter" onchange="onStudentFacultyFilterChange()">
-          <option value="">All Faculties</option>
-          ${FACULTIES.map(f=>`<option value="${f.key}">${f.name}</option>`).join('')}
-        </select>
-      </div>` : ''}
-      <div class="field">
-        <select class="select" id="studentYearFilter" onchange="filterStudents()">
-          <option value="">All Years</option>
-          <option value="Year 1">Year 1</option>
-          <option value="Year 2">Year 2</option>
-          <option value="Year 3">Year 3</option>
-        </select>
-      </div>
-    </div>
-    <div class="field-row" id="studentProgrammeFilterRow">
-      <div class="field">
-        <select class="select" id="studentDeptFilter" onchange="filterStudents()">
-          <option value="">All Programmes</option>
-          ${programmeOptions.map(p=>`<option value="${p.name}">${p.name}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-head-row">
-        <div class="section-title" style="margin-bottom:0;">${ICONS.users} Students</div>
-        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${students.length} enrolled</span>
-      </div>
-      <div id="studentList" style="max-height:58vh; overflow-y:auto; -webkit-overflow-scrolling:touch;">
-        ${students.map(s=>studentRegisterRow(s)).join('')}
-      </div>
-    </div>
-  </div>
-  <div class="sticky-footer">
-    <div class="sticky-footer-inner" style="padding:8px;">
-      <button class="btn btn-primary" onclick="openEnrollSheet()">${ICONS.plus} Enroll Student</button>
-    </div>
-  </div>
-
-  <div class="sheet" id="enrollSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <span id="enrollSheetTitle">Enroll New Student</span>
-      <button onclick="closeSheet('enrollSheet')">${ICONS.close}</button>
-    </div>
-    <div id="enrollSheetBody">${renderEnrollFormBody()}</div>
-  </div>
-
-  <div class="sheet" id="editStudentSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <span>Edit Student</span>
-      <button onclick="closeSheet('editStudentSheet')">${ICONS.close}</button>
-    </div>
-    <div id="editStudentBody"></div>
-  </div>`;
-}
 
 function renderEnrollFormBody(){
   return `
@@ -3400,18 +3361,6 @@ function renderEnrollFormBody(){
     </form>`;
 }
 
-function onStudentFacultyFilterChange(){
-  // Narrow the Programme dropdown to the selected faculty's programmes, then re-filter.
-  const facKey = document.getElementById('studentFacultyFilter')?.value || '';
-  const deptSel = document.getElementById('studentDeptFilter');
-  if(deptSel){
-    const programmesInFaculty = facKey ? PROGRAMMES.filter(p=>p.facultyKey===facKey) : PROGRAMMES;
-    deptSel.innerHTML = `<option value="">All Programmes</option>` +
-      programmesInFaculty.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
-  }
-  filterStudents();
-}
-
 function studentRegisterRow(s){
   const hasPct = s.pct !== null;
   const cls = hasPct ? (s.pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good' : 'bad') : '';
@@ -3446,24 +3395,69 @@ function openEditStudentSheet(studentId){
   openSheet('editStudentSheet');
 }
 
+// Sept 2026 handoff, Part 1: expanded from Gender/Semester-only to cover
+// name, email, faculty/programme, year, mode, gender and semester — a
+// Register profile edit, not just the two attributes Enroll Student didn't
+// already ask for. The registration number itself is deliberately NOT
+// editable here (it's the USERS/STUDENTS join key and appears verbatim in
+// RECORDS) — changing programme updates the student's faculty/dept/deptKey
+// but leaves their existing reg number as-is, same as a real transfer
+// wouldn't re-mint a student's ID.
 function renderEditStudentFormBody(s){
   return `
-    <div style="font-size:12px;color:var(--ink-soft);margin:-8px 0 16px;">${s.name} · ${s.reg}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin:-8px 0 16px;">${s.reg}</div>
     <form id="editStudentForm" onsubmit="return submitEditStudent(event, '${s.id}')" style="display:flex;flex-direction:column;gap:14px;">
       <div class="field">
-        <label>Gender</label>
-        <select class="select" id="editStudentGender">
-          <option value="Male" ${s.gender==='Male'?'selected':''}>Male</option>
-          <option value="Female" ${s.gender==='Female'?'selected':''}>Female</option>
-        </select>
+        <label>Full Name <span class="req">*</span></label>
+        <input class="input" id="editStudentName" value="${s.name}" required />
       </div>
       <div class="field">
-        <label>Semester</label>
-        <select class="select" id="editStudentSemester">
-          <option value="Semester 1" ${s.semester==='Semester 1'?'selected':''}>Semester 1</option>
-          <option value="Semester 2" ${s.semester==='Semester 2'?'selected':''}>Semester 2</option>
+        <label>Email Address</label>
+        <input class="input" type="email" id="editStudentEmail" value="${s.email || ''}" />
+      </div>
+      <div class="field">
+        <label>Faculty / Programme</label>
+        <select class="select" id="editStudentDept">
+          ${FACULTIES.map(fac => `
+          <optgroup label="${fac.name}">
+            ${PROGRAMMES.filter(p=>p.facultyKey===fac.key).map(p=>`<option value="${p.key}" ${s.deptKey===p.key?'selected':''}>${p.name}</option>`).join('')}
+          </optgroup>`).join('')}
         </select>
       </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Year of Study</label>
+          <select class="select" id="editStudentYear">
+            <option ${s.year==='Year 1'?'selected':''}>Year 1</option>
+            <option ${s.year==='Year 2'?'selected':''}>Year 2</option>
+            <option ${s.year==='Year 3'?'selected':''}>Year 3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Study Mode</label>
+          <select class="select" id="editStudentMode">
+            <option value="day" ${s.mode==='day'?'selected':''}>Day</option>
+            <option value="evening" ${s.mode==='evening'?'selected':''}>Evening</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Gender</label>
+          <select class="select" id="editStudentGender">
+            <option value="Male" ${s.gender==='Male'?'selected':''}>Male</option>
+            <option value="Female" ${s.gender==='Female'?'selected':''}>Female</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Semester</label>
+          <select class="select" id="editStudentSemester">
+            <option value="Semester 1" ${s.semester==='Semester 1'?'selected':''}>Semester 1</option>
+            <option value="Semester 2" ${s.semester==='Semester 2'?'selected':''}>Semester 2</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink-faint);line-height:1.5;">Registration number stays ${s.reg} even if programme changes.</div>
       <div class="btn-row" style="margin-top:6px;">
         <button type="button" class="btn btn-ghost" onclick="closeSheet('editStudentSheet')">Cancel</button>
         <button type="submit" class="btn btn-primary">${ICONS.check} Save</button>
@@ -3475,8 +3469,30 @@ function submitEditStudent(e, studentId){
   e.preventDefault();
   const s = STUDENTS.find(x => String(x.id) === String(studentId));
   if(!s) return false;
+  const name = document.getElementById('editStudentName')?.value.trim();
+  if(!name){ showToast('Enter a full name'); return false; }
+  const email = document.getElementById('editStudentEmail')?.value.trim();
+  const progKey = document.getElementById('editStudentDept')?.value;
+  const prog = PROGRAMMES.find(p => p.key === progKey);
+
+  s.name = name;
+  s.email = email || vuEmail(name);
+  if(prog){ s.dept = prog.name; s.deptKey = prog.key; s.facultyKey = prog.facultyKey; s.faculty = prog.facultyName; }
+  s.year = document.getElementById('editStudentYear').value;
+  s.mode = document.getElementById('editStudentMode').value;
   s.gender = document.getElementById('editStudentGender').value;
   s.semester = document.getElementById('editStudentSemester').value;
+
+  // Keep the login record (USERS) in sync — resolveCheckInOutcome()'s
+  // Day/Evening mismatch check reads State.user.mode live off this record,
+  // not off STUDENTS, so an edit here that didn't also update USERS would
+  // silently stop affecting check-in behavior.
+  const account = USERS[s.reg];
+  if(account){
+    account.name = name; account.email = s.email; account.dept = s.dept;
+    account.year = s.year; account.mode = s.mode; account.gender = s.gender; account.semester = s.semester;
+  }
+
   closeSheet('editStudentSheet');
   showToast(`${s.name} updated`);
   // This action already knows the correct new state (we just mutated STUDENTS
@@ -3484,24 +3500,6 @@ function submitEditStudent(e, studentId){
   // visible screen's HTML directly rather than going through navigate() again.
   refreshScreenContentOnly();
   return false;
-}
-
-function filterStudents(){
-  const q = (document.getElementById('studentRegSearch')?.value || '').toLowerCase();
-  const dept = document.getElementById('studentDeptFilter')?.value || '';
-  const faculty = document.getElementById('studentFacultyFilter')?.value || '';
-  const year = document.getElementById('studentYearFilter')?.value || '';
-  let visibleCount = 0;
-  document.querySelectorAll('[data-student-card]').forEach(row=>{
-    const textMatch = !q || row.dataset.name.includes(q) || row.dataset.reg.includes(q);
-    const deptMatch = !dept || row.dataset.dept === dept;
-    const facultyMatch = !faculty || row.dataset.faculty === faculty;
-    const yearMatch = !year || row.dataset.year === year;
-    const visible = textMatch && deptMatch && facultyMatch && yearMatch;
-    row.style.display = visible ? 'flex' : 'none';
-    if(visible) visibleCount++;
-  });
-  toggleNoResultsState('studentList', visibleCount, 'Try adjusting your search or filters');
 }
 
 function openEnrollSheet(){
@@ -3540,6 +3538,12 @@ function handleEnroll(e){
     dept: prog.name, deptKey: prog.key, year,
     pct: null, trend: null,
     gender, semester,
+    // Sept 2026 handoff, Part 1: mode/email were already collected by this
+    // form and passed to createAccount()'s USERS record below, but were
+    // never also written onto the STUDENTS record itself — meaning the
+    // Register list/edit-sheet had no real field to read them back from.
+    mode: mode === 'DAY' ? 'day' : 'evening',
+    email,
   });
 
   // ...and provision a real login account behind it, with a one-time temp
@@ -3613,14 +3617,391 @@ function resetSheetContentIfNeeded(sheetId){
 }
 
 // ============================================================
+// REGISTER: unified People screen (Sept 2026 handoff, Part 1)
+// ------------------------------------------------------------
+// Administrator  — everyone (students/lecturers/registrars/administrators),
+//                  full enroll/edit/suspend/reactivate.
+// Registrar      — students + lecturers only, scoped to their own faculty,
+//                  can enroll students and create/edit Lecturer accounts
+//                  (the create-account capability is new — Registrars could
+//                  only enroll students before).
+// Lecturer       — read-only list of students enrolled in their own courses.
+//                  No enroll/edit/create-account UI at all (a prior build had
+//                  this rendering unconditionally via renderStudents() for
+//                  every role that could reach the screen, including
+//                  Lecturer — that was a real bug, fixed by giving Lecturer
+//                  its own capability checks below rather than assuming the
+//                  screen was already read-only for them).
+//
+// The mock data has no per-student course-enrollment table, so "a Lecturer's
+// own students" is approximated the same way LECTURER_COURSES/scopedLecturer-
+// Compliance already approximate lecturer/course relationships elsewhere in
+// this file: courses this lecturer is assigned to (COURSES.lecturer === their
+// name) -> those courses' programmes -> students in those programmes. This is
+// a judgment call, not a real enrollment join — flagged in the handoff summary.
+// ============================================================
+
+function coursesForLecturer(){
+  const name = State.user && State.user.name;
+  if(!name) return [];
+  return COURSES.filter(c => c.lecturer === name);
+}
+
+function studentsForLecturer(){
+  const progKeys = new Set(coursesForLecturer().map(c => c.programmeKey).filter(Boolean));
+  if(!progKeys.size) return [];
+  return STUDENTS.filter(s => progKeys.has(s.deptKey));
+}
+
+// Whether the current user can edit/suspend/reactivate this specific person.
+// Administrator manages everyone; Registrar manages students+lecturers only
+// (never fellow registrars or administrators); Lecturer never manages anyone.
+function canManagePerson(p){
+  if(State.role === 'administrator') return true;
+  if(State.role === 'registrar') return p.role === 'student' || p.role === 'lecturer';
+  return false;
+}
+
+function tagStudentForRegister(s){
+  const account = USERS[s.reg];
+  return {
+    id: s.reg, role: 'student', name: s.name,
+    dept: s.dept, deptKey: s.deptKey, facultyKey: s.facultyKey, faculty: s.faculty,
+    year: s.year, gender: s.gender, semester: s.semester, mode: s.mode,
+    email: s.email || vuEmail(s.name),
+    pct: s.pct, trend: s.trend,
+    status: account ? (account.status || 'active') : 'unprovisioned',
+    hasAccount: !!account,
+    _studentId: s.id,
+  };
+}
+
+function tagStaffForRegister(p, role){
+  const account = USERS[p.id];
+  return {
+    id: p.id, role, name: p.name,
+    dept: p.dept, facultyKey: p.facultyKey || facultyKeyForProgrammeName(p.dept),
+    email: p.email,
+    status: account ? (account.status || 'active') : (p.status || 'active'),
+    hasAccount: !!account,
+  };
+}
+
+// The role-scoped, tagged people list Register actually renders. This is the
+// one chokepoint where the DATA scoping for Part 1 happens — screen
+// reachability itself is still handled structurally by NAV_CONFIG/
+// getScreenHTML, per this codebase's existing access-control convention.
+function scopedRegisterPeople(){
+  if(State.role === 'lecturer'){
+    return studentsForLecturer().map(tagStudentForRegister);
+  }
+  const students = scopedStudents().map(tagStudentForRegister);
+  const lecturers = LECTURERS.map(l => tagStaffForRegister(l, 'lecturer'));
+  if(State.role === 'registrar'){
+    const fk = currentRegistrarFacultyKey();
+    const scopedLecturers = fk ? lecturers.filter(l => l.facultyKey === fk) : lecturers;
+    return [...students, ...scopedLecturers];
+  }
+  // Administrator: everyone.
+  const registrars = REGISTRARS.map(r => tagStaffForRegister(r, 'registrar'));
+  const administrators = ADMINISTRATORS.map(a => tagStaffForRegister(a, 'administrator'));
+  return [...administrators, ...registrars, ...lecturers, ...students];
+}
+
+function renderRegister(opts){
+  opts = opts || {};
+  const backTarget = opts.backTarget || 'dashboard';
+  const isAdmin = State.role === 'administrator';
+  const isRegistrar = State.role === 'registrar';
+  const isLecturer = State.role === 'lecturer';
+  const canManage = isAdmin || isRegistrar; // both enroll/create AND edit/suspend gate together
+  const fk = currentRegistrarFacultyKey();
+  const people = scopedRegisterPeople();
+
+  const title = isLecturer ? 'My Students' : 'Register';
+
+  const facultyChipsHtml = !isLecturer ? `
+    <div class="dept-chip-row">
+      ${(isRegistrar ? FACULTY_COUNTS.filter(d=>d.key===fk) : FACULTY_COUNTS).map(d=>`
+      <div class="dept-chip ${palClass(d.key, FACULTIES.map(f=>f.key))}">
+        <div class="n">${d.count}</div>
+        <div class="l">${d.label.replace('Faculty of ','')}</div>
+      </div>`).join('')}
+    </div>` : '';
+
+  const roleFilterHtml = !isLecturer ? `
+    <div class="field">
+      <select class="select" id="registerRoleFilter" onchange="filterRegister()">
+        <option value="">All People</option>
+        <option value="student">Students</option>
+        <option value="lecturer">Lecturers</option>
+        ${isAdmin ? `<option value="registrar">Registrars</option><option value="administrator">Administrators</option>` : ''}
+      </select>
+    </div>` : '';
+
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('${backTarget}')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${title}</div>
+    </div>
+  </div>
+  <div class="content" style="padding-bottom:${canManage ? '90px' : '24px'};">
+    ${isLecturer ? `<div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 14px;">Students enrolled in your courses — read only</div>` : ''}
+    ${facultyChipsHtml}
+    <div class="search-wrap">
+      ${ICONS.search}
+      <input class="input" placeholder="Search by name or ID..." oninput="filterRegister()" id="registerSearch" />
+    </div>
+    <div class="field-row">
+      ${roleFilterHtml}
+      ${!isLecturer ? `
+      <div class="field">
+        <select class="select" id="registerYearFilter" onchange="filterRegister()">
+          <option value="">All Years</option>
+          <option value="Year 1">Year 1</option>
+          <option value="Year 2">Year 2</option>
+          <option value="Year 3">Year 3</option>
+        </select>
+      </div>` : ''}
+    </div>
+
+    <div class="card card-pad">
+      <div class="section-head-row">
+        <div class="section-title" style="margin-bottom:0;">${ICONS.users} ${isLecturer ? 'My Students' : 'People'}</div>
+        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${people.length} ${isLecturer ? 'enrolled' : 'total'}</span>
+      </div>
+      <div id="registerList" style="max-height:60vh; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+        ${people.length ? people.map(p=>registerPersonRow(p)).join('') : `
+        <div class="empty-state" style="padding:24px 10px;">
+          ${ICONS.users}
+          <div class="t">No one to show yet</div>
+          <div class="s">${isLecturer ? "You'll see students here once you're assigned a course" : 'Try adjusting filters'}</div>
+        </div>`}
+      </div>
+    </div>
+  </div>
+  ${canManage ? `
+  <div class="sticky-footer">
+    <div class="sticky-footer-inner" style="padding:8px; display:flex; gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="openEnrollSheet()">${ICONS.plus} Enroll Student</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="openCreateAccountSheet()">${ICONS.plus} Create Account</button>
+    </div>
+  </div>
+
+  <div class="sheet" id="enrollSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="enrollSheetTitle">Enroll New Student</span>
+      <button onclick="closeSheet('enrollSheet')">${ICONS.close}</button>
+    </div>
+    <div id="enrollSheetBody">${renderEnrollFormBody()}</div>
+  </div>
+
+  <div class="sheet" id="createAccountSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="createAccountTitle">Create Account</span>
+      <button onclick="closeSheet('createAccountSheet')">${ICONS.close}</button>
+    </div>
+    <div id="createAccountBody">${renderCreateAccountFormBody()}</div>
+  </div>
+
+  <div class="sheet" id="editStudentSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span>Edit Student</span>
+      <button onclick="closeSheet('editStudentSheet')">${ICONS.close}</button>
+    </div>
+    <div id="editStudentBody"></div>
+  </div>
+
+  <div class="sheet" id="editStaffSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="editStaffSheetTitle">Edit Profile</span>
+      <button onclick="closeSheet('editStaffSheet')">${ICONS.close}</button>
+    </div>
+    <div id="editStaffBody"></div>
+  </div>
+
+  <div class="sheet" id="accountDetailSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="accountDetailTitle">Account</span>
+      <button onclick="closeSheet('accountDetailSheet')">${ICONS.close}</button>
+    </div>
+    <div id="accountDetailBody"></div>
+  </div>` : ''}`;
+}
+
+function registerPersonRow(p){
+  const meta = ROLE_BADGE_META[p.role] || { label:p.role, color:"#475569", bg:"#f1f5f9" };
+  const manage = canManagePerson(p);
+  const statusBadge = p.status === 'suspended'
+    ? `<span class="badge dept" style="background:#fee2e2;color:#b91c1c;">Suspended</span>`
+    : p.status === 'unprovisioned'
+    ? `<span class="badge dept" style="background:#f1f5f9;color:#64748b;">Not provisioned</span>`
+    : '';
+  const metaLine = p.role === 'student'
+    ? `${p.id} · ${p.year || '—'} · ${p.gender || '—'} · ${p.semester || '—'}${p.mode ? ' · ' + (p.mode==='day'?'Day':'Evening') : ''}`
+    : `${p.id}${p.dept ? ' · ' + p.dept : ''}`;
+  const pctBlock = (p.role === 'student')
+    ? (p.pct !== null && p.pct !== undefined
+        ? `<div class="attendance-pct ${p.pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good':'bad'}">${p.trend==='up'?'↑':'↓'} ${p.pct}%<span class="lbl">attendance</span></div>`
+        : `<div class="attendance-pct" style="color:var(--ink-faint);font-weight:600;font-size:11px;">no records</div>`)
+    : '';
+  const editBtn = manage
+    ? `<button class="icon-btn" style="width:32px;height:32px;flex-shrink:0;background:var(--surface);border:1.5px solid var(--line);color:var(--theme-primary);border-radius:var(--radius-sm);" title="Edit profile" onclick="event.stopPropagation();${p.role==='student' ? `openEditStudentSheet('${p._studentId}')` : `openEditStaffSheet('${p.id}','${p.role}')`}">${ICONS.edit || ICONS.settings}</button>`
+    : '';
+  return `
+  <div class="student-card-row" data-register-row data-name="${p.name.toLowerCase()}" data-id="${p.id.toLowerCase()}" data-role="${p.role}" data-year="${p.year||''}" ${manage ? `onclick="openAccountDetail('${p.id}')" style="cursor:pointer;"` : ''}>
+    <div class="avatar">${initials(p.name)}</div>
+    <div class="student-info">
+      <div class="student-name">${p.name}</div>
+      <div class="student-meta">${metaLine}</div>
+      <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="badge dept" style="background:${meta.bg};color:${meta.color};">${meta.label}</span>
+        ${statusBadge}
+      </div>
+    </div>
+    ${pctBlock}
+    ${editBtn}
+  </div>`;
+}
+
+function filterRegister(){
+  const q = (document.getElementById('registerSearch')?.value || '').toLowerCase();
+  const role = document.getElementById('registerRoleFilter')?.value || '';
+  const year = document.getElementById('registerYearFilter')?.value || '';
+  let visibleCount = 0;
+  document.querySelectorAll('[data-register-row]').forEach(row=>{
+    const textMatch = !q || row.dataset.name.includes(q) || row.dataset.id.includes(q);
+    const roleMatch = !role || row.dataset.role === role;
+    const yearMatch = !year || row.dataset.year === year;
+    const visible = textMatch && roleMatch && yearMatch;
+    row.style.display = visible ? 'flex' : 'none';
+    if(visible) visibleCount++;
+  });
+  toggleNoResultsState('registerList', visibleCount, 'Try adjusting your search or filters');
+}
+
+// Edit sheet for Lecturer/Registrar/Administrator profiles — the staff-side
+// counterpart to openEditStudentSheet/renderEditStudentFormBody above.
+// "Assigned Courses" (Lecturer only) is a checkbox reconciliation against
+// COURSES.lecturer, since the mock catalog stores one lecturer name per
+// course rather than a real lecturer<->course join table.
+function openEditStaffSheet(personId, role){
+  let p;
+  if(role === 'lecturer') p = LECTURERS.find(x => x.id === personId);
+  else if(role === 'registrar') p = REGISTRARS.find(x => x.id === personId);
+  else if(role === 'administrator') p = ADMINISTRATORS.find(x => x.id === personId);
+  if(!p){ showToast('Person not found'); return; }
+  const title = document.getElementById('editStaffSheetTitle');
+  if(title) title.textContent = `Edit ${ROLE_BADGE_META[role]?.label || 'Profile'}`;
+  const body = document.getElementById('editStaffBody');
+  if(body) body.innerHTML = renderEditStaffFormBody(p, role);
+  openSheet('editStaffSheet');
+}
+
+function renderEditStaffFormBody(p, role){
+  return `
+    <div style="font-size:12px;color:var(--ink-soft);margin:-8px 0 16px;">${p.id}</div>
+    <form id="editStaffForm" onsubmit="return submitEditStaff(event, '${p.id}', '${role}')" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>Full Name <span class="req">*</span></label>
+        <input class="input" id="editStaffName" value="${p.name}" required />
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input class="input" type="email" id="editStaffEmail" value="${p.email || ''}" />
+      </div>
+      <div class="field">
+        <label>Department${role==='registrar' ? ' / Faculty' : ''}</label>
+        <input class="input" id="editStaffDept" value="${p.dept || ''}" placeholder="e.g. Computer Science" />
+      </div>
+      ${role === 'lecturer' ? `
+      <div class="field">
+        <label>Assigned Courses</label>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;">
+          ${COURSES.length ? COURSES.map(c => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;">
+            <input type="checkbox" class="editStaffCourseChk" value="${c.code}" ${c.lecturer===p.name?'checked':''} />
+            ${c.code} — ${c.name}
+          </label>`).join('') : `<span style="font-size:12px;color:var(--ink-faint);">No courses in the catalog yet</span>`}
+        </div>
+      </div>` : ''}
+      <div class="btn-row" style="margin-top:6px;">
+        <button type="button" class="btn btn-ghost" onclick="closeSheet('editStaffSheet')">Cancel</button>
+        <button type="submit" class="btn btn-primary">${ICONS.check} Save</button>
+      </div>
+    </form>`;
+}
+
+function submitEditStaff(e, personId, role){
+  e.preventDefault();
+  let directoryArray;
+  if(role === 'lecturer') directoryArray = LECTURERS;
+  else if(role === 'registrar') directoryArray = REGISTRARS;
+  else if(role === 'administrator') directoryArray = ADMINISTRATORS;
+  const entry = directoryArray && directoryArray.find(x => x.id === personId);
+  if(!entry) return false;
+
+  const name = document.getElementById('editStaffName')?.value.trim();
+  if(!name){ showToast('Enter a full name'); return false; }
+  const email = document.getElementById('editStaffEmail')?.value.trim();
+  const dept = document.getElementById('editStaffDept')?.value.trim();
+  const oldName = entry.name;
+
+  if(role === 'lecturer'){
+    // Reconcile the checkbox state against COURSES.lecturer using the OLD
+    // name (before we rename entry.name below) so a course this lecturer
+    // used to teach but just got unchecked is correctly released, and one
+    // newly checked (whether previously unassigned or reassigned from
+    // someone else) is correctly claimed under the new name.
+    const checked = new Set(Array.from(document.querySelectorAll('.editStaffCourseChk:checked')).map(el => el.value));
+    COURSES.forEach(c => {
+      const wasAssignedToThisLecturer = c.lecturer === oldName;
+      if(checked.has(c.code)) c.lecturer = name;
+      else if(wasAssignedToThisLecturer) c.lecturer = null;
+    });
+  }
+
+  entry.name = name;
+  entry.email = email || vuEmail(name);
+  entry.dept = dept || null;
+  const account = USERS[personId];
+  if(account){ account.name = name; account.email = entry.email; account.dept = entry.dept; }
+
+  closeSheet('editStaffSheet');
+  showToast(`${name} updated`);
+  refreshScreenContentOnly();
+  return false;
+}
+
+// ============================================================
 // STUDENT: HOME
 // ============================================================
+
+// Sept 2026 handoff (Register/Timetable/Records), Part 2: a lecture slot's
+// `mode` is 'day' | 'evening' | null. null means "no restriction" (every
+// pre-existing slot, plus any new/edited one left unset) and is always
+// visible; a student only sees a mode-restricted slot that matches their
+// own State.user.mode. Centralized here so Home, the Timetable screen and
+// the countdown/late-warning banner (which reads getStudentTodayLectures()
+// internally) can never drift on this rule.
+function filterLecturesForStudentMode(lectures){
+  const mode = State.user && State.user.mode;
+  if(!mode) return lectures; // no mode on file for this account — don't over-filter
+  return lectures.filter(l => !l.mode || l.mode === mode);
+}
 
 function getStudentTodayLectures(){
   const today = SCHEDULE.find(d=>d.isToday);
   if(!today) return [];
   const myCourseCodes = STUDENT_COURSES.map(c=>c.code);
-  return today.lectures.filter(l=>myCourseCodes.includes(l.code));
+  const enrolled = today.lectures.filter(l=>myCourseCodes.includes(l.code));
+  return filterLecturesForStudentMode(enrolled);
 }
 
 // Sept 2026 handoff, Part 2: which (if any) of the student's own today
@@ -3866,7 +4247,7 @@ function renderStudentTimetable(){
   const myCourseCodes = STUDENT_COURSES.map(c=>c.code);
   const filteredSchedule = SCHEDULE.map(d=>({
     ...d,
-    lectures: d.lectures.filter(l=>myCourseCodes.includes(l.code))
+    lectures: filterLecturesForStudentMode(d.lectures.filter(l=>myCourseCodes.includes(l.code)))
   })).filter(d=>d.lectures.length>0);
 
   return `
@@ -4692,9 +5073,14 @@ function renderRegistrarDashboard(){
       <div class="qa-text"><div class="t">Fraud Center</div><div class="s">${scopedSuspicionLog().length} flagged check-ins to review</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
-    <a class="quick-action" onclick="navigate('students')">
+    <a class="quick-action" onclick="navigate('register')">
       <div class="qa-icon">${ICONS.users}</div>
-      <div class="qa-text"><div class="t">Student Register</div><div class="s">View all enrolled students</div></div>
+      <div class="qa-text"><div class="t">Register</div><div class="s">Students & lecturers in your faculty</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('courseCatalog')">
+      <div class="qa-icon" style="background:#b45309;">${ICONS.layers}</div>
+      <div class="qa-text"><div class="t">Courses</div><div class="s">Create and edit courses in your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
   </div>`;
@@ -4704,32 +5090,36 @@ function renderRegistrarDashboard(){
 // REGISTRAR: ATTENDANCE RECORDS
 // ============================================================
 
-function renderRecords(){
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Attendance Records</div>
-    </div>
-  </div>
-  ${renderAttendanceRecordsBlock()}`;
-}
-
-// Shared "stat chips + search/filter + attendance sheet" block, used by both
-// the plain Attendance Records screen (bottom-nav "Records" tab) and the new
-// Student Attendance sub-section under Data Analytics & Reports — kept as
-// one function so the two never drift apart. opts.exportControl lets a
+// Sept 2026 handoff, Part 4: the old flat "renderRecords()" screen (no
+// catalog, every scoped record dumped in one list) is gone — Registrar's
+// "Records" bottom-nav tab now opens renderAttendanceCatalog() instead (see
+// getScreenHTML's registrar branch), which catalogues by course and drills
+// into this same shared block scoped to the selected course.
+//
+// Shared "stat chips + search/filter + attendance sheet" block, used by the
+// plain Attendance Records screen (bottom-nav "Records" tab), the Student
+// Attendance sub-section under Data Analytics & Reports, AND (Sept 2026
+// handoff, Part 4) the course/faculty attendance catalog — kept as one
+// function so none of them can drift apart. opts.exportControl lets a
 // caller swap in real export buttons; opts.beforeList injects extra content
-// (the analytics charts) between the stat chips and the search row.
+// (the analytics charts) between the stat chips and the search row;
+// opts.records lets a caller (Part 4's catalog) pass an already
+// course/faculty-scoped record set instead of the default scopedRecords().
+//
+// Sept 2026 handoff, Part 3: the list itself is now grouped PER STUDENT
+// (tap a student to drill into their own attendance) rather than one flat
+// row per individual record — see studentRecordSummaryRow() and
+// openStudentRecordDrilldown() below.
 function renderAttendanceRecordsBlock(opts){
   opts = opts || {};
-  const records = scopedRecords();
+  const records = opts.records || scopedRecords();
   const counts = {
     total: records.length,
     present: records.filter(r=>r.status==='present').length,
     late: records.filter(r=>r.status==='late').length,
     absent: records.filter(r=>r.status==='absent').length,
   };
+  const byStudent = groupRecordsByStudent(records);
   const exportControl = opts.exportControl || `<button class="link-mini" onclick="showToast('Report exported')">${ICONS.download} Export</button>`;
   const beforeList = opts.beforeList || '';
   return `
@@ -4756,8 +5146,9 @@ function renderAttendanceRecordsBlock(opts){
         <div class="section-title" style="margin-bottom:0;">${ICONS.records} Attendance Sheet</div>
         ${exportControl}
       </div>
+      <div style="font-size:11px;color:var(--ink-faint);margin:-6px 0 10px;">Tap a student to see their full attendance breakdown</div>
       <div id="recordsList" style="display:flex; flex-direction:column; gap:10px;">
-        ${records.map(r=>recordCard(r)).join('') || `<div class="empty-state-sm">No attendance records in your faculty yet</div>`}
+        ${byStudent.size ? Array.from(byStudent.entries()).map(([reg,recs])=>studentRecordSummaryRow(reg,recs)).join('') : `<div class="empty-state-sm">No attendance records in your faculty yet</div>`}
       </div>
     </div>
   </div>
@@ -4796,6 +5187,15 @@ function renderAttendanceRecordsBlock(opts){
         <button class="btn btn-primary" onclick="applyRecordsFilter()">Apply Filters</button>
       </div>
     </div>
+  </div>
+
+  <div class="sheet" id="studentRecordSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="studentRecordSheetTitle">Attendance Detail</span>
+      <button onclick="closeSheet('studentRecordSheet')">${ICONS.close}</button>
+    </div>
+    <div id="studentRecordBody" style="max-height:70vh; overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
   </div>`;
 }
 
@@ -4955,58 +5355,83 @@ function renderStudentAnalyticsCharts(){
   }
 }
 
-function recordCard(r){
+// Sept 2026 handoff, Part 3: groups a flat records array by student reg,
+// preserving first-seen order (RECORDS is already date-descending in the
+// mock data, so this reads newest-first per student too). The single
+// chokepoint every per-student view (Records, Data Analytics, and Part 4's
+// course/faculty catalog) builds its list from.
+function groupRecordsByStudent(records){
+  const map = new Map();
+  records.forEach(r => {
+    if(!map.has(r.reg)) map.set(r.reg, []);
+    map.get(r.reg).push(r);
+  });
+  return map;
+}
+
+// One row per student, aggregated across all of their records in this list.
+// Attendance % shown here is the student's own on-file STUDENTS.pct (the
+// same figure shown everywhere else in the app for that student) rather than
+// a second, possibly-divergent percentage computed fresh from this thin
+// RECORDS sample — a deliberate judgment call to avoid two numbers claiming
+// to be "this student's attendance rate".
+function studentRecordSummaryRow(reg, recs){
+  const student = STUDENTS.find(s => s.reg === reg);
+  const name = student ? student.name : recs[0].name;
+  const prog = student ? student.dept : recs[0].prog;
+  const pct = student ? student.pct : null;
+  const hasPct = pct !== null && pct !== undefined;
+  const cls = hasPct ? (pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good' : 'bad') : '';
+  const codes = [...new Set(recs.map(r=>r.code))];
+  const statuses = [...new Set(recs.map(r=>r.status))];
+  const dates = recs.map(r=>r.date);
   return `
-  <div class="record-card" data-record-card data-search="${(r.name+' '+r.reg+' '+r.code+' '+r.course).toLowerCase()}" data-code="${r.code}" data-status="${r.status}" data-date="${r.date}">
-    <div class="check"></div>
-    <div class="record-main">
-      <div class="record-top">
-        <div class="record-name">${r.name}</div>
-        <div class="record-date">${r.date}</div>
-      </div>
-      <div class="record-sub">${r.reg} · ${r.prog}</div>
-      <div class="record-tags">
-        <span class="tag-mini">${r.code}</span>
-        <span class="tag-mini">${r.course}</span>
-        <span class="tag-mini">${r.venue}</span>
+  <div class="student-card-row" data-record-summary-row data-search="${(name+' '+reg).toLowerCase()}" data-codes="${codes.join(' ')}" data-statuses="${statuses.join(' ')}" data-dates="${dates.join(' ')}" onclick="openStudentRecordDrilldown('${reg}')" style="cursor:pointer;">
+    <div class="avatar">${initials(name)}</div>
+    <div class="student-info">
+      <div class="student-name">${name}</div>
+      <div class="student-meta">${reg} · ${prog || '—'}</div>
+      <div class="record-tags" style="margin-top:4px;">
+        ${codes.slice(0,3).map(c=>`<span class="tag-mini">${c}</span>`).join('')}${codes.length>3 ? `<span class="tag-mini">+${codes.length-3}</span>` : ''}
       </div>
     </div>
-    <span class="status-pill ${r.status}">${r.status[0].toUpperCase()+r.status.slice(1)}</span>
+    ${hasPct ? `<div class="attendance-pct ${cls}">${pct}%<span class="lbl">attendance</span></div>` : ''}
+    <div class="chev">${ICONS.chevR}</div>
   </div>`;
 }
 
 function filterRecords(){
   const q = (document.getElementById('recordsSearch')?.value || '').toLowerCase();
-  document.querySelectorAll('[data-record-card]').forEach(card=>{
-    applyRecordCardVisibility(card, q);
+  document.querySelectorAll('[data-record-summary-row]').forEach(row=>{
+    applyRecordRowVisibility(row, q);
   });
   recountRecordsVisible();
 }
 
-function applyRecordCardVisibility(card, q){
+function applyRecordRowVisibility(row, q){
   const course = document.getElementById('filterCourse')?.value || '';
   const status = document.getElementById('filterStatus')?.value || '';
   const date = document.getElementById('filterDate')?.value || '';
-  const textMatch = !q || card.dataset.search.includes(q);
-  const courseMatch = !course || card.dataset.code === course;
-  const statusMatch = !status || card.dataset.status === status;
-  const dateMatch = !date || card.dataset.date === date;
+  const textMatch = !q || row.dataset.search.includes(q);
+  const courseMatch = !course || row.dataset.codes.split(' ').includes(course);
+  const statusMatch = !status || row.dataset.statuses.split(' ').includes(status);
+  const dateMatch = !date || row.dataset.dates.split(' ').includes(date);
   const visible = textMatch && courseMatch && statusMatch && dateMatch;
-  card.style.display = visible ? 'flex' : 'none';
+  row.style.display = visible ? 'flex' : 'none';
   return visible;
 }
 
 function recountRecordsVisible(){
   let visible = 0;
-  document.querySelectorAll('[data-record-card]').forEach(card=>{
-    if(card.style.display !== 'none') visible++;
+  document.querySelectorAll('[data-record-summary-row]').forEach(row=>{
+    if(row.style.display !== 'none') visible++;
   });
   toggleNoResultsState('recordsList', visible, 'Try adjusting your filters');
 }
 
 function applyRecordsFilter(){
   const q = (document.getElementById('recordsSearch')?.value || '').toLowerCase();
-  document.querySelectorAll('[data-record-card]').forEach(card=>applyRecordCardVisibility(card, q));
+  document.querySelectorAll('[data-record-summary-row]').forEach(row=>applyRecordRowVisibility(row, q));
   recountRecordsVisible();
   closeSheet('recordsFilterSheet');
   showToast('Filters applied');
@@ -5017,6 +5442,254 @@ function clearRecordsFilter(){
   document.getElementById('filterStatus').value = '';
   document.getElementById('filterDate').value = '';
   filterRecords();
+}
+
+// ============================================================
+// PER-STUDENT ATTENDANCE DRILL-DOWN (Sept 2026 handoff, Part 3)
+// ------------------------------------------------------------
+// Tapping a student in the Attendance Sheet opens this instead of navigating
+// away — same sheet-swap pattern used elsewhere (openAccountDetail, etc).
+// Data is organized semester -> course -> individual dated entries. RECORDS
+// itself has no semester or year field (and no student in this mock dataset
+// has records spanning more than one year), so "year" is shown as header
+// context (the student's own on-file STUDENTS.year) rather than a third
+// nesting level with nothing real to divide on — a judgment call flagged in
+// the handoff summary. Course is the one real grouping axis RECORDS
+// actually has, so that's what's nested under semester.
+// ============================================================
+
+function openStudentRecordDrilldown(reg, recordsOverride){
+  const title = document.getElementById('studentRecordSheetTitle');
+  const student = STUDENTS.find(s => s.reg === reg);
+  if(title) title.textContent = student ? student.name : reg;
+  const body = document.getElementById('studentRecordBody');
+  if(body) body.innerHTML = renderStudentRecordDrilldown(reg, recordsOverride);
+  openSheet('studentRecordSheet');
+}
+
+function renderStudentRecordDrilldown(reg, recordsOverride){
+  const student = STUDENTS.find(s => s.reg === reg);
+  const recs = (recordsOverride || scopedRecords()).filter(r => r.reg === reg);
+  const name = student ? student.name : (recs[0] ? recs[0].name : reg);
+  const prog = student ? student.dept : (recs[0] ? recs[0].prog : '—');
+  const semester = student ? (student.semester || 'Semester —') : 'Semester —';
+  const year = student ? (student.year || 'Year —') : 'Year —';
+  const pct = student ? student.pct : null;
+  const hasPct = pct !== null && pct !== undefined;
+  const cls = hasPct ? (pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good' : 'bad') : '';
+
+  // Group this student's records by course, preserving first-seen (newest-
+  // first, since RECORDS is date-descending) order.
+  const byCourse = new Map();
+  recs.forEach(r => {
+    const key = r.code;
+    if(!byCourse.has(key)) byCourse.set(key, { course: r.course, code: r.code, venue: r.venue, entries: [] });
+    byCourse.get(key).entries.push(r);
+  });
+
+  return `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${initials(name)}</div>
+      <div>
+        <div style="font-weight:800; font-size:15px;">${name}</div>
+        <div style="font-size:12px; color:var(--ink-faint); margin-top:2px;">${reg} · ${prog || '—'}</div>
+      </div>
+    </div>
+    <div class="info-box" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div class="k">Overall Attendance</div>
+        <div class="v" style="font-size:13px;">${semester} · ${year}</div>
+      </div>
+      ${hasPct ? `<div class="attendance-pct ${cls}" style="position:static;">${pct}%<span class="lbl">attendance</span></div>` : `<div style="font-size:12px;color:var(--ink-faint);">no records</div>`}
+    </div>
+    ${byCourse.size ? Array.from(byCourse.values()).map(group => `
+    <div class="day-group">
+      <div class="day-header">
+        <span>${ICONS.book.replace('viewBox="0 0 24 24"','viewBox="0 0 24 24" width="14" height="14" style="margin-right:6px;vertical-align:-2px;"')}${group.code} — ${group.course}</span>
+        <span class="day-count">${group.entries.length} session${group.entries.length>1?'s':''}</span>
+      </div>
+      <div class="card card-pad" style="display:flex;flex-direction:column;gap:8px;">
+        ${group.entries.map(e => `
+        <div class="lecture-row" style="padding:8px 0;">
+          <div>
+            <div class="lecture-meta" style="margin-top:0;font-weight:700;color:var(--ink-soft);">${e.date}</div>
+            <div class="lecture-meta">${ICONS.pin} ${e.venue}</div>
+          </div>
+          <span class="status-pill ${e.status}">${e.status[0].toUpperCase()+e.status.slice(1)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`).join('') : `<div class="empty-state-sm">No attendance records for this student yet</div>`}
+  `;
+}
+
+// ============================================================
+// ATTENDANCE RECORDS CATALOG (Sept 2026 handoff, Part 4)
+// ------------------------------------------------------------
+// Reorganizes how each role BROWSES INTO records, on top of the per-student
+// drill-down Part 3 already built: Lecturer and Registrar catalog by course;
+// Administrator catalogs by faculty, then by course within it. All three
+// eventually land on the same renderAttendanceRecordsBlock() (Part 3's
+// per-student list) scoped to the selected course, rather than a second,
+// separate display being built for this.
+//
+// Screen ids: 'attendanceCatalog' (top level, all three roles — Registrar's
+// existing bottom-nav 'records' tab and Administrator's new one both also
+// route here; Lecturer reaches it from a dashboard quick action, having had
+// no records-browsing screen at all before this), 'facultyRecordsCatalog'
+// (Administrator-only middle level), 'courseRecords' (leaf, all three).
+//
+// _recordsCatalogFacultyKey/_recordsCatalogCourseCode are the selections
+// carried between those screens — module-level state, per this codebase's
+// established pattern (c.f. _lastStudentBannerMode), explicitly reset in
+// logout() below so a fresh login never inherits a stale selection.
+// ============================================================
+
+let _recordsCatalogFacultyKey = null;
+let _recordsCatalogCourseCode = null;
+
+// A Lecturer's own records — RECORDS carries no lecturer field, so this
+// goes through the same COURSES.lecturer proxy Part 1's studentsForLecturer()
+// already uses, rather than introducing a second way to answer "this
+// lecturer's own courses".
+function recordsForLecturer(){
+  const codes = new Set(coursesForLecturer().map(c => c.code));
+  return scopedRecords().filter(r => codes.has(r.code));
+}
+
+function courseCatalogFromRecords(records){
+  const map = new Map();
+  records.forEach(r => {
+    if(!map.has(r.code)) map.set(r.code, { code:r.code, course:r.course, count:0, present:0 });
+    const e = map.get(r.code);
+    e.count++;
+    if(r.status === 'present') e.present++;
+  });
+  return Array.from(map.values()).sort((a,b) => a.code.localeCompare(b.code));
+}
+
+function facultyCatalogFromRecords(records){
+  const map = new Map();
+  records.forEach(r => {
+    const fk = facultyKeyForProgrammeName(r.prog) || 'unassigned';
+    if(!map.has(fk)) map.set(fk, { facultyKey:fk, count:0 });
+    map.get(fk).count++;
+  });
+  return Array.from(map.values()).sort((a,b) => (a.facultyKey||'').localeCompare(b.facultyKey||''));
+}
+
+function catalogEntryRow(opts){
+  // Shared row markup for both the faculty-level and course-level catalog
+  // cards — just the icon/title/subtitle/count differ.
+  return `
+  <div class="lecture-row" onclick="${opts.onclick}" style="cursor:pointer;">
+    <div style="flex:1; min-width:0;">
+      <div class="lecture-code" style="font-size:13px;">${opts.title}</div>
+      <div class="lecture-meta" style="margin-top:4px;">${opts.subtitle}</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:8px;">
+      <span class="badge dept">${opts.count} record${opts.count!==1?'s':''}</span>
+      <div class="chev">${ICONS.chevR}</div>
+    </div>
+  </div>`;
+}
+
+function renderAttendanceCatalog(){
+  const isAdmin = State.role === 'administrator';
+  const isLecturer = State.role === 'lecturer';
+  const records = isLecturer ? recordsForLecturer() : scopedRecords();
+
+  const body = isAdmin
+    ? (() => {
+        const entries = facultyCatalogFromRecords(records);
+        return entries.length
+          ? entries.map(e => catalogEntryRow({
+              onclick: `openFacultyRecordsCatalog('${e.facultyKey}')`,
+              title: e.facultyKey === 'unassigned' ? 'Unassigned' : facultyName(e.facultyKey),
+              subtitle: 'Tap to see courses in this faculty',
+              count: e.count,
+            })).join('')
+          : `<div class="empty-state-sm">No attendance records yet</div>`;
+      })()
+    : (() => {
+        const entries = courseCatalogFromRecords(records);
+        return entries.length
+          ? entries.map(e => catalogEntryRow({
+              onclick: `openCourseRecords('${e.code}')`,
+              title: `${e.code} — ${e.course}`,
+              subtitle: `${e.present} of ${e.count} present`,
+              count: e.count,
+            })).join('')
+          : `<div class="empty-state-sm">${isLecturer ? "No attendance records for your courses yet" : "No attendance records yet"}</div>`;
+      })();
+
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Attendance Records</div>
+    </div>
+  </div>
+  <div class="content">
+    <div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 14px;">${isAdmin ? 'Catalogued by faculty, then by course' : 'Catalogued by course'}</div>
+    <div class="card card-pad">
+      <div style="display:flex;flex-direction:column;gap:10px;">${body}</div>
+    </div>
+  </div>`;
+}
+
+function openFacultyRecordsCatalog(facultyKey){
+  _recordsCatalogFacultyKey = facultyKey;
+  navigate('facultyRecordsCatalog');
+}
+
+function renderFacultyRecordsCatalog(){
+  const fk = _recordsCatalogFacultyKey;
+  const records = scopedRecords().filter(r => (facultyKeyForProgrammeName(r.prog) || 'unassigned') === fk);
+  const entries = courseCatalogFromRecords(records);
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('records')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${fk === 'unassigned' ? 'Unassigned' : facultyName(fk).replace('Faculty of ','')}</div>
+    </div>
+  </div>
+  <div class="content">
+    <div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 14px;">Courses with attendance records in this faculty</div>
+    <div class="card card-pad">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${entries.length ? entries.map(e => catalogEntryRow({
+          onclick: `openCourseRecords('${e.code}')`,
+          title: `${e.code} — ${e.course}`,
+          subtitle: `${e.present} of ${e.count} present`,
+          count: e.count,
+        })).join('') : `<div class="empty-state-sm">No attendance records for this faculty yet</div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function openCourseRecords(code){
+  _recordsCatalogCourseCode = code;
+  navigate('courseRecords');
+}
+
+function renderCourseRecords(){
+  const code = _recordsCatalogCourseCode;
+  const isLecturer = State.role === 'lecturer';
+  const roleRecords = isLecturer ? recordsForLecturer() : scopedRecords();
+  const records = roleRecords.filter(r => r.code === code);
+  const sample = records[0];
+  const backTarget = State.role === 'administrator' ? 'facultyRecordsCatalog'
+    : State.role === 'lecturer' ? 'attendanceCatalog'
+    : 'records';
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('${backTarget}')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${code}${sample ? ' — ' + sample.course : ''}</div>
+    </div>
+  </div>
+  ${renderAttendanceRecordsBlock({ records })}`;
 }
 
 // ============================================================
@@ -5231,7 +5904,7 @@ function updateReportPreview(){
 // ============================================================
 
 const SYSTEM_MODULES = [
-  { id:'userManagement', label:'User Management', sub:'Create, suspend, or reassign accounts', icon:ICONS.userCog, color:'#1d4ed8', bg:'#dbeafe' },
+  { id:'userManagement', label:'Register', sub:'View, enroll, edit, suspend, or reactivate accounts', icon:ICONS.userCog, color:'#1d4ed8', bg:'#dbeafe' },
   { id:'courses', label:'Courses', sub:'Create and assign courses', icon:ICONS.layers, color:'#b45309', bg:'#fef3c7' },
   { id:'policies', label:'Attendance Policies', sub:'Set minimum attendance, grace periods', icon:ICONS.gavel, color:'#9c2220', bg:'#fee2e2' },
   { id:'fraudThresholds', label:'Fraud Thresholds', sub:'Tune detection sensitivity', icon:ICONS.flag, color:'#dc2626', bg:'#fee2e2' },
@@ -5271,7 +5944,7 @@ function renderAdministratorDashboard(){
     </div>
 
     <div class="stat-grid">
-      <div class="stat-tile" onclick="navigate('staffDirectory')" style="cursor:pointer;">
+      <div class="stat-tile" onclick="navigate('register')" style="cursor:pointer;">
         <div class="top"><span class="label">Total Users</span>
           <span class="stat-icon" style="background:#dbeafe; color:#1d4ed8;">${ICONS.users}</span></div>
         <div class="value">${getStaffDirectory().length}</div>
@@ -5309,7 +5982,10 @@ function renderAdministratorDashboard(){
 
 function openSystemModule(moduleId){
   if(moduleId === 'userManagement'){
-    navigate('userManagement');
+    // Part 1 of the Sept 2026 handoff merged User Management into the
+    // unified Register screen — this System Modules tile still exists as a
+    // shortcut, it just points at the merged screen now.
+    navigate('register');
     return;
   }
   if(moduleId === 'roleAssignments'){
@@ -5372,30 +6048,6 @@ const ROLE_BADGE_META = {
   administrator:  { label:"Administrator", color:"#9c2220", bg:"#fee2e2" },
 };
 
-function staffDirectoryRow(p){
-  const meta = ROLE_BADGE_META[p.role] || { label:p.role, color:"#475569", bg:"#f1f5f9" };
-  const statusBadge = p.status === 'suspended'
-    ? `<span class="badge dept" style="background:#fee2e2;color:#b91c1c;">Suspended</span>`
-    : p.status === 'unprovisioned'
-    ? `<span class="badge dept" style="background:#f1f5f9;color:#64748b;">Not provisioned</span>`
-    : '';
-  // Read-only catalog row — viewing only. Account actions (suspend, reactivate,
-  // create) live in User Management, not here, so this never doubles as both
-  // a directory and a manipulation surface.
-  return `
-  <div class="student-card-row" data-staff-card data-name="${p.name.toLowerCase()}" data-id="${p.id.toLowerCase()}" data-role="${p.role}">
-    <div class="avatar">${initials(p.name)}</div>
-    <div class="student-info">
-      <div class="student-name">${p.name}</div>
-      <div class="student-meta">${p.id}${p.dept ? ' · ' + p.dept : ''}</div>
-      <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
-        <span class="badge dept" style="background:${meta.bg};color:${meta.color};">${meta.label}</span>
-        ${statusBadge}
-      </div>
-    </div>
-  </div>`;
-}
-
 function openAccountDetail(personId){
   const all = getStaffDirectory();
   const person = all.find(p => p.id === personId);
@@ -5422,7 +6074,7 @@ function openAccountDetail(personId){
     actionSection = `
       <div style="font-size:12px; color:var(--ink-faint); line-height:1.5;">
         This person has an academic record but no VUSAP login. Provisioning bulk student accounts isn't available from this screen yet —
-        use Student Register → Enroll Student for individual accounts.
+        use Register → Enroll Student for individual accounts.
       </div>`;
   } else if(isSelf){
     statusSection = `
@@ -5478,7 +6130,7 @@ function suspendAccount(personId){
   logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account suspended', personId, `${user.name} account suspended`);
   closeSheet('accountDetailSheet');
   showToast(`${user.name}'s account has been suspended`);
-  navigate('userManagement', { replace: true });
+  navigate('register', { replace: true });
 }
 
 function reactivateAccount(personId){
@@ -5488,191 +6140,34 @@ function reactivateAccount(personId){
   logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account reactivated', personId, `${user.name} account reactivated`);
   closeSheet('accountDetailSheet');
   showToast(`${user.name}'s account has been reactivated`);
-  navigate('userManagement', { replace: true });
-}
-
-function renderStaffDirectory(){
-  const all = getStaffDirectory();
-  const counts = {
-    administrator: all.filter(p=>p.role==='administrator').length,
-    registrar: all.filter(p=>p.role==='registrar').length,
-    lecturer: all.filter(p=>p.role==='lecturer').length,
-    student: all.filter(p=>p.role==='student').length,
-  };
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">People</div>
-    </div>
-  </div>
-  <div class="content">
-    <div class="dept-chip-row">
-      <div class="dept-chip"><div class="n">${counts.administrator}</div><div class="l">Admins</div></div>
-      <div class="dept-chip"><div class="n">${counts.registrar}</div><div class="l">Registrars</div></div>
-      <div class="dept-chip"><div class="n">${counts.lecturer}</div><div class="l">Lecturers</div></div>
-      <div class="dept-chip"><div class="n">${counts.student}</div><div class="l">Students</div></div>
-    </div>
-
-    <div class="search-wrap">
-      ${ICONS.search}
-      <input class="input" placeholder="Search by name or ID..." oninput="filterStaffDirectory()" id="staffDirSearch" />
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <select class="select" id="staffDirRoleFilter" onchange="filterStaffDirectory()">
-          <option value="">All Roles</option>
-          <option value="administrator">Administrator</option>
-          <option value="registrar">Registrar</option>
-          <option value="lecturer">Lecturer</option>
-          <option value="student">Student</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-head-row">
-        <div class="section-title" style="margin-bottom:0;">${ICONS.users} All People</div>
-        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${all.length} total</span>
-      </div>
-      <div id="staffDirList">
-        ${all.map(p=>staffDirectoryRow(p)).join('')}
-      </div>
-    </div>
-  </div>`;
-}
-
-function filterStaffDirectory(){
-  const q = (document.getElementById('staffDirSearch')?.value || '').toLowerCase();
-  const role = document.getElementById('staffDirRoleFilter')?.value || '';
-  let visibleCount = 0;
-  document.querySelectorAll('[data-staff-card]').forEach(row=>{
-    const textMatch = !q || row.dataset.name.includes(q) || row.dataset.id.includes(q);
-    const roleMatch = !role || row.dataset.role === role;
-    const visible = textMatch && roleMatch;
-    row.style.display = visible ? 'flex' : 'none';
-    if(visible) visibleCount++;
-  });
-  toggleNoResultsState('staffDirList', visibleCount);
+  navigate('register', { replace: true });
 }
 
 // ============================================================
-// ADMINISTRATOR: USER MANAGEMENT
-// ------------------------------------------------------------
-// This is the manipulation surface: create accounts, suspend, reactivate.
-// "People -> Staff & Student Directory" is the read-only catalog and stays
-// that way — this screen is where accounts actually get changed.
+// REGISTER: account creation + lifecycle (Enroll Student is in the
+// SHARED: REGISTER block above; this is Create Account — Lecturer/
+// Registrar/Administrator — and the account-detail suspend/reactivate
+// sheet above). Both renderStaffDirectory() and renderUserManagement()
+// (the two screens Register replaced) are gone — their read-only catalog
+// and account-lifecycle roles are now one screen, scoped per role in
+// scopedRegisterPeople()/canManagePerson().
 // ============================================================
-
-function renderUserManagement(){
-  const all = getStaffDirectory();
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">User Management</div>
-    </div>
-  </div>
-  <div class="content" style="padding-bottom:90px;">
-    <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
-      ${ICONS.userCog.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Create staff accounts, or suspend/reactivate existing ones. Student accounts are created from Student Register → Enroll Student, which also sets up their academic record.
-    </div>
-
-    <div class="search-wrap" style="margin-top:14px;">
-      ${ICONS.search}
-      <input class="input" placeholder="Search by name or ID..." oninput="filterUserManagement()" id="userMgmtSearch" />
-    </div>
-    <div class="field">
-      <select class="select" id="userMgmtRoleFilter" onchange="filterUserManagement()">
-        <option value="">All Roles</option>
-        <option value="administrator">Administrator</option>
-        <option value="registrar">Registrar</option>
-        <option value="lecturer">Lecturer</option>
-        <option value="student">Student</option>
-      </select>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-head-row">
-        <div class="section-title" style="margin-bottom:0;">${ICONS.users} Accounts</div>
-        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${all.length} total</span>
-      </div>
-      <div id="userMgmtList">
-        ${all.map(p=>userManagementRow(p)).join('')}
-      </div>
-    </div>
-  </div>
-  <div class="sticky-footer">
-    <div class="sticky-footer-inner" style="padding:8px;">
-      <button class="btn btn-primary" onclick="openCreateAccountSheet()">${ICONS.plus} Create Account</button>
-    </div>
-  </div>
-
-  <div class="sheet" id="accountDetailSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <span id="accountDetailTitle">Account</span>
-      <button onclick="closeSheet('accountDetailSheet')">${ICONS.close}</button>
-    </div>
-    <div id="accountDetailBody"></div>
-  </div>
-
-  <div class="sheet" id="createAccountSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <span id="createAccountTitle">Create Account</span>
-      <button onclick="closeSheet('createAccountSheet')">${ICONS.close}</button>
-    </div>
-    <div id="createAccountBody">${renderCreateAccountFormBody()}</div>
-  </div>`;
-}
-
-function userManagementRow(p){
-  const meta = ROLE_BADGE_META[p.role] || { label:p.role, color:"#475569", bg:"#f1f5f9" };
-  const statusBadge = p.status === 'suspended'
-    ? `<span class="badge dept" style="background:#fee2e2;color:#b91c1c;">Suspended</span>`
-    : p.status === 'unprovisioned'
-    ? `<span class="badge dept" style="background:#f1f5f9;color:#64748b;">Not provisioned</span>`
-    : '';
-  return `
-  <div class="student-card-row" data-staff-card data-name="${p.name.toLowerCase()}" data-id="${p.id.toLowerCase()}" data-role="${p.role}" onclick="openAccountDetail('${p.id}')" style="cursor:pointer;">
-    <div class="avatar">${initials(p.name)}</div>
-    <div class="student-info">
-      <div class="student-name">${p.name}</div>
-      <div class="student-meta">${p.id}${p.dept ? ' · ' + p.dept : ''}</div>
-      <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
-        <span class="badge dept" style="background:${meta.bg};color:${meta.color};">${meta.label}</span>
-        ${statusBadge}
-      </div>
-    </div>
-    <div class="chev">${ICONS.chevR}</div>
-  </div>`;
-}
-
-function filterUserManagement(){
-  const q = (document.getElementById('userMgmtSearch')?.value || '').toLowerCase();
-  const role = document.getElementById('userMgmtRoleFilter')?.value || '';
-  let visibleCount = 0;
-  document.querySelectorAll('[data-staff-card]').forEach(row=>{
-    const textMatch = !q || row.dataset.name.includes(q) || row.dataset.id.includes(q);
-    const roleMatch = !role || row.dataset.role === role;
-    const visible = textMatch && roleMatch;
-    row.style.display = visible ? 'flex' : 'none';
-    if(visible) visibleCount++;
-  });
-  toggleNoResultsState('userMgmtList', visibleCount);
-}
 
 function renderCreateAccountFormBody(){
+  // Sept 2026 handoff, Part 1: Registrars can now create/edit Lecturer
+  // accounts (a genuine new capability — they previously could only enroll
+  // students) but still can't create fellow Registrars or Administrators,
+  // so the role picker is locked to Lecturer for them rather than merely
+  // defaulted to it.
+  const isRegistrar = State.role === 'registrar';
   return `
-    <div style="font-size:12px;color:var(--ink-soft);margin:-8px 0 16px;">Students are created from Student Register → Enroll Student instead, since enrollment also needs a programme and year.</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin:-8px 0 16px;">${isRegistrar ? 'Registrars can create Lecturer accounts here. Students are created from Enroll Student instead.' : 'Students are created from Enroll Student instead, since enrollment also needs a programme and year.'}</div>
     <form id="createAccountForm" onsubmit="return submitCreateAccount(event)" style="display:flex;flex-direction:column;gap:14px;">
       <div class="field">
         <label>Role <span class="req">*</span></label>
-        <select class="select" id="createAccountRole">
+        <select class="select" id="createAccountRole" ${isRegistrar ? 'disabled' : ''}>
           <option value="lecturer">Lecturer</option>
-          <option value="registrar">Registrar</option>
-          <option value="administrator">Administrator</option>
+          ${!isRegistrar ? `<option value="registrar">Registrar</option><option value="administrator">Administrator</option>` : ''}
         </select>
       </div>
       <div class="field">
@@ -5704,6 +6199,15 @@ function submitCreateAccount(e){
   const name = document.getElementById('createAccountName')?.value.trim();
   const email = document.getElementById('createAccountEmail')?.value.trim();
   const dept = document.getElementById('createAccountDept')?.value.trim();
+
+  // Belt-and-suspenders: the role <select> is already disabled/locked to
+  // 'lecturer' for Registrars in the form itself, but a disabled <select>'s
+  // value is still readable (and, in principle, forgeable) via JS, so this
+  // is the real enforcement point, not just the UI affordance.
+  if(State.role === 'registrar' && role !== 'lecturer'){
+    showToast('Registrars can only create Lecturer accounts');
+    return false;
+  }
 
   const result = createStaffAccount(role, name, email, dept);
   if(result.error){
@@ -5766,11 +6270,15 @@ resetSheetContentIfNeeded = function(sheetId){
   }
   if(sheetId === 'accountDetailSheet' || sheetId === 'createAccountSheet'){
     // Either sheet closing should refresh the underlying list so a status
-    // change or a new account shows up without a full screen reload.
-    const list = document.getElementById('userMgmtList');
-    if(list){
-      const all = getStaffDirectory();
-      list.innerHTML = all.map(p=>userManagementRow(p)).join('');
+    // change or a new account shows up without a full screen reload. (Most
+    // of the time this is already redundant — suspendAccount/reactivateAccount
+    // navigate('register', {replace:true}) themselves — but createAccountSheet's
+    // "Done" close path doesn't re-navigate, so this is what actually shows
+    // a freshly-created account without a manual refresh.)
+    const list = document.getElementById('registerList');
+    if(list && typeof scopedRegisterPeople === 'function'){
+      const people = scopedRegisterPeople();
+      if(people.length) list.innerHTML = people.map(p=>registerPersonRow(p)).join('');
     }
   }
 };
@@ -6135,11 +6643,14 @@ function confirmDeleteProgramme(programmeKey){
 // ============================================================
 
 function renderCourseCatalog(){
+  const fk = currentRegistrarFacultyKey();
+  const courses = scopedCourses();
+  const programmeOptions = fk ? PROGRAMMES.filter(p => p.facultyKey === fk) : PROGRAMMES;
   return `
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Courses</div>
+      <div class="page-title" style="font-size:18px;">${fk ? facultyName(fk).replace('Faculty of ','') + ' Courses' : 'Courses'}</div>
     </div>
   </div>
   <div class="content" style="padding-bottom:90px;">
@@ -6150,17 +6661,17 @@ function renderCourseCatalog(){
     <div class="field">
       <select class="select" id="courseProgrammeFilter" onchange="filterCourseCatalog()">
         <option value="">All Programmes</option>
-        ${PROGRAMMES.map(p => `<option value="${p.key}">${p.name}</option>`).join('')}
+        ${programmeOptions.map(p => `<option value="${p.key}">${p.name}</option>`).join('')}
       </select>
     </div>
 
     <div class="card card-pad">
       <div class="section-head-row">
         <div class="section-title" style="margin-bottom:0;">${ICONS.book} Course Catalog</div>
-        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${COURSES.length} courses</span>
+        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${courses.length} courses</span>
       </div>
       <div id="courseList" style="display:flex; flex-direction:column; gap:10px;">
-        ${COURSES.map(c => courseRow(c)).join('')}
+        ${courses.map(c => courseRow(c)).join('')}
       </div>
     </div>
   </div>
@@ -6228,7 +6739,7 @@ function openCourseFormSheet(code){
         <label>Programme</label>
         <select class="select" id="courseProgrammeInput">
           <option value="">No programme</option>
-          ${PROGRAMMES.map(p => `<option value="${p.key}" ${course && course.programmeKey===p.key ? 'selected':''}>${p.name}</option>`).join('')}
+          ${(currentRegistrarFacultyKey() ? PROGRAMMES.filter(p=>p.facultyKey===currentRegistrarFacultyKey()) : PROGRAMMES).map(p => `<option value="${p.key}" ${course && course.programmeKey===p.key ? 'selected':''}>${p.name}</option>`).join('')}
         </select>
       </div>
       <div class="field" style="margin-bottom:14px;">
@@ -6264,6 +6775,19 @@ function submitCourseForm(existingCode){
   const mode = document.getElementById('courseModeInput')?.value || null; // '' -> null ("no restriction")
   const prog = PROGRAMMES.find(p => p.key === programmeKey);
 
+  // Belt-and-suspenders: the Programme <select> is already restricted to the
+  // Registrar's own faculty in the form itself, but its value is still
+  // readable/forgeable via JS, so this is the real enforcement point.
+  const fk = currentRegistrarFacultyKey();
+  if(fk && prog && prog.facultyKey !== fk){
+    showToast("You can only manage courses in your own faculty");
+    return;
+  }
+  if(fk && !existingCode && !prog){
+    showToast("Select a programme in your faculty");
+    return;
+  }
+
   let result;
   if(existingCode){
     result = editCourse(existingCode, { name, programmeKey, programme: prog ? prog.name : null, lecturer: lecturer || null, room: room || null, mode: mode || null });
@@ -6285,6 +6809,15 @@ function submitCourseForm(existingCode){
 }
 
 function confirmDeleteCourse(code){
+  const fk = currentRegistrarFacultyKey();
+  if(fk){
+    const course = COURSES.find(c => c.code === code);
+    const prog = course && PROGRAMMES.find(p => p.key === course.programmeKey);
+    if(!prog || prog.facultyKey !== fk){
+      showToast("You can only manage courses in your own faculty");
+      return;
+    }
+  }
   const result = deleteCourse(code);
   if(result.error){
     showToast(result.error);
@@ -7773,59 +8306,72 @@ async function loadAppealsFromSupabase(){
 // openNewSessionSheet(), onSessionCourseChange() and submitNewSession()
 // below are shared by that merged screen unchanged.
 
-function renderNewSessionFormBody(){
-  const fk = currentRegistrarFacultyKey();
-  // Scope course list to Registrar's faculty if applicable
-  const scopedCourses = fk
-    ? COURSES.filter(c => {
-        const prog = PROGRAMMES.find(p => p.name === c.programme);
-        return prog && prog.facultyKey === fk;
-      })
-    : COURSES;
-  // Lecturers available for selection
-  const lecturers = fk
-    ? LECTURERS
-    : LECTURERS;
+// Sept 2026 handoff (Register/Timetable/Records), Part 2: renderNewSessionFormBody()
+// now doubles as the edit form — pass `existing` as {day, index} to prefill
+// and switch to "Save Changes"; omit it (or pass null) for a fresh Create
+// form. The day/index are carried as hidden inputs rather than a module-level
+// variable, so there's no extra state to remember to reset on login/logout
+// (gotcha #7) — the form always fully re-renders itself on open (see
+// openNewSessionSheet()) and reads its own hidden fields on submit.
+function renderNewSessionFormBody(existing){
+  // Scope course list to the Registrar's own faculty, if applicable — reuses
+  // the same scopedCourses() the Course Catalog itself uses (Part 2), so the
+  // two can never drift on which courses a given Registrar can see.
+  const courseOptions = scopedCourses();
+
+  const lecture = existing ? (SCHEDULE.find(d => d.day === existing.day)?.lectures || [])[existing.index] : null;
+  const timeParts = lecture ? String(lecture.time || '').split('–').map(s => s.trim()) : [];
+  const startVal = timeParts[0] || '08:00';
+  const endVal = timeParts[1] || '10:00';
 
   return `
     <form id="newSessionForm" onsubmit="return submitNewSession(event)" style="display:flex;flex-direction:column;gap:14px;">
+      ${existing ? `<input type="hidden" id="sessionEditDay" value="${existing.day}" /><input type="hidden" id="sessionEditIndex" value="${existing.index}" />` : ''}
       <div class="field">
         <label>Day <span class="req">*</span></label>
         <select class="select" id="sessionDay">
-          ${SCHEDULE.map(d => `<option value="${d.day}" ${d.isToday?'selected':''}>${d.day}</option>`).join('')}
+          ${SCHEDULE.map(d => `<option value="${d.day}" ${(lecture ? existing.day===d.day : d.isToday) ?'selected':''}>${d.day}</option>`).join('')}
         </select>
       </div>
       <div class="field">
         <label>Course <span class="req">*</span></label>
         <select class="select" id="sessionCourse" onchange="onSessionCourseChange()">
           <option value="">Select a course...</option>
-          ${scopedCourses.map(c => `<option value="${c.code}">${c.code} — ${c.name}</option>`).join('')}
+          ${courseOptions.map(c => `<option value="${c.code}" ${lecture && lecture.code===c.code ? 'selected':''}>${c.code} — ${c.name}</option>`).join('')}
         </select>
       </div>
       <div class="field">
         <label>Lecturer <span class="req">*</span></label>
         <select class="select" id="sessionLecturer">
           <option value="">Select a lecturer...</option>
-          ${LECTURERS.map(l => `<option value="${l.name}">${l.name}</option>`).join('')}
+          ${LECTURERS.map(l => `<option value="${l.name}" ${lecture && lecture.lecturer===l.name ? 'selected':''}>${l.name}</option>`).join('')}
         </select>
       </div>
       <div class="field">
         <label>Room <span class="req">*</span></label>
-        <input class="input" id="sessionRoom" placeholder="e.g. LT1 - Main Building" />
+        <input class="input" id="sessionRoom" value="${lecture ? lecture.room : ''}" placeholder="e.g. LT1 - Main Building" />
       </div>
       <div class="field-row">
         <div class="field">
           <label>Start Time <span class="req">*</span></label>
-          <input class="input" type="time" id="sessionStart" value="08:00" />
+          <input class="input" type="time" id="sessionStart" value="${startVal}" />
         </div>
         <div class="field">
           <label>End Time <span class="req">*</span></label>
-          <input class="input" type="time" id="sessionEnd" value="10:00" />
+          <input class="input" type="time" id="sessionEnd" value="${endVal}" />
         </div>
+      </div>
+      <div class="field">
+        <label>Mode</label>
+        <select class="select" id="sessionMode">
+          <option value="" ${!lecture || !lecture.mode ? 'selected' : ''}>No restriction</option>
+          <option value="day" ${lecture && lecture.mode==='day' ? 'selected' : ''}>Day</option>
+          <option value="evening" ${lecture && lecture.mode==='evening' ? 'selected' : ''}>Evening</option>
+        </select>
       </div>
       <div class="btn-row" style="margin-top:6px;">
         <button type="button" class="btn btn-ghost" onclick="closeSheet('newSessionSheet')">Cancel</button>
-        <button type="submit" class="btn btn-primary">${ICONS.check} Add to Schedule</button>
+        <button type="submit" class="btn btn-primary">${ICONS.check} ${existing ? 'Save Changes' : 'Add to Schedule'}</button>
       </div>
     </form>`;
 }
@@ -7847,18 +8393,28 @@ function onSessionCourseChange(){
   }
 }
 
-function openNewSessionSheet(){
+function openNewSessionSheet(day, index){
+  const editing = (day !== undefined && index !== undefined);
+  const title = document.getElementById('newSessionSheetTitle');
+  if(title) title.textContent = editing ? 'Edit Class Session' : 'New Class Session';
+  const body = document.getElementById('newSessionBody');
+  if(body) body.innerHTML = renderNewSessionFormBody(editing ? { day, index } : null);
   openSheet('newSessionSheet');
 }
 
 function submitNewSession(e){
   e.preventDefault();
+  const editDay = document.getElementById('sessionEditDay')?.value;
+  const editIndex = document.getElementById('sessionEditIndex')?.value;
+  const isEdit = editDay !== undefined && editDay !== null && editDay !== '' && editIndex !== undefined && editIndex !== null && editIndex !== '';
+
   const day = document.getElementById('sessionDay')?.value;
   const courseCode = document.getElementById('sessionCourse')?.value;
   const lecturer = document.getElementById('sessionLecturer')?.value;
   const room = document.getElementById('sessionRoom')?.value.trim();
   const startTime = document.getElementById('sessionStart')?.value;
   const endTime = document.getElementById('sessionEnd')?.value;
+  const mode = document.getElementById('sessionMode')?.value || null; // '' -> null ("no restriction")
 
   if(!courseCode){ showToast("Select a course"); return false; }
   if(!lecturer){ showToast("Select a lecturer"); return false; }
@@ -7871,20 +8427,46 @@ function submitNewSession(e){
   const dayEntry = SCHEDULE.find(d => d.day === day);
   if(!dayEntry){ showToast("Day not found"); return false; }
 
-  dayEntry.lectures.push({
+  const newLecture = {
     code: courseCode,
     name: course ? course.name : courseCode,
     dept: course ? (course.programme || '') : '',
     lecturer,
     room,
     time: timeStr,
-  });
+    mode: mode || null,
+  };
 
-  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Class session scheduled', courseCode, `${course?.name||courseCode} on ${day} at ${timeStr}`);
-  closeSheet('newSessionSheet');
-  showToast(`${course?.name||courseCode} added to ${day}`);
+  if(isEdit){
+    // Editing can also move a slot to a different day — remove from the old
+    // day/index first, then push onto the (possibly different) target day,
+    // rather than mutating in place, so a day change can't leave a stale
+    // duplicate behind on the original day.
+    const oldDayEntry = SCHEDULE.find(d => d.day === editDay);
+    if(oldDayEntry) oldDayEntry.lectures.splice(parseInt(editIndex, 10), 1);
+    dayEntry.lectures.push(newLecture);
+    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Class session updated', courseCode, `${course?.name||courseCode} on ${day} at ${timeStr}`);
+    closeSheet('newSessionSheet');
+    showToast(`${course?.name||courseCode} updated`);
+  } else {
+    dayEntry.lectures.push(newLecture);
+    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Class session scheduled', courseCode, `${course?.name||courseCode} on ${day} at ${timeStr}`);
+    closeSheet('newSessionSheet');
+    showToast(`${course?.name||courseCode} added to ${day}`);
+  }
   navigate('allSchedules', { replace: true });
   return false;
+}
+
+function confirmDeleteSlot(day, index){
+  const dayEntry = SCHEDULE.find(d => d.day === day);
+  if(!dayEntry) return;
+  const lecture = dayEntry.lectures[index];
+  if(!lecture) return;
+  dayEntry.lectures.splice(index, 1);
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Class session removed', lecture.code, `${lecture.name} removed from ${day}`);
+  showToast(`${lecture.name} removed from ${day}`);
+  navigate('allSchedules', { replace: true });
 }
 
 // ============================================================
@@ -8044,17 +8626,18 @@ const NAV_CONFIG = {
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
     { id:'markAttendance', label:'Attendance', icon:ICONS.check },
     { id:'schedule', label:'Timetable', icon:ICONS.calendar },
-    { id:'students', label:'Students', icon:ICONS.users },
+    { id:'register', label:'Students', icon:ICONS.users },
   ],
   registrar: [
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
     { id:'records', label:'Records', icon:ICONS.records },
-    { id:'students', label:'Students', icon:ICONS.users },
+    { id:'register', label:'Register', icon:ICONS.users },
     { id:'allSchedules', label:'Schedules', icon:ICONS.schedule },
   ],
   administrator: [
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
-    { id:'staffDirectory', label:'People', icon:ICONS.users },
+    { id:'register', label:'People', icon:ICONS.users },
+    { id:'records', label:'Records', icon:ICONS.records },
     { id:'allSchedules', label:'Schedules', icon:ICONS.schedule },
   ],
   student: [
@@ -8072,21 +8655,37 @@ function getScreenHTML(screenId){
       case 'dashboard': return renderLecturerDashboard();
       case 'markAttendance': return renderMarkAttendance();
       case 'schedule': return renderSchedule({ title:'My Timetable', subtitle:'Weekly timetable overview', backTarget:'dashboard' });
-      case 'students': return renderStudents({ backTarget:'dashboard' });
+      case 'register': return renderRegister({ backTarget:'dashboard' });
       case 'startSession': return renderStartSession();
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
       case 'reports': return renderReports();
+      // Sept 2026 handoff, Part 4: Lecturer had no records-browsing screen
+      // at all before this — reached from a new dashboard quick action
+      // ("Attendance Records"), not a bottom-nav tab (the bottom nav is
+      // already at 4 tabs).
+      case 'attendanceCatalog': return renderAttendanceCatalog();
+      case 'courseRecords': return renderCourseRecords();
       case 'notifications': return renderNotifications();
       case 'profile': return renderStaffProfile();
     }
   } else if(State.role === 'registrar'){
     switch(screenId){
       case 'dashboard': return renderRegistrarDashboard();
-      case 'records': return renderRecords();
-      case 'students': return renderStudents({ backTarget:'dashboard' });
+      // Sept 2026 handoff, Part 4: the "Records" bottom-nav tab now opens
+      // the course catalog (courses -> per-student list) instead of one
+      // flat list of every scoped record.
+      case 'records': return renderAttendanceCatalog();
+      case 'courseRecords': return renderCourseRecords();
+      case 'register': return renderRegister({ backTarget:'dashboard' });
       case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true });
+      // Sept 2026 handoff (Register/Timetable/Records), Part 2: Registrars can
+      // now edit the course catalog too, scoped to their own faculty —
+      // previously this screen was Administrator-only even though the
+      // Registrar could already create/edit class sessions that reference
+      // these same courses.
+      case 'courseCatalog': return renderCourseCatalog();
       case 'fraudCenter': return renderFraudCenter();
       case 'reports': return renderReports();
       case 'appeals': return renderAppeals();
@@ -8101,8 +8700,13 @@ function getScreenHTML(screenId){
   } else if(State.role === 'administrator'){
     switch(screenId){
       case 'dashboard': return renderAdministratorDashboard();
-      case 'staffDirectory': return renderStaffDirectory();
-      case 'userManagement': return renderUserManagement();
+      case 'register': return renderRegister({ backTarget:'dashboard' });
+      // Sept 2026 handoff, Part 4: Administrator had no records-browsing
+      // screen at all before this — catalogued by faculty, then by course
+      // within each faculty (the one role that needs the extra level).
+      case 'records': return renderAttendanceCatalog();
+      case 'facultyRecordsCatalog': return renderFacultyRecordsCatalog();
+      case 'courseRecords': return renderCourseRecords();
       case 'roleAssignments': return renderRoleAssignments();
       case 'facultiesProgrammes': return renderFacultiesProgrammes();
       case 'courseCatalog': return renderCourseCatalog();
@@ -8115,7 +8719,7 @@ function getScreenHTML(screenId){
       case 'auditSystem': return renderAuditSystem();
       case 'backups': return renderBackups();
       case 'database': return renderDatabaseManagement();
-      case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard' });
+      case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true });
       case 'notifications': return renderNotifications();
       case 'profile': return renderStaffProfile();
     }
