@@ -1306,32 +1306,38 @@ const ADMINISTRATORS = [
 
 // Flattened directory: every person in the system, tagged with role, for Administrator use only.
 function getStaffDirectory(){
-  // Status and provisioning state are read live from USERS (the actual login
-  // record), not hardcoded — a directory listing should never claim someone
-  // is "active" when no account exists for them at all, and a suspension
-  // needs to be reflected here the moment it happens.
+  // Status and provisioning state are read live from USERS (the mock/demo
+  // login records) AND from LIVE_PROVISIONED_IDS (real Supabase accounts,
+  // via isProvisionedAccount() — see loadProvisionedAccountsFromSupabase())
+  // — a directory listing should never claim someone has no account just
+  // because they weren't one of the hardcoded demo logins, and a
+  // suspension needs to be reflected here the moment it happens.
   const students = STUDENTS.map(s => {
     const account = USERS[s.reg];
+    const provisioned = isProvisionedAccount(s.reg);
     return {
       // Sept 2026 handoff, Part 1: STUDENTS records now carry a real `email`
       // field (and `mode`) rather than only ever deriving it on the fly —
       // fall back to vuEmail() for any legacy record that somehow lacks one.
       id:s.reg, name:s.name, role:"student", dept:s.dept, email: s.email || vuEmail(s.name),
-      status: account ? (account.status || 'active') : 'unprovisioned',
-      hasAccount: !!account,
+      status: account ? (account.status || 'active') : (provisioned ? 'active' : 'unprovisioned'),
+      hasAccount: provisioned,
     };
   });
   const lecturers = LECTURERS.map(l => {
     const account = USERS[l.id];
-    return { ...l, role:"lecturer", status: account ? (account.status || 'active') : (l.status || 'active'), hasAccount: !!account };
+    const provisioned = isProvisionedAccount(l.id);
+    return { ...l, role:"lecturer", status: account ? (account.status || 'active') : (provisioned ? 'active' : (l.status || 'active')), hasAccount: provisioned };
   });
   const registrars = REGISTRARS.map(r => {
     const account = USERS[r.id];
-    return { ...r, role:"registrar", status: account ? (account.status || 'active') : (r.status || 'active'), hasAccount: !!account };
+    const provisioned = isProvisionedAccount(r.id);
+    return { ...r, role:"registrar", status: account ? (account.status || 'active') : (provisioned ? 'active' : (r.status || 'active')), hasAccount: provisioned };
   });
   const administrators = ADMINISTRATORS.map(a => {
     const account = USERS[a.id];
-    return { ...a, role:"administrator", status: account ? (account.status || 'active') : (a.status || 'active'), hasAccount: !!account };
+    const provisioned = isProvisionedAccount(a.id);
+    return { ...a, role:"administrator", status: account ? (account.status || 'active') : (provisioned ? 'active' : (a.status || 'active')), hasAccount: provisioned };
   });
   return [...administrators, ...registrars, ...lecturers, ...students];
 }
