@@ -8187,7 +8187,13 @@ function navigate(screenId, opts){
   if(previousScreen === 'startSession' && screenId !== 'startSession') stopSessionTicker();
   if(previousScreen === 'startSession' && screenId !== 'startSession') stopRosterPolling();
   if(previousScreen === 'checkin' && screenId !== 'checkin') stopQrScanner();
-  if(previousScreen === 'checkin' && screenId !== 'checkin') resetStudentLiveSync();
+  // home<->checkin transitions deliberately don't reset the sync guard —
+  // the discovered LIVE_SESSION state is equally valid on either screen, no
+  // need to re-fetch just for switching between them. Leaving to anywhere
+  // else resets it, so returning later triggers a fresh discovery rather
+  // than trusting a potentially-stale state from whenever it was last checked.
+  if(previousScreen === 'checkin' && screenId !== 'checkin' && screenId !== 'home') resetStudentLiveSync();
+  if(previousScreen === 'home' && screenId !== 'home' && screenId !== 'checkin') resetStudentLiveSync();
   if(previousScreen === 'home' && screenId !== 'home') stopStudentBannerTicker();
   if(screenId !== 'startSession' && screenId !== 'checkin') removeLiveDebugPanel();
   // The analytics canvases get torn down and replaced every time this
@@ -8208,7 +8214,18 @@ function navigate(screenId, opts){
     startStudentLiveSessionSync();
     updateDebugPanel();
   }
-  if(screenId === 'home') startStudentBannerTicker();
+  if(screenId === 'home'){
+    startStudentBannerTicker();
+    // The banner now depends on knowing the real live-session state
+    // (isLiveSessionOpenForStudent()) — without this, a student who lands
+    // on Home after a reload without ever visiting Check-In first would
+    // never trigger discovery, leaving LIVE_SESSION at stale defaults and
+    // hasCheckedInToday unrestored. That produced exactly this bug: a
+    // student who already checked in would see the naive time-based "late"
+    // warning instead of "You're checked in", since getStudentBannerLecture()
+    // has no way to know they'd already checked in without this running first.
+    startStudentLiveSessionSync();
+  }
   if(screenId === 'checkin' && checkinMethod === 'qr' && isLiveSessionActive() && !State.hasCheckedInToday) startQrScanner();
   if(screenId === 'sendNotification'){ updateComposeNotificationFields('allStudents'); updateNotifPreview(); }
   // Charts need their <canvas> elements in the DOM first, which only
