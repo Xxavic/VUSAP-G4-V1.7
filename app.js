@@ -1157,32 +1157,37 @@ const STUDENTS = [{"id":1,"name":"Aisha Nakamya","reg":"VU-CSF-2401-0001-DAY","f
 // own State.user.mode — see filterLecturesForStudentMode() below.
 const SCHEDULE = [
   { day:"Monday", isToday:false, lectures:[
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", mode:null },
-    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"10:30 – 12:30", mode:null },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", mode:"day" },
+    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"10:30 – 12:30", mode:"day" },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening" },
   ]},
   { day:"Tuesday", isToday:false, lectures:[
-    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"07:00 – 11:00", mode:null },
-    { code:"BAR4302", name:"Engineering Mathematics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"14:00 – 16:00", mode:null },
+    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"07:00 – 11:00", mode:"day" },
+    { code:"BAR4302", name:"Engineering Mathematics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"14:00 – 16:00", mode:"day" },
+    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT4 - Main Building", time:"18:00 – 20:00", mode:"evening" },
   ]},
   { day:"Wednesday", isToday:true, lectures:[
-    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", status:"pending", mode:null },
-    { code:"BAR4303", name:"Marketing Management", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"11:00 – 13:00", mode:null },
+    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", status:"pending", mode:"day" },
+    { code:"BAR4303", name:"Marketing Management", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"11:00 – 13:00", mode:"day" },
     // Sept 2026 handoff, Part 1: the demo Lecturer account (Dr. Patrick
     // Mukasa) previously had only one lecture on the "today" mock day, so
     // the multi-course session-selection flow had nothing to actually pick
     // between. Added a second one of his own assigned courses (see
     // LECTURER_COURSES) later the same day so the picker/greyed-list flow
     // is real to test, not just theoretical.
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00", mode:null },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00", mode:"day" },
+    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening" },
   ]},
   { day:"Thursday", isToday:false, lectures:[
-    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"14:00 – 16:00", mode:null },
-    { code:"BAR4304", name:"Entrepreneurship", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"08:00 – 11:00", mode:null },
-    { code:"ENG4101", name:"Mechanics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"13:00 – 15:00", mode:null },
+    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"14:00 – 16:00", mode:"day" },
+    { code:"BAR4304", name:"Entrepreneurship", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"08:00 – 11:00", mode:"day" },
+    { code:"ENG4101", name:"Mechanics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"13:00 – 15:00", mode:"day" },
+    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"17:30 – 19:30", mode:"evening" },
   ]},
   { day:"Friday", isToday:false, lectures:[
-    { code:"CSC3105", name:"Operating Systems", dept:"Computer Science", lecturer:"Mr. Ivan Tumwesigye", room:"LT1 - Main Building", time:"09:00 – 11:00", mode:null },
-    { code:"BAR4305", name:"Business Statistics", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"08:00 – 10:00", mode:null },
+    { code:"CSC3105", name:"Operating Systems", dept:"Computer Science", lecturer:"Mr. Ivan Tumwesigye", room:"LT1 - Main Building", time:"09:00 – 11:00", mode:"day" },
+    { code:"BAR4305", name:"Business Statistics", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"08:00 – 10:00", mode:"day" },
+    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT4 - Main Building", time:"19:00 – 21:00", mode:"evening" },
   ]},
 ];
 
@@ -3215,6 +3220,39 @@ function renderSchedule(opts){
   // its own "Schedule Classes" dashboard row — it now lives here, on the
   // Schedules bottom-nav tab, since that's the screen it actually edits.
   const showCreateSession = !!opts.showCreateSession;
+  // Lecturer-only, opt-in: splits the week into Day / Evening sections
+  // instead of one flat per-day list. Not applied to Student (they already
+  // only ever see their own single mode, via filterLecturesForStudentMode()
+  // — sectioning would just leave one section empty) or Registrar (their
+  // Schedules tab is also editable, and this view is read-only-only, see
+  // below) unless a future request asks for it there too.
+  const groupByMode = !!opts.groupByMode;
+
+  const scheduleBody = groupByMode
+    ? ['day','evening'].map(mode => {
+        const label = mode === 'day' ? 'Day Sessions' : 'Evening Sessions';
+        const daysForMode = SCHEDULE
+          .map(d => ({ ...d, lectures: d.lectures.filter(l => l.mode === mode) }))
+          .filter(d => d.lectures.length > 0);
+        return `
+        <div class="section-title" style="margin:18px 0 8px;">${mode==='day'?ICONS.clock:ICONS.calendar} ${label}</div>
+        ${daysForMode.length
+          ? daysForMode.map(d=>scheduleDayGroup(d, showDeptFilter, false)).join('')
+          : `<div class="empty-state-sm">No ${mode} sessions scheduled</div>`}
+      `;
+      }).join('') + (() => {
+        // Slots with no mode set yet — surfaced separately rather than
+        // silently dropped from both sections above, so it's obvious which
+        // lectures still need a mode assigned.
+        const unset = SCHEDULE
+          .map(d => ({ ...d, lectures: d.lectures.filter(l => !l.mode) }))
+          .filter(d => d.lectures.length > 0);
+        return unset.length ? `
+        <div class="section-title" style="margin:18px 0 8px;">${ICONS.alertTriangle} Mode Not Set</div>
+        ${unset.map(d=>scheduleDayGroup(d, showDeptFilter, false)).join('')}
+        ` : '';
+      })()
+    : SCHEDULE.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession)).join('');
 
   return `
   <div class="app-header">
@@ -3248,7 +3286,7 @@ function renderSchedule(opts){
       </div>` : ''}
     </div>
     <div id="scheduleList">
-      ${SCHEDULE.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession)).join('')}
+      ${scheduleBody}
     </div>
   </div>
   ${showCreateSession ? `
@@ -5643,6 +5681,12 @@ function courseCatalogFromRecords(records){
 
 function facultyCatalogFromRecords(records){
   const map = new Map();
+  // Seed every real faculty first, defaulting to 0 — without this, a
+  // faculty with no attendance records yet (nothing unusual for a
+  // newer/smaller faculty in the mock data) was entirely absent from this
+  // catalog rather than showing with a "0 records" state, which is what an
+  // Admin browsing the full faculty structure would actually expect.
+  FACULTIES.forEach(f => map.set(f.key, { facultyKey: f.key, count: 0 }));
   records.forEach(r => {
     const fk = facultyKeyForProgrammeName(r.prog) || 'unassigned';
     if(!map.has(fk)) map.set(fk, { facultyKey:fk, count:0 });
@@ -8728,7 +8772,7 @@ function getScreenHTML(screenId){
     switch(screenId){
       case 'dashboard': return renderLecturerDashboard();
       case 'markAttendance': return renderMarkAttendance();
-      case 'schedule': return renderSchedule({ title:'My Timetable', subtitle:'Weekly timetable overview', backTarget:'dashboard' });
+      case 'schedule': return renderSchedule({ title:'My Timetable', subtitle:'Weekly timetable overview', backTarget:'dashboard', groupByMode:true });
       case 'register': return renderRegister({ backTarget:'dashboard' });
       case 'startSession': return renderStartSession();
       case 'announcements': return renderAnnouncements();
