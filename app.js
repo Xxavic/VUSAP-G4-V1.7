@@ -410,6 +410,30 @@ function subscribeToLiveSession(courseCode){
   updateDebugPanel();
 }
 
+// Mirrors the Student side's active-session discovery, but for the
+// Lecturer's Dashboard tile: LIVE_SESSION.active defaults to true even
+// before any real session exists (a mock-mode convenience), so this checks
+// liveSessionId too — that field only ever gets set once a broadcast row
+// is actually confirmed, either by starting one or by discovering an
+// existing one here. Runs every time the Lecturer visits the Dashboard, so
+// the tile correctly says "Current Session" if one's already running
+// (e.g. they navigated away and back, or reloaded) instead of always
+// defaulting to "Start Live Session" regardless of reality.
+// (Restored — this was dropped from a prior build; see the navigate() hook
+// comment for how the regression was found.)
+async function checkLecturerActiveSession(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const row = await liveFindActiveSession(LIVE_SESSION.courseCode);
+    if(row){
+      applyLiveSessionRow(row);
+      refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
+    }
+  } catch(e){
+    console.warn('checkLecturerActiveSession error:', e);
+  }
+}
+
 // Student side: discover the active session across the student's enrolled
 // courses, apply it, and open the Realtime subscription. Guarded so it
 // only runs once per visit to the Check-In screen (avoids re-render loops).
@@ -3662,28 +3686,60 @@ function canManagePerson(p){
   return false;
 }
 
+// Register's "provisioned" status previously only checked the mock USERS
+// object (the hardcoded demo/test login credentials) — meaning any account
+// created directly in Supabase (like Balinda's, set up mid-session) always
+// showed "Not provisioned" even though it genuinely works. This fetches the
+// real list of university_ids that have a live account, so that check
+// reflects reality instead of just the mock roster.
+let LIVE_PROVISIONED_IDS = new Set();
+
+async function loadProvisionedAccountsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('users')
+      .select('university_id');
+    if(error){ console.warn('loadProvisionedAccountsFromSupabase failed:', error); return; }
+    if(!rows) return;
+    LIVE_PROVISIONED_IDS = new Set(rows.map(r => r.university_id).filter(Boolean));
+    refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
+  } catch(e){
+    console.warn('loadProvisionedAccountsFromSupabase error:', e);
+  }
+}
+
+// Shared by both tagging functions below so they can't drift on what
+// "provisioned" means — checks the mock USERS object (demo/test accounts)
+// OR the live Supabase account list, either one counts as a real account.
+function isProvisionedAccount(id){
+  return !!USERS[id] || LIVE_PROVISIONED_IDS.has(id);
+}
+
 function tagStudentForRegister(s){
   const account = USERS[s.reg];
+  const provisioned = isProvisionedAccount(s.reg);
   return {
     id: s.reg, role: 'student', name: s.name,
     dept: s.dept, deptKey: s.deptKey, facultyKey: s.facultyKey, faculty: s.faculty,
     year: s.year, gender: s.gender, semester: s.semester, mode: s.mode,
     email: s.email || vuEmail(s.name),
     pct: s.pct, trend: s.trend,
-    status: account ? (account.status || 'active') : 'unprovisioned',
-    hasAccount: !!account,
+    status: account ? (account.status || 'active') : (provisioned ? 'active' : 'unprovisioned'),
+    hasAccount: provisioned,
     _studentId: s.id,
   };
 }
 
 function tagStaffForRegister(p, role){
   const account = USERS[p.id];
+  const provisioned = isProvisionedAccount(p.id);
   return {
     id: p.id, role, name: p.name,
     dept: p.dept, facultyKey: p.facultyKey || facultyKeyForProgrammeName(p.dept),
     email: p.email,
-    status: account ? (account.status || 'active') : (p.status || 'active'),
-    hasAccount: !!account,
+    status: account ? (account.status || 'active') : (provisioned ? 'active' : (p.status || 'active')),
+    hasAccount: provisioned,
   };
 }
 
@@ -8831,6 +8887,13 @@ function navigate(screenId, opts){
     startStudentLiveSessionSync();
   }
   if(screenId === 'checkin' && checkinMethod === 'qr' && isLiveSessionActive() && !State.hasCheckedInToday) startQrScanner();
+  // Restored — this was dropped from a prior build of the Lecturer Dashboard
+  // (a genuine regression caught during this session's review). Without it,
+  // a Lecturer who already has a session running and reloads (or navigates
+  // back to Dashboard) would see "Start Live Session" instead of "Current
+  // Session", since nothing re-checks reality on Dashboard entry.
+  if(screenId === 'dashboard' && State.role === 'lecturer') checkLecturerActiveSession();
+  if(screenId === 'register') loadProvisionedAccountsFromSupabase();
   if(screenId === 'sendNotification'){ updateComposeNotificationFields('allStudents'); updateNotifPreview(); }
   // Charts need their <canvas> elements in the DOM first, which only
   // happens after the innerHTML assignment above — safe to call synchronously
