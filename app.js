@@ -2297,6 +2297,57 @@ function editCourse(code, updates){
   return { ok: true };
 }
 
+// Course code is used as the connecting identifier across the whole mock
+// data layer, not just COURSES itself — nothing automatically follows a
+// rename, so a course code that just gets swapped in COURSES alone would
+// silently orphan every timetable slot, record, and appeal that still
+// points at the old string. This walks every one of those places and
+// updates the reference in the same action, so nothing goes stale.
+function cascadeRenameCourseCode(oldCode, newCode){
+  if(!oldCode || !newCode || oldCode === newCode) return 0;
+  let touched = 0;
+
+  SCHEDULE.forEach(day => {
+    day.lectures.forEach(l => {
+      if(l.code === oldCode){ l.code = newCode; touched++; }
+    });
+  });
+
+  RECORDS.forEach(r => {
+    if(r.code === oldCode){ r.code = newCode; touched++; }
+  });
+
+  RECENT_SUBMISSIONS.forEach(s => {
+    if(s.code === oldCode){ s.code = newCode; touched++; }
+  });
+
+  STUDENT_COURSES.forEach(c => {
+    if(c.code === oldCode){ c.code = newCode; touched++; }
+  });
+
+  LECTURE_OPTIONS.forEach(l => {
+    if(l.courseCode === oldCode){
+      l.courseCode = newCode;
+      l.id = newCode.toLowerCase();
+      l.label = l.label.replace(oldCode, newCode);
+      touched++;
+    }
+  });
+
+  // ATTENDANCE_APPEALS stores course as a combined display string, e.g.
+  // "CSC3101 — Data Structures & Algorithms" — not a separate code field,
+  // so this only swaps the code portion at the start of that string,
+  // leaving the course name (and everything else about the appeal) intact.
+  ATTENDANCE_APPEALS.forEach(a => {
+    if(a.course && a.course.startsWith(oldCode + ' — ')){
+      a.course = newCode + a.course.slice(oldCode.length);
+      touched++;
+    }
+  });
+
+  return touched;
+}
+
 function deleteCourse(code){
   if(courseHasDependents(code)){
     return { error: `Can't delete ${code} — it has scheduled sessions or attendance records. Remove those first.` };
@@ -6923,7 +6974,8 @@ function openCourseFormSheet(code){
     body.innerHTML = `
       <div class="field" style="margin-bottom:14px;">
         <label>Course Code <span class="req">*</span></label>
-        <input class="input" id="courseCodeInput" value="${course ? course.code : ''}" placeholder="e.g. CSC3106" style="text-transform:uppercase;" ${course ? 'disabled' : ''} />
+        <input class="input" id="courseCodeInput" value="${course ? course.code : ''}" placeholder="e.g. CSC3106" style="text-transform:uppercase;" />
+        ${course ? `<div class="s" style="margin-top:4px;">Changing this updates every timetable slot, record, and appeal that references ${course.code}.</div>` : ''}
       </div>
       <div class="field" style="margin-bottom:14px;">
         <label>Course Name <span class="req">*</span></label>
@@ -6984,7 +7036,26 @@ function submitCourseForm(existingCode){
 
   let result;
   if(existingCode){
-    result = editCourse(existingCode, { name, programmeKey, programme: prog ? prog.name : null, lecturer: lecturer || null, room: room || null, mode: mode || null });
+    const newCode = document.getElementById('courseCodeInput')?.value.trim().toUpperCase();
+    if(!newCode){
+      showToast("Course code can't be empty");
+      return;
+    }
+    if(newCode !== existingCode && COURSES.find(c => c.code === newCode)){
+      showToast(`${newCode} is already in use by another course`);
+      return;
+    }
+    let touched = 0;
+    if(newCode !== existingCode){
+      touched = cascadeRenameCourseCode(existingCode, newCode);
+    }
+    result = editCourse(existingCode, { code: newCode, name, programmeKey, programme: prog ? prog.name : null, lecturer: lecturer || null, room: room || null, mode: mode || null });
+    if(!result.error && touched > 0){
+      showToast(`${existingCode} renamed to ${newCode} — updated ${touched} reference${touched===1?'':'s'} across the app`);
+      closeSheet('courseFormSheet');
+      navigate('courseCatalog', { replace: true });
+      return;
+    }
   } else {
     const code = document.getElementById('courseCodeInput')?.value.trim();
     if(!name){
