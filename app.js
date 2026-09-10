@@ -440,6 +440,21 @@ async function checkLecturerActiveSession(){
     if(row){
       applyLiveSessionRow(row);
       refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
+    } else if(LIVE_SESSION.active || LIVE_SESSION.liveSessionId){
+      // This is the fix for a real bug found in testing: endSession() sets
+      // LIVE_SESSION.active = false and writes that to the database, but
+      // never clears liveSessionId — so within the same browser session
+      // (no reload), the client kept believing a session was still active
+      // even after the database correctly showed nothing running. Because
+      // this function previously only ever ADDED state when it found an
+      // active broadcast, it never corrected that staleness — discovering
+      // "nothing is active" needs to actively clear stale local state, not
+      // just silently do nothing. This caused "Start Live Session" to skip
+      // the lecture picker entirely and jump straight into a stale session.
+      LIVE_SESSION.active = false;
+      LIVE_SESSION.liveSessionId = null;
+      LIVE_SESSION.serverStartedAt = null;
+      LIVE_SESSION.mode = null;
     }
   } catch(e){
     console.warn('checkLecturerActiveSession error:', e);
@@ -4929,7 +4944,15 @@ function endSession(){
   LIVE_SESSION.active = false;
   stopSessionTicker();
   stopRosterPolling();
+  // liveWriteSession() branches on LIVE_SESSION.liveSessionId to decide
+  // UPDATE vs INSERT — it must run BEFORE that field is cleared below, or
+  // it would incorrectly insert a new row instead of marking the real one
+  // inactive, leaving the actual session permanently stuck as active in
+  // the database (the exact class of bug this whole fix is closing).
   liveWriteSession();
+  LIVE_SESSION.liveSessionId = null;
+  LIVE_SESSION.serverStartedAt = null;
+  LIVE_SESSION.mode = null;
   showToast("Session ended");
   navigate('dashboard');
 }
