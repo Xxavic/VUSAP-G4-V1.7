@@ -4940,7 +4940,7 @@ function stopRosterPolling(){
   }
 }
 
-function endSession(){
+async function endSession(){
   LIVE_SESSION.active = false;
   stopSessionTicker();
   stopRosterPolling();
@@ -4949,7 +4949,14 @@ function endSession(){
   // it would incorrectly insert a new row instead of marking the real one
   // inactive, leaving the actual session permanently stuck as active in
   // the database (the exact class of bug this whole fix is closing).
-  liveWriteSession();
+  //
+  // It's also awaited now: navigate('dashboard') below triggers
+  // checkLecturerActiveSession(), which re-SELECTs this course's active
+  // row. Firing liveWriteSession() without waiting for it left a window
+  // where that SELECT could run before the UPDATE committed, so it still
+  // found the row active=true and reapplied it onto LIVE_SESSION — undoing
+  // the reset just below and reviving the very staleness this fix closes.
+  await liveWriteSession();
   LIVE_SESSION.liveSessionId = null;
   LIVE_SESSION.serverStartedAt = null;
   LIVE_SESSION.mode = null;
