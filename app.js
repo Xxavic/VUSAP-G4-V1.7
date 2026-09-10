@@ -1417,7 +1417,17 @@ function isLiveSessionActive(){
 }
 
 function isLiveSessionOpenForStudent(){
-  return isLiveSessionActive() && STUDENT_COURSES.some(c => c.code === LIVE_SESSION.courseCode);
+  // Same reasoning as the Live-badge fix above: a course can now have both
+  // a Day and Evening section, so course code alone isn't enough to know
+  // this broadcast is actually relevant to THIS student. The downstream
+  // mismatch check in resolveCheckInOutcome() would still correctly block
+  // a genuine mode mismatch if they tried to check in anyway — but without
+  // this, the banner itself would misleadingly invite them to in the first
+  // place. Backward-compatible: if either side's mode isn't set (older
+  // data, or a session started before mode tracking existed), don't block
+  // on it — only compare when there's actually something to compare.
+  const modeOk = !LIVE_SESSION.mode || !State.user?.mode || LIVE_SESSION.mode === State.user.mode;
+  return isLiveSessionActive() && STUDENT_COURSES.some(c => c.code === LIVE_SESSION.courseCode) && modeOk;
 }
 
 // ============================================================
@@ -3008,7 +3018,7 @@ function lectureListMarkup(lectures, sessionActive, opts){
   opts = opts || {};
   if(!lectures.length) return `<div class="empty-state"><div class="t">No lectures today</div></div>`;
   return lectures.map(l => {
-    const isLiveOne = sessionActive && l.code === LIVE_SESSION.courseCode;
+    const isLiveOne = sessionActive && l.code === LIVE_SESSION.courseCode && l.mode === LIVE_SESSION.mode;
     const isDisabled = sessionActive && !isLiveOne;
     const closeAttr = opts.sheetPicker ? "closeSheet('startSessionPickerSheet');" : '';
     const clickAttr = isDisabled ? '' : `onclick="${closeAttr}handleLectureRowTap('${l.code}')"`;
@@ -4289,7 +4299,7 @@ function renderStudentHome(){
             <div class="lecture-name">${l.name}</div>
             <div class="lecture-meta">${ICONS.clock}${l.time} · ${l.room}</div>
           </div>
-          ${l.code===LIVE_SESSION.courseCode && isLiveSessionActive() ? '<span class="badge today">Live</span>' : ''}
+          ${l.code===LIVE_SESSION.courseCode && l.mode===LIVE_SESSION.mode && isLiveSessionActive() ? '<span class="badge today">Live</span>' : ''}
         </div>`).join('') : `<div class="empty-state" style="padding:14px;"><div class="t" style="font-size:12.5px;">No classes scheduled today</div></div>`}
     </div>
 
@@ -4966,6 +4976,14 @@ async function startSessionForLecture(lecture){
   LIVE_SESSION.courseCode = lecture.code;
   LIVE_SESSION.courseName = lecture.name;
   LIVE_SESSION.room = lecture.room;
+  // Needed once a course can have both a Day and Evening section on the
+  // same day (e.g. CSC3103 at 08:00 and again at 17:00) — without this,
+  // the "Live" badge matched on course code alone and lit up BOTH entries
+  // simultaneously, since nothing distinguished which specific slot was
+  // actually the one broadcasting. live_qr_sessions itself has no mode
+  // column (this is purely a client-side display concern, not persisted),
+  // so this is set directly from the lecture the Lecturer actually picked.
+  LIVE_SESSION.mode = lecture.mode || null;
 
   // Sept 2026 handoff, Part 1: rediscover this course's own already-active
   // broadcast before minting a new one. Previously this unconditionally
