@@ -114,7 +114,10 @@ function normalizeProfile(profile, universityId) {
     year: profile.year || null,
     // Sept 2026 handoff, Part 3: 'day' | 'evening' | null — null means no
     // live value yet (existing rows predate this column). Compared against
-    // classes.mode in resolveCheckInOutcome() for the Day/Evening mismatch check.
+    // LIVE_SESSION.mode (the specific broadcast's mode) in
+    // resolveCheckInOutcome() for the Day/Evening mismatch check — not
+    // classes.mode, which can't correctly represent a course offered in
+    // both Day and Evening slots.
     mode: profile.mode || null,
     mustChangePassword: profile.must_change_password || false,
     status: profile.status || 'active',
@@ -304,6 +307,7 @@ async function liveWriteSession(){
     course_code: LIVE_SESSION.courseCode,
     course_name: LIVE_SESSION.courseName,
     room: LIVE_SESSION.room,
+    mode: LIVE_SESSION.mode || null,
     pin: LIVE_SESSION.pin,
     token: LIVE_SESSION.token,
     active: LIVE_SESSION.active,
@@ -372,6 +376,7 @@ function applyLiveSessionRow(row){
   LIVE_SESSION.courseCode = row.course_code;
   LIVE_SESSION.courseName = row.course_name;
   LIVE_SESSION.room = row.room;
+  LIVE_SESSION.mode = row.mode || null; // see liveWriteSession() — the actual source of truth for mode, now stored on the row itself rather than only ever known on the Lecturer's own device
   LIVE_SESSION.pin = row.pin;
   LIVE_SESSION.token = row.token;
   LIVE_SESSION.active = row.active;
@@ -820,30 +825,38 @@ async function resolveCheckInOutcome(){
     }
 
     // Step 3 — scanned class doesn't match the student's own programme or
-    // Day/Evening mode (Part 3). classes.mode/programme are both nullable —
-    // null means "no restriction," so a class/account that predates this
-    // column never blocks anyone. Missing student-side data (no dept/mode
-    // yet) is treated the same way: skip that half of the check rather
-    // than blocking a legitimate check-in over incomplete profile data.
+    // Day/Evening mode (Part 3). The mode comparison is against
+    // LIVE_SESSION.mode (this specific broadcast's mode, now stored on
+    // live_qr_sessions itself) rather than classes.mode — a single,
+    // course-level mode value can't correctly represent a course that's
+    // genuinely offered in both Day and Evening slots (e.g. CSC3103 has
+    // both), so comparing against the course's static value would flag a
+    // legitimate check-in as a mismatch depending purely on which of that
+    // course's own sessions happened to set classes.mode last. Programme
+    // is still a valid single-value-per-course check — a course only ever
+    // belongs to one programme — so that half still queries classes.
+    // Both sides nullable: null means "no restriction," so a class/account
+    // that predates this column never blocks anyone. Missing student-side
+    // data (no dept/mode yet) is treated the same way: skip that half of
+    // the check rather than blocking a legitimate check-in over incomplete
+    // profile data.
     const { data: classRow, error: e3 } = await SUPABASE_CLIENT
       .from('classes')
-      .select('id, mode, programmes(name)')
+      .select('id, programmes(name)')
       .eq('code', courseCode)
       .maybeSingle();
     if(e3) console.warn('resolveCheckInOutcome: classes lookup failed:', e3);
-    if(classRow){
-      const programmeMismatch = classRow.programmes?.name && State.user.dept
-        && classRow.programmes.name !== State.user.dept;
-      const modeMismatch = classRow.mode && State.user.mode
-        && classRow.mode !== State.user.mode;
-      if(programmeMismatch || modeMismatch){
-        return {
-          outcome: 'appeal',
-          reason: modeMismatch
-            ? `Checked into ${classRow.mode === 'evening' ? 'an' : 'a'} ${classRow.mode} session for ${courseName || courseCode} but registered as ${State.user.mode} — please explain.`
-            : `Checked into a session outside your registered programme (${courseName || courseCode}) — please explain.`,
-        };
-      }
+    const modeMismatch = LIVE_SESSION.mode && State.user.mode
+      && LIVE_SESSION.mode !== State.user.mode;
+    const programmeMismatch = classRow?.programmes?.name && State.user.dept
+      && classRow.programmes.name !== State.user.dept;
+    if(programmeMismatch || modeMismatch){
+      return {
+        outcome: 'appeal',
+        reason: modeMismatch
+          ? `Checked into ${LIVE_SESSION.mode === 'evening' ? 'an' : 'a'} ${LIVE_SESSION.mode} session for ${courseName || courseCode} but registered as ${State.user.mode} — please explain.`
+          : `Checked into a session outside your registered programme (${courseName || courseCode}) — please explain.`,
+      };
     }
 
     return { outcome: 'proceed' };
