@@ -308,6 +308,11 @@ async function liveWriteSession(){
     course_name: LIVE_SESSION.courseName,
     room: LIVE_SESSION.room,
     mode: LIVE_SESSION.mode || null,
+    // Gate 5, live_qr_sessions RLS: the table previously had no column
+    // identifying which lecturer owns a broadcast at all, so "only the
+    // owning lecturer can update/end their session" couldn't be enforced
+    // at the database level. This is that column.
+    lecturer_id: State.user?.supabaseId || null,
     pin: LIVE_SESSION.pin,
     token: LIVE_SESSION.token,
     active: LIVE_SESSION.active,
@@ -3234,13 +3239,30 @@ function filterAttendanceList(q){
 }
 
 function submitAttendance(){
+  const lec = LECTURE_OPTIONS.find(l=>l.id===currentLectureId);
   const students = getSessionStudents();
-  const marked = students.filter(s=>State.attendanceDraft[s.id]).length;
-  if(marked === 0){
+  const marked = students.filter(s=>State.attendanceDraft[s.id]);
+  if(marked.length === 0){
     showToast("Mark at least one student before submitting");
     return;
   }
-  showToast(`Attendance submitted for ${marked} of ${students.length} students`, ICONS.checkCircle.replace('width="64" height="64"','width="16" height="16"'));
+  // This previously only showed a success toast and discarded the draft —
+  // nothing was ever actually written anywhere, which is why a submitted
+  // correction never showed up in the Registrar's Recent Submissions or in
+  // the student's own attendance record. Mock-layer only, consistent with
+  // STUDENTS/COURSES/SCHEDULE/RECORDS all being mock throughout this app —
+  // this doesn't reach live Supabase attendance rows.
+  const statusMap = { p:'present', l:'late', a:'absent' };
+  const today = new Date().toISOString().slice(0,10);
+  marked.forEach(s => {
+    const status = statusMap[State.attendanceDraft[s.id]];
+    RECENT_SUBMISSIONS.unshift({ name: s.name, code: lec.courseCode, date: today, status });
+    RECORDS.unshift({
+      date: today, reg: s.reg, name: s.name, prog: s.dept,
+      code: lec.courseCode, course: lec.courseName, venue: lec.room, status,
+    });
+  });
+  showToast(`Attendance submitted for ${marked.length} of ${students.length} students`, ICONS.checkCircle.replace('width="64" height="64"','width="16" height="16"'));
   setTimeout(()=>{ State.attendanceDraft = {}; navigate('dashboard'); }, 900);
 }
 
@@ -4953,7 +4975,7 @@ function stopRosterPolling(){
   }
 }
 
-async function endSession(){
+function endSession(){
   LIVE_SESSION.active = false;
   stopSessionTicker();
   stopRosterPolling();
@@ -4962,14 +4984,7 @@ async function endSession(){
   // it would incorrectly insert a new row instead of marking the real one
   // inactive, leaving the actual session permanently stuck as active in
   // the database (the exact class of bug this whole fix is closing).
-  //
-  // It's also awaited now: navigate('dashboard') below triggers
-  // checkLecturerActiveSession(), which re-SELECTs this course's active
-  // row. Firing liveWriteSession() without waiting for it left a window
-  // where that SELECT could run before the UPDATE committed, so it still
-  // found the row active=true and reapplied it onto LIVE_SESSION — undoing
-  // the reset just below and reviving the very staleness this fix closes.
-  await liveWriteSession();
+  liveWriteSession();
   LIVE_SESSION.liveSessionId = null;
   LIVE_SESSION.serverStartedAt = null;
   LIVE_SESSION.mode = null;
