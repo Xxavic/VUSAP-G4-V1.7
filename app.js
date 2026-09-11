@@ -8879,19 +8879,32 @@ function submitNewSession(e){
   // timetable_slots trigger (start1 < end2 && start2 < end1), so a slot
   // moved into an already-occupied room/time gets rejected here too, not
   // just once the live table exists.
+  //
+  // Lecturer-conflict check, same overlap rule: a lecturer can't teach two
+  // overlapping sessions even in two DIFFERENT rooms — they're one person,
+  // physically in one place at a time. This is a separate check from the
+  // room one above (different room doesn't save it if it's the same
+  // lecturer double-booked).
   const refDay = new Date();
   const newRange = parseLectureTimeRange(`${startTime} – ${endTime}`, refDay);
   const conflictDayEntry = SCHEDULE.find(d => d.day === day);
   if(newRange && conflictDayEntry){
-    const conflict = conflictDayEntry.lectures.find((l, i) => {
-      if(isEdit && day === editDay && i === parseInt(editIndex, 10)) return false; // skip the slot being edited itself
-      if(l.room !== room) return false;
+    const overlaps = (l) => {
       const existingRange = parseLectureTimeRange(l.time, refDay);
       if(!existingRange) return false;
       return newRange.start < existingRange.end && existingRange.start < newRange.end;
-    });
-    if(conflict){
-      showToast(`${room} is already booked ${conflict.time} by ${conflict.code} on ${day}`);
+    };
+    const isBeingEdited = (i) => isEdit && day === editDay && i === parseInt(editIndex, 10);
+
+    const roomConflict = conflictDayEntry.lectures.find((l, i) => !isBeingEdited(i) && l.room === room && overlaps(l));
+    if(roomConflict){
+      showToast(`${room} is already booked ${roomConflict.time} by ${roomConflict.code} on ${day}`);
+      return false;
+    }
+
+    const lecturerConflict = conflictDayEntry.lectures.find((l, i) => !isBeingEdited(i) && l.lecturer === lecturer && overlaps(l));
+    if(lecturerConflict){
+      showToast(`${lecturer} is already teaching ${lecturerConflict.code} at ${lecturerConflict.time} on ${day}`);
       return false;
     }
   }
