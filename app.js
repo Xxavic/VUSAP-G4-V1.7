@@ -8874,6 +8874,28 @@ function submitNewSession(e){
   if(!room){ showToast("Enter a room"); return false; }
   if(!startTime || !endTime || startTime >= endTime){ showToast("End time must be after start time"); return false; }
 
+  // Room-conflict check: no two slots on the same day, in the same room,
+  // can have overlapping times — same overlap rule as the live
+  // timetable_slots trigger (start1 < end2 && start2 < end1), so a slot
+  // moved into an already-occupied room/time gets rejected here too, not
+  // just once the live table exists.
+  const refDay = new Date();
+  const newRange = parseLectureTimeRange(`${startTime} – ${endTime}`, refDay);
+  const conflictDayEntry = SCHEDULE.find(d => d.day === day);
+  if(newRange && conflictDayEntry){
+    const conflict = conflictDayEntry.lectures.find((l, i) => {
+      if(isEdit && day === editDay && i === parseInt(editIndex, 10)) return false; // skip the slot being edited itself
+      if(l.room !== room) return false;
+      const existingRange = parseLectureTimeRange(l.time, refDay);
+      if(!existingRange) return false;
+      return newRange.start < existingRange.end && existingRange.start < newRange.end;
+    });
+    if(conflict){
+      showToast(`${room} is already booked ${conflict.time} by ${conflict.code} on ${day}`);
+      return false;
+    }
+  }
+
   const course = COURSES.find(c => c.code === courseCode);
   const timeStr = `${startTime} – ${endTime}`;
 
