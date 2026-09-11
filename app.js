@@ -44,10 +44,9 @@ async function authSignIn(universityId, password) {
       // <id>@vusap.internal address every demo account uses) OR a real email
       // address typed directly — matches what the "Email / University ID"
       // label already promises, and matches authRequestPasswordReset()'s
-      // existing handling of the same ambiguity.
-      const email = universityId.includes('@')
-        ? universityId.trim()
-        : universityIdToAuthEmail(universityId.trim());
+      // existing handling of the same ambiguity. Shared via
+      // normalizeAuthIdentifier() so both places can't drift apart.
+      const email = normalizeAuthIdentifier(universityId);
       const { data, error } = await SUPABASE_CLIENT.auth.signInWithPassword({ email, password });
       if (error) return { user: null, role: null, error: error.message };
 
@@ -130,6 +129,50 @@ function normalizeProfile(profile, universityId) {
   };
 }
 
+// Shared by authSignIn() and authRequestPasswordReset() so their identical
+// "is this a real email or a plain university ID" handling can't drift
+// apart from each other.
+function normalizeAuthIdentifier(identifier) {
+  return identifier.includes('@')
+    ? identifier.trim()
+    : universityIdToAuthEmail(identifier.trim());
+}
+
+// Small, deliberately minimal error-handling helpers — used sparingly (see
+// authUpdatePassword() below), not as a blanket replacement for the
+// specific, carefully-worded console.warn() calls throughout this file.
+function logError(context, error) {
+  console.warn(`${context} failed:`, error);
+}
+
+function handleDatabaseError(error, context) {
+  if (error) {
+    logError(context, error);
+    return true; // error occurred
+  }
+  return false; // no error
+}
+
+// Dark mode toggle function
+function toggleDarkMode() {
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('vusap-theme', newTheme);
+  showToast(newTheme === 'dark' ? 'Dark mode enabled' : 'Light mode enabled');
+}
+
+// Initialize theme from localStorage or system preference
+function initializeTheme() {
+  const savedTheme = localStorage.getItem('vusap-theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+}
+
 // Sign out of Supabase session (and clear mock state).
 async function authSignOut() {
   if (LIVE_BACKEND) {
@@ -143,9 +186,7 @@ async function authSignOut() {
 async function authRequestPasswordReset(identifier) {
   if (LIVE_BACKEND) {
     try {
-      const email = identifier.includes('@')
-        ? identifier.trim()
-        : universityIdToAuthEmail(identifier.trim());
+      const email = normalizeAuthIdentifier(identifier);
       const { error } = await SUPABASE_CLIENT.auth.resetPasswordForEmail(email, {
         redirectTo: `${location.origin}${location.pathname}`,
       });
@@ -178,8 +219,9 @@ async function authUpdatePassword(newPassword) {
           .from('users')
           .update({ must_change_password: false })
           .eq('id', State.user.supabaseId);
-        if (profileError) console.warn('Clearing must_change_password failed:', profileError);
-        else State.user.mustChangePassword = false;
+        if (!handleDatabaseError(profileError, 'Clearing must_change_password')) {
+          State.user.mustChangePassword = false;
+        }
       }
       return { ok: true };
     } catch(e) {
@@ -1044,6 +1086,137 @@ async function loadFacultiesAndProgrammesFromSupabase(){
 // ------------------------------------------------------------
 const STUDENT_COURSE_COLORS = ['#3b82f6', '#8b5cf6', '#0f766e', '#d97706', '#dc2626', '#0891b2', '#c026d3', '#65a30d'];
 
+async function loadStudentsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('users')
+      .select('*')
+      .eq('role', 'student')
+      .order('university_id');
+
+    if(error){
+      console.warn('Students fetch failed, keeping mock STUDENTS:', error);
+      return;
+    }
+    if(!rows || rows.length === 0){
+      // Table reachable but no student rows yet — keep mock data
+      return;
+    }
+
+    // Fetch attendance statistics for all students in one batch query
+    // This computes pct (present/total sessions) and trend (vs prior period)
+    const studentIds = rows.map(r => r.id);
+    let attendanceStats = {};
+    try {
+      const { data: attRows, error: attErr } = await SUPABASE_CLIENT
+        .from('attendance')
+        .select('student_id, status, marked_at')
+        .in('student_id', studentIds);
+      
+      if(!attErr && attRows){
+        // Group by student and compute statistics
+        attRows.forEach(a => {
+          if(!attendanceStats[a.student_id]){
+            attendanceStats[a.student_id] = { present: 0, total: 0, recentPresent: 0, recentTotal: 0, olderPresent: 0, olderTotal: 0 };
+          }
+          attendanceStats[a.student_id].total++;
+          if(a.status === 'present' || a.status === 'late'){
+            attendanceStats[a.student_id].present++;
+          }
+          
+          // Split into recent (last 30 days) vs older for trend calculation
+          const now = new Date();
+          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          if(a.marked_at >= thirtyDaysAgo){
+            attendanceStats[a.student_id].recentTotal++;
+            if(a.status === 'present' || a.status === 'late'){
+              attendanceStats[a.student_id].recentPresent++;
+            }
+          } else {
+            attendanceStats[a.student_id].olderTotal++;
+            if(a.status === 'present' || a.status === 'late'){
+              attendanceStats[a.student_id].olderPresent++;
+            }
+          }
+        });
+      }
+    } catch(e){
+      console.warn('Attendance stats fetch failed, students will show no attendance data:', e);
+      // Continue without attendance stats — students will have pct/trend = null
+    }
+
+    // Resolve programme info from the already-live PROGRAMMES array
+    // (users.program may hold a programme key or name; resolve both ways)
+    const resolveProgramme = (programField) => {
+      if(!programField) return { deptKey: null, dept: null };
+      const byKey = PROGRAMMES.find(p => p.key === programField);
+      if(byKey) return { deptKey: byKey.key, dept: byKey.name };
+      const byName = PROGRAMMES.find(p => p.name === programField);
+      if(byName) return { deptKey: byName.key, dept: byName.name };
+      return { deptKey: null, dept: null };
+    };
+
+    // Resolve faculty info from the already-live FACULTIES array
+    const resolveFaculty = (facultyKey) => {
+      if(!facultyKey) return { facultyKey: null, faculty: null };
+      const fac = FACULTIES.find(f => f.key === facultyKey);
+      return { facultyKey: fac ? fac.key : null, faculty: fac ? fac.name : null };
+    };
+
+    // Merge live students into the existing STUDENTS array
+    // rather than fully replacing it — live students replace their matching
+    // mock entry by reg (university_id), non-matching mock entries stay intact
+    rows.forEach(row => {
+      const programmeInfo = resolveProgramme(row.program);
+      const facultyInfo = resolveFaculty(row.faculty_key);
+      
+      // Compute attendance percentage and trend
+      let pct = null;
+      let trend = null;
+      const stats = attendanceStats[row.id];
+      if(stats && stats.total > 0){
+        pct = Math.round((stats.present / stats.total) * 100);
+        // Trend: compare recent (last 30 days) vs older period
+        if(stats.recentTotal > 0 && stats.olderTotal > 0){
+          const recentPct = (stats.recentPresent / stats.recentTotal) * 100;
+          const olderPct = (stats.olderPresent / stats.olderTotal) * 100;
+          trend = recentPct >= olderPct ? 'up' : 'down';
+        }
+        // If insufficient data for trend, leave it as null (not 'up')
+      }
+      
+      const existingIndex = STUDENTS.findIndex(s => s.reg === row.university_id);
+      const liveStudent = {
+        id: existingIndex >= 0 ? STUDENTS[existingIndex].id : STUDENTS.length + 1, // Keep existing ID if replacing, otherwise assign new
+        name: row.name || '',
+        reg: row.university_id || '',
+        facultyKey: facultyInfo.facultyKey,
+        faculty: facultyInfo.faculty,
+        dept: programmeInfo.dept,
+        deptKey: programmeInfo.deptKey,
+        year: row.year || null, // null if not set, not a fabricated default
+        pct: pct, // Computed from attendance table — null if no attendance rows
+        trend: trend, // Computed from attendance table — null if no attendance rows or insufficient data
+        gender: row.gender || null,
+        semester: row.semester || null,
+        mode: row.mode || null,
+        email: row.email || '',
+      };
+      
+      if(existingIndex >= 0){
+        // Replace existing mock entry with live data
+        STUDENTS[existingIndex] = liveStudent;
+      } else {
+        // Append new live student (no matching mock entry)
+        STUDENTS.push(liveStudent);
+      }
+    });
+  } catch(e){
+    console.warn('loadStudentsFromSupabase error, keeping mock STUDENTS:', e);
+  }
+}
+
 async function loadEnrollmentsFromSupabase(){
   if(!LIVE_BACKEND || !State.user || !State.user.supabaseId) return;
   try {
@@ -1150,6 +1323,7 @@ const ICONS = {
   fileText: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>`,
   fileSpreadsheet: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 13v4"/></svg>`,
   alertTriangle: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`,
   settings: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 005 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 5a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09A1.65 1.65 0 0015 5a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09A1.65 1.65 0 0019.4 15z"/></svg>`,
   graduation: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
@@ -2930,6 +3104,7 @@ const STAFF_ROLE_META = {
 function renderStaffProfile(){
   const u = State.user;
   const meta = STAFF_ROLE_META[State.role] || { label:"Staff", sub:"", icon:ICONS.user };
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
   return `
   <div class="app-header">
     <div class="header-back">
@@ -2953,6 +3128,19 @@ function renderStaffProfile(){
         ${u.dept ? `<div class="info-list-row"><span class="k">${ICONS.building} Department</span><span class="v">${u.dept}</span></div>` : ''}
         ${u.facultyKey ? `<div class="info-list-row"><span class="k">${ICONS.building} Faculty</span><span class="v">${facultyName(u.facultyKey)}</span></div>` : ''}
         <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${vuEmail(u.name)}</span></div>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="section-title">${ICONS.settings} Settings</div>
+      <div class="info-list">
+        <div class="info-list-row">
+          <span class="k">${ICONS.moon} Dark Mode</span>
+          <div class="toggle-wrap">
+            <input type="checkbox" id="darkModeToggle" ${currentTheme === 'dark' ? 'checked' : ''} onchange="toggleDarkMode()">
+            <div class="toggle-slider"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3561,7 +3749,7 @@ function studentRegisterRow(s){
     <div class="avatar">${initials(s.name)}</div>
     <div class="student-info">
       <div class="student-name">${s.name}</div>
-      <div class="student-meta">${s.reg} · ${s.year} · ${s.gender || '—'} · ${s.semester || '—'}</div>
+      <div class="student-meta">${s.reg} · ${s.year || '—'} · ${s.gender || '—'} · ${s.semester || '—'}</div>
       <span class="badge dept ${deptBadgeCls}" style="margin-top:4px;display:inline-block;">${s.dept}</span>
     </div>
     ${hasPct ? `
@@ -3619,6 +3807,7 @@ function renderEditStudentFormBody(s){
         <div class="field">
           <label>Year of Study</label>
           <select class="select" id="editStudentYear">
+            <option value="" ${!s.year?'selected':''}>— Not set —</option>
             <option ${s.year==='Year 1'?'selected':''}>Year 1</option>
             <option ${s.year==='Year 2'?'selected':''}>Year 2</option>
             <option ${s.year==='Year 3'?'selected':''}>Year 3</option>
@@ -3669,7 +3858,7 @@ function submitEditStudent(e, studentId){
   s.name = name;
   s.email = email || vuEmail(name);
   if(prog){ s.dept = prog.name; s.deptKey = prog.key; s.facultyKey = prog.facultyKey; s.faculty = prog.facultyName; }
-  s.year = document.getElementById('editStudentYear').value;
+  s.year = document.getElementById('editStudentYear').value || null;
   s.mode = document.getElementById('editStudentMode').value;
   s.gender = document.getElementById('editStudentGender').value;
   s.semester = document.getElementById('editStudentSemester').value;
@@ -4338,7 +4527,7 @@ function renderStudentHome(){
       <div class="profile-reg">${u.reg}</div>
       <div class="profile-meta-row">
         <span class="tag-pill">${u.dept}</span>
-        <span class="tag-pill">${u.year}</span>
+        <span class="tag-pill">${u.year || '—'}</span>
       </div>
       ${u.is_class_coordinator ? `<div class="coordinator-badge" style="margin-top:10px;">${ICONS.shield.replace(/<svg /,'<svg style="width:12px;height:12px;" ')} Class Coordinator</div>` : ''}
     </div>
@@ -4511,7 +4700,7 @@ function renderStudentProfile(){
         <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${u.name}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.pin} Registration No.</span><span class="v">${u.reg}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.book} Programme</span><span class="v">${u.dept}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.calendar} Year of Study</span><span class="v">${u.year}</span></div>
+        <div class="info-list-row"><span class="k">${ICONS.calendar} Year of Study</span><span class="v">${u.year || '—'}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${vuEmail(u.name)}</span></div>
       </div>
     </div>
@@ -4519,12 +4708,11 @@ function renderStudentProfile(){
     <div class="card card-pad">
       <div class="section-title">${ICONS.settings} Preferences</div>
       <div class="info-list-row">
-        <span class="k">${ICONS.bell} Push Notifications</span>
-        <label style="position:relative; display:inline-block; width:42px; height:24px;">
-          <input type="checkbox" checked style="opacity:0;width:0;height:0;" onchange="showToast(this.checked ? 'Notifications enabled' : 'Notifications disabled')">
-          <span style="position:absolute;inset:0;background:var(--theme-primary);border-radius:999px;"></span>
-          <span style="position:absolute;top:3px;right:3px;width:18px;height:18px;background:#fff;border-radius:50%;"></span>
-        </label>
+        <span class="k">${ICONS.moon} Dark Mode</span>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="darkModeToggle" ${(document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'checked' : ''} onchange="toggleDarkMode()">
+          <div class="toggle-slider"></div>
+        </div>
       </div>
     </div>
 
@@ -9304,6 +9492,9 @@ function boot(){
 
 // close sheet on overlay tap
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Initialize theme on app load
+  initializeTheme();
+
   document.getElementById('sheetOverlay').addEventListener('click', ()=>{
     if(openSheetId){
       closeSheet(openSheetId);
@@ -9322,6 +9513,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // reads FACULTIES/PROGRAMMES fresh on each render, a later-resolving fetch
   // just takes effect on the next render with no extra wiring needed.
   loadFacultiesAndProgrammesFromSupabase();
+  // Gate 6: live STUDENTS loader — merges live student accounts into the
+  // existing mock roster (see the function itself for why merge, not
+  // replace: with only a handful of real accounts so far, a full replace
+  // would shrink the visible roster from hundreds down to a handful the
+  // moment this succeeds, which is never what should happen silently).
+  loadStudentsFromSupabase();
 
   resumeSupabaseSession().then(() => {
     if(!State.role) renderApp(); // no session found — show login
