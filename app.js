@@ -5043,13 +5043,12 @@ function renderCheckIn(){
       <button class="back-btn" onclick="navigate('home')">${ICONS.back}</button>
       <div class="page-title" style="font-size:18px;">Check In</div>
     </div>
+    <div class="header-greet" style="text-align:center;">
+      <h2 style="font-size:18px;">${LIVE_SESSION.courseCode} — ${LIVE_SESSION.courseName}</h2>
+      <p>${LIVE_SESSION.room}</p>
+    </div>
   </div>
   <div class="content">
-    <div class="info-box" style="text-align:center;">
-      <div class="k">${LIVE_SESSION.courseCode} — ${LIVE_SESSION.courseName}</div>
-      <div class="v" style="font-size:13px;">${LIVE_SESSION.room}</div>
-    </div>
-
     <div class="method-tabs">
       <button class="method-tab ${checkinMethod==='qr'?'active':''}" onclick="setCheckinMethod('qr')">${ICONS.qrcode} Scan QR</button>
       <button class="method-tab ${checkinMethod==='pin'?'active':''}" onclick="setCheckinMethod('pin')">${ICONS.keypad} Enter PIN</button>
