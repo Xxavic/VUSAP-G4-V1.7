@@ -1147,8 +1147,11 @@ async function loadTimetableFromSupabase(){
       return;
     }
 
-    // Batch-resolve lecturer names from teacher_ids
-    const teacherIds = [...new Set(rows.map(r => r.classes?.teacher_id).filter(Boolean))];
+    // Batch-resolve lecturer names from teacher_ids. Read off the slot's
+    // OWN teacher_id, not classes.teacher_id — a lecturer is now assigned
+    // per session (see migrate-per-session-lecturer.sql), so two sessions
+    // of the same course can genuinely have different teachers.
+    const teacherIds = [...new Set(rows.map(r => r.teacher_id).filter(Boolean))];
     let teacherNames = {};
     if(teacherIds.length){
       try {
@@ -1185,7 +1188,7 @@ async function loadTimetableFromSupabase(){
           code: cls?.code || '',
           name: cls?.name || '',
           dept: cls?.programmes?.name || '',
-          lecturer: teacherNames[cls?.teacher_id] || 'TBA',
+          lecturer: teacherNames[slot.teacher_id] || 'TBA',
           room: slot.room,
           time: timeStr,
           mode: slot.mode || null,
@@ -9178,6 +9181,13 @@ function submitNewSession(e){
           end_time: endTime,
           room,
           mode: mode || null,
+          // The lecturer picked in this specific session's form — not
+          // classes.teacher_id, which is fixed per course and can't tell two
+          // different courses' sessions taught by the same real person
+          // apart, nor let one session diverge from the course's default
+          // teacher. This is what the conflict trigger now checks (see
+          // migrate-per-session-lecturer.sql).
+          teacher_id: userRow.id,
         };
 
         let result;
