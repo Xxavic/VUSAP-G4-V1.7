@@ -1535,6 +1535,7 @@ const ICONS = {
   flag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>`,
   shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
   fileText: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>`,
+  flame: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c1 0 2 1 2 3a5 5 0 0 1-10 0c0-5 4-6 3-11 1 0 2 1 2 2z"/></svg>`,
   fileSpreadsheet: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 13v4"/></svg>`,
   alertTriangle: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>`,
   moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`,
@@ -1624,6 +1625,27 @@ const RECORDS = [
   { date:"2026-06-21", reg:"VU-BAF-2401-0013-DAY", name:"Mary Tendo", prog:"Business Administration", code:"BAR4301", course:"Financial Accounting", venue:"LT2 - Business Block", status:"present" },
   { date:"2026-06-21", reg:"VU-BAF-2401-0012-DAY", name:"Lwanga Moses", prog:"Business Administration", code:"BAR4301", course:"Financial Accounting", venue:"LT2 - Business Block", status:"present" },
 ];
+
+// Consecutive calendar days (most recent first) a student has a non-absent
+// RECORDS row — powers the streak chip on Student Home. Returns 0 once the
+// chain breaks or there's no record at all. Real day-by-day attendance
+// history only exists once the live backend is populating RECORDS; the
+// seeded mock data is sparse, so most demo accounts will show no streak.
+function computeCheckInStreak(reg){
+  const days = [...new Set(RECORDS.filter(r=>r.reg===reg && r.status!=='absent').map(r=>r.date))]
+    .sort((a,b)=>b.localeCompare(a));
+  if(!days.length) return 0;
+  let streak = 1;
+  let cursor = new Date(days[0]+'T00:00:00');
+  for(let i=1;i<days.length;i++){
+    const d = new Date(days[i]+'T00:00:00');
+    const diffDays = Math.round((cursor - d)/86400000);
+    if(diffDays !== 1) break;
+    streak++;
+    cursor = d;
+  }
+  return streak;
+}
 
 const RECENT_SUBMISSIONS = [
   { name:"Prossy Namutebi", code:"BAR4301", date:"2026-06-23", status:"present" },
@@ -2326,6 +2348,16 @@ function firstName(name){
   return parts[idx] || parts[0];
 }
 
+function timeGreeting(){
+  const h = new Date().getHours();
+  if(h < 12) return 'Good morning';
+  if(h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+function todayLong(){
+  return new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+}
+
 function vuEmail(name){
   const parts = name.split(" ").filter(p=>!HONORIFICS.has(p.toLowerCase().replace(/\.$/,'.')) && !HONORIFICS.has(p.toLowerCase()));
   if(parts.length < 2) return (parts[0] || "user").toLowerCase() + "@vu.ac.ug";
@@ -2875,6 +2907,29 @@ function showToast(msg, icon){
   t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
+// Small celebratory burst for a successful check-in — see completeCheckIn().
+// Skips itself under prefers-reduced-motion and cleans up after one run.
+function fireConfetti(){
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const layer = document.createElement('div');
+  layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:250;overflow:hidden;';
+  const colors = ['#22d3ee','#ff6b57','#8b5cf6','#4ade80','#fbbf24'];
+  for(let i=0;i<28;i++){
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    const size = 5 + Math.random()*5;
+    p.style.width = size+'px';
+    p.style.height = (size*0.6)+'px';
+    p.style.left = (Math.random()*100)+'%';
+    p.style.background = colors[i % colors.length];
+    p.style.animationDuration = (1.1 + Math.random()*1)+'s';
+    p.style.animationDelay = (Math.random()*0.3)+'s';
+    layer.appendChild(p);
+  }
+  document.body.appendChild(layer);
+  setTimeout(()=>layer.remove(), 2600);
+}
+
 function openSheet(id){
   document.getElementById('sheetOverlay').classList.add('show');
   document.getElementById(id).classList.add('show');
@@ -2892,27 +2947,33 @@ function renderLogin(){
   return `
   <div class="login-screen" id="loginScreen">
     <div class="login-hero">
-      <div class="login-brand-headline">VUSAP</div>
       <div class="login-logo">
         ${VU_LOGO_MARK}
       </div>
-      <div class="login-uni-name">VICTORIA UNIVERSITY</div>
-      <div class="login-uni-sub">Smart Attendance Portal</div>
+      <div class="login-brand-headline">VUSAP</div>
+      <div class="login-uni-sub">Victoria University · Attendance</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
         <h1>Welcome back</h1>
-        <p class="sub">Sign in to VUSAP</p>
+        <p class="sub" id="loginSub">Sign in with your university ID</p>
         <form id="loginForm" onsubmit="return handleLogin(event)">
+          <div class="login-method-tabs" id="loginMethodTabs">
+            <button type="button" class="lm-tab active" onclick="setLoginMethod('uid')">University ID</button>
+            <button type="button" class="lm-tab" onclick="setLoginMethod('email')">Email</button>
+          </div>
           <div class="field" style="margin-bottom:14px;">
-            <label>Email / University ID</label>
+            <label id="staffIdLabel">University ID</label>
             <div class="search-wrap">
               ${ICONS.user}
-              <input class="input" style="padding-left:38px;" id="staffId" placeholder="Email or University ID" autocomplete="username" required />
+              <input class="input" style="padding-left:38px;" id="staffId" placeholder="e.g. VU-CSF-2401-0002-DAY" autocomplete="username" required />
             </div>
           </div>
           <div class="field">
-            <label>Password</label>
+            <div class="row between">
+              <label>Password</label>
+              <a href="#" onclick="renderForgotPasswordRequest(); return false;" style="font-size:12px; font-weight:700; color:var(--theme-primary); text-decoration:none;">Forgot password?</a>
+            </div>
             <div class="password-wrap">
               <input class="input" type="password" id="password" placeholder="Your password" autocomplete="current-password" required />
               <button type="button" class="eye-btn" onclick="togglePw()" id="eyeBtn">${ICONS.eye}</button>
@@ -2921,9 +2982,13 @@ function renderLogin(){
           <div style="margin-top:20px;">
             <button class="btn btn-primary" type="submit">Sign In</button>
           </div>
-          <div style="text-align:center; margin-top:14px;">
-            <a href="#" onclick="renderForgotPasswordRequest(); return false;" style="font-size:12.5px; font-weight:600; color:var(--theme-primary); text-decoration:none;">Forgot password?</a>
+          <div class="role-strip">
+            <div class="role-dot" style="background:var(--stu-primary);"></div>
+            <div class="role-dot" style="background:var(--lec-primary);"></div>
+            <div class="role-dot" style="background:var(--reg-primary);"></div>
+            <div class="role-dot" style="background:var(--admin-primary);"></div>
           </div>
+          <p class="demo-note">Student · Lecturer · Registrar · Administrator</p>
         </form>
         <div class="demo-box">
           <div class="t" style="cursor:pointer;user-select:none;" onclick="this.parentElement.classList.toggle('demo-open')">
@@ -2950,6 +3015,27 @@ function togglePw(){
   else { pw.type='password'; btn.innerHTML = ICONS.eye; }
 }
 
+// Purely cosmetic — both methods sign in through the same #staffId field and
+// handleLogin() already accepts either a University ID or an email address.
+// This just swaps the label/placeholder/keyboard type to match what the
+// student picked, so the field doesn't feel mislabeled either way.
+const LOGIN_METHODS = {
+  uid:   { label:'University ID', sub:'Sign in with your university ID',    placeholder:'e.g. VU-CSF-2401-0002-DAY', type:'text' },
+  email: { label:'Email address',  sub:'Sign in with your university email', placeholder:'you@vu.edu', type:'email' },
+};
+function setLoginMethod(method){
+  const cfg = LOGIN_METHODS[method];
+  if(!cfg) return;
+  document.querySelectorAll('#loginMethodTabs .lm-tab').forEach(t=>t.classList.remove('active'));
+  const clicked = [...document.querySelectorAll('#loginMethodTabs .lm-tab')].find(t=>t.getAttribute('onclick').includes(`'${method}'`));
+  if(clicked) clicked.classList.add('active');
+  document.getElementById('staffIdLabel').textContent = cfg.label;
+  document.getElementById('loginSub').textContent = cfg.sub;
+  const input = document.getElementById('staffId');
+  input.placeholder = cfg.placeholder;
+  input.type = cfg.type;
+}
+
 // ============================================================
 // FORCED PASSWORD CHANGE (first login on a temp password)
 // ============================================================
@@ -2960,12 +3046,11 @@ function renderForcedPasswordChange(){
   document.getElementById('screens').innerHTML = `<div class="screen active">
   <div class="login-screen">
     <div class="login-hero">
-      <div class="login-brand-headline">VUSAP</div>
       <div class="login-logo">
         ${VU_LOGO_MARK}
       </div>
-      <div class="login-uni-name">VICTORIA UNIVERSITY</div>
-      <div class="login-uni-sub">Smart Attendance Portal</div>
+      <div class="login-brand-headline">VUSAP</div>
+      <div class="login-uni-sub">Victoria University · Attendance</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3031,12 +3116,11 @@ function renderForgotPasswordRequest(opts){
   document.getElementById('screens').innerHTML = `<div class="screen active">
   <div class="login-screen">
     <div class="login-hero">
-      <div class="login-brand-headline">VUSAP</div>
       <div class="login-logo">
         ${VU_LOGO_MARK}
       </div>
-      <div class="login-uni-name">VICTORIA UNIVERSITY</div>
-      <div class="login-uni-sub">Smart Attendance Portal</div>
+      <div class="login-brand-headline">VUSAP</div>
+      <div class="login-uni-sub">Victoria University · Attendance</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3089,12 +3173,11 @@ function renderForgotPasswordSent(identifier, liveReset){
   document.getElementById('screens').innerHTML = `<div class="screen active">
   <div class="login-screen">
     <div class="login-hero">
-      <div class="login-brand-headline">VUSAP</div>
       <div class="login-logo">
         ${VU_LOGO_MARK}
       </div>
-      <div class="login-uni-name">VICTORIA UNIVERSITY</div>
-      <div class="login-uni-sub">Smart Attendance Portal</div>
+      <div class="login-brand-headline">VUSAP</div>
+      <div class="login-uni-sub">Victoria University · Attendance</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3129,12 +3212,11 @@ function renderResetPasswordForm(){
   document.getElementById('screens').innerHTML = `<div class="screen active">
   <div class="login-screen">
     <div class="login-hero">
-      <div class="login-brand-headline">VUSAP</div>
       <div class="login-logo">
         ${VU_LOGO_MARK}
       </div>
-      <div class="login-uni-name">VICTORIA UNIVERSITY</div>
-      <div class="login-uni-sub">Smart Attendance Portal</div>
+      <div class="login-brand-headline">VUSAP</div>
+      <div class="login-uni-sub">Victoria University · Attendance</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -4732,6 +4814,7 @@ function renderStudentHome(){
   const todayLectures = getStudentTodayLectures();
   const sessionOpenForMe = isLiveSessionOpenForStudent();
   const bannerLecture = sessionOpenForMe ? null : getStudentBannerLecture();
+  const streak = computeCheckInStreak(u.id || u.reg);
 
   return `
   <div class="app-header">
@@ -4750,15 +4833,15 @@ function renderStudentHome(){
     </div>
   </div>
   <div class="content">
-    <div class="profile-card">
-      <div class="profile-avatar-lg">${initials(u.name)}</div>
-      <div class="profile-name">${u.name}</div>
-      <div class="profile-reg">${u.reg}</div>
-      <div class="profile-meta-row">
+    <div class="greeting-card">
+      <h2>${timeGreeting()}, ${firstName(u.name)} 👋</h2>
+      <p>${todayLong()}</p>
+      <div class="greeting-tags">
         <span class="tag-pill">${u.dept}</span>
         <span class="tag-pill">${u.year || '—'}</span>
+        ${u.is_class_coordinator ? `<span class="tag-pill">Class Coordinator</span>` : ''}
       </div>
-      ${u.is_class_coordinator ? `<div class="coordinator-badge" style="margin-top:10px;">${ICONS.shield.replace(/<svg /,'<svg style="width:12px;height:12px;" ')} Class Coordinator</div>` : ''}
+      ${streak >= 2 ? `<div class="streak-chip">${ICONS.flame} ${streak}-day streak — keep it up!</div>` : ''}
     </div>
 
     ${sessionOpenForMe ? (State.hasCheckedInToday ? `
@@ -4857,26 +4940,24 @@ function renderStudentHome(){
       </div>
     </div>` : ''}
 
-    <a class="quick-action" onclick="navigate('announcements')">
-      <div class="qa-icon">${ICONS.megaphone}</div>
-      <div class="qa-text"><div class="t">Announcements</div><div class="s">${ANNOUNCEMENTS.length} recent updates</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('appeals')">
-      <div class="qa-icon">${ICONS.gavel}</div>
-      <div class="qa-text"><div class="t">Attendance Appeals</div><div class="s">Submit or track an appeal</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('timetable')">
-      <div class="qa-icon">${ICONS.calendar}</div>
-      <div class="qa-text"><div class="t">My Timetable</div><div class="s">View your full weekly schedule</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('profile')">
-      <div class="qa-icon">${ICONS.user}</div>
-      <div class="qa-text"><div class="t">Profile & Settings</div><div class="s">View ID, contact info, preferences</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
+    <div class="quick-action-grid">
+      <a class="quick-action" onclick="navigate('announcements')">
+        <div class="qa-icon">${ICONS.megaphone}</div>
+        <div class="qa-text"><div class="t">Announcements</div><div class="s">${ANNOUNCEMENTS.length} recent updates</div></div>
+      </a>
+      <a class="quick-action" onclick="navigate('appeals')">
+        <div class="qa-icon">${ICONS.gavel}</div>
+        <div class="qa-text"><div class="t">Attendance Appeals</div><div class="s">Submit or track</div></div>
+      </a>
+      <a class="quick-action" onclick="navigate('timetable')">
+        <div class="qa-icon">${ICONS.calendar}</div>
+        <div class="qa-text"><div class="t">My Timetable</div><div class="s">Full weekly schedule</div></div>
+      </a>
+      <a class="quick-action" onclick="navigate('profile')">
+        <div class="qa-icon">${ICONS.user}</div>
+        <div class="qa-text"><div class="t">Profile & Settings</div><div class="s">ID, contact, preferences</div></div>
+      </a>
+    </div>
   </div>`;
 }
 
@@ -5298,6 +5379,7 @@ async function completeCheckIn(){
   liveWriteAttendance(); // fire-and-forget — local check-in above already succeeded either way
 
   rerenderCurrentScreen();
+  fireConfetti();
   showToast(`Checked in to ${LIVE_SESSION.courseName}`, ICONS.checkCircle.replace(/width="\d+" height="\d+"/,'width="16" height="16"'));
 }
 
@@ -5357,7 +5439,16 @@ function renderStartSession(){
     </div>
 
     <div class="status-chip-grid" style="grid-template-columns:repeat(2,1fr);">
-      <div class="status-chip present"><div class="n" id="liveSessionCountdown">—</div><div class="l">Time Left</div></div>
+      <div class="status-chip present" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <div class="countdown-ring">
+          <svg width="54" height="54" viewBox="0 0 54 54">
+            <circle cx="27" cy="27" r="23" fill="none" stroke="rgba(22,163,74,0.15)" stroke-width="4"/>
+            <circle id="sessionRingProgress" cx="27" cy="27" r="23" fill="none" stroke="var(--present)" stroke-width="4" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="0"/>
+          </svg>
+          <div class="countdown-text" id="liveSessionCountdown" style="font-size:12.5px;">—</div>
+        </div>
+        <div class="l">Time Left</div>
+      </div>
       <div class="status-chip unmarked"><div class="n" id="liveCheckinCount">0</div><div class="l">Checked In</div></div>
     </div>
 
@@ -5386,6 +5477,11 @@ function startSessionTicker(){
     const countdownEl = document.getElementById('liveSessionCountdown');
     if(countdownEl){
       countdownEl.textContent = remaining>0 ? `${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')}` : 'Closed';
+    }
+    const ringEl = document.getElementById('sessionRingProgress');
+    if(ringEl && LIVE_SESSION.windowSeconds){
+      const frac = Math.max(0, Math.min(1, remaining / LIVE_SESSION.windowSeconds));
+      ringEl.setAttribute('stroke-dashoffset', (144.5 * (1 - frac)).toFixed(1));
     }
 
     secondsUntilRotate -= 1;
