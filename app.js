@@ -9952,6 +9952,11 @@ function renderBottomNav(){
     </button>`).join('');
 }
 
+function hideSplash(){
+  const splash = document.getElementById('bootSplash');
+  if(splash) splash.classList.add('hide');
+}
+
 function renderApp(){
   const app = document.getElementById('app');
   const screensEl = document.getElementById('screens');
@@ -9966,6 +9971,7 @@ function renderApp(){
     // Anchor history here so a stray back-press after logout can't resurrect
     // a previous session's screen underneath the login form.
     history.replaceState({ vusapScreen: null }, '', '');
+    hideSplash();
     return;
   }
   navEl.style.display = 'flex';
@@ -9974,6 +9980,7 @@ function renderApp(){
   // Replace (not push) so this home screen becomes the back-button floor —
   // pressing back here falls through to exiting/backgrounding the app.
   navigate(currentScreen, { replace: true });
+  hideSplash();
 }
 
 let _autoLogoutTimer = null;

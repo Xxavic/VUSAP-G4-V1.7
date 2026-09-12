@@ -1,7 +1,7 @@
 // VUSAP — Service Worker
 // Provides offline-first caching so the app behaves like a native installed app.
 
-const CACHE_NAME = 'vusap-v8';
+const CACHE_NAME = 'vusap-v9';
 const CORE_ASSETS = [
   './index.html',
   './manifest.json',
@@ -9,6 +9,7 @@ const CORE_ASSETS = [
   './qrcode.min.js',
   './jsQR.min.js',
   './chart.min.js',
+  './icons/icon-192.png',
 ];
 
 self.addEventListener('install', (event) => {
