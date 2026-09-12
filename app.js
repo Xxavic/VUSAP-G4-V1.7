@@ -3444,10 +3444,10 @@ function renderStaffProfile(){
       <div class="info-list">
         <div class="info-list-row">
           <span class="k">${ICONS.moon} Dark Mode</span>
-          <div class="toggle-wrap">
+          <label class="toggle-wrap">
             <input type="checkbox" id="darkModeToggle" ${currentTheme === 'dark' ? 'checked' : ''} onchange="toggleDarkMode()">
             <div class="toggle-slider"></div>
-          </div>
+          </label>
         </div>
       </div>
     </div>
@@ -5017,10 +5017,10 @@ function renderStudentProfile(){
       <div class="section-title">${ICONS.settings} Preferences</div>
       <div class="info-list-row">
         <span class="k">${ICONS.moon} Dark Mode</span>
-        <div class="toggle-wrap">
+        <label class="toggle-wrap">
           <input type="checkbox" id="darkModeToggle" ${(document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'checked' : ''} onchange="toggleDarkMode()">
           <div class="toggle-slider"></div>
-        </div>
+        </label>
       </div>
     </div>
 
