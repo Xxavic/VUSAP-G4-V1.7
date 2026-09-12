@@ -1086,6 +1086,173 @@ async function loadFacultiesAndProgrammesFromSupabase(){
 // ------------------------------------------------------------
 const STUDENT_COURSE_COLORS = ['#3b82f6', '#8b5cf6', '#0f766e', '#d97706', '#dc2626', '#0891b2', '#c026d3', '#65a30d'];
 
+async function loadTimetableFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('timetable_slots')
+      .select('*, classes(code, name, teacher_id, programmes(name))')
+      .order('day_of_week, start_time');
+
+    if(error){
+      console.warn('Timetable fetch failed, keeping mock SCHEDULE:', error);
+      return;
+    }
+    if(!rows || rows.length === 0){
+      // Table reachable but no slots yet — keep mock data
+      return;
+    }
+
+    // Batch-resolve lecturer names from teacher_ids
+    const teacherIds = [...new Set(rows.map(r => r.classes?.teacher_id).filter(Boolean))];
+    let teacherNames = {};
+    if(teacherIds.length){
+      try {
+        const { data: teacherRows } = await SUPABASE_CLIENT
+          .from('users')
+          .select('id, name')
+          .in('id', teacherIds);
+        (teacherRows || []).forEach(t => { teacherNames[t.id] = t.name; });
+      } catch(e){
+        console.warn('Timetable: lecturer name lookup failed, using placeholder:', e);
+      }
+    }
+
+    // Transform into SCHEDULE shape: { day, isToday, lectures: [...] }
+    // where each lecture has { code, name, dept, lecturer, room, time, mode }
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+    // Postgres `time` columns come back over the REST API as "HH:MM:SS"
+    // (seconds included), not "HH:MM" — but parseLectureTimeRange() and
+    // every display of a lecture's .time field expects the exact
+    // "HH:MM – HH:MM" shape the mock data already uses. Truncating here
+    // once, at the source, means every downstream consumer (the countdown
+    // banner, compliance timing, the mock-layer conflict checks) keeps
+    // working unchanged rather than needing its own defensive parsing.
+    const toHHMM = (t) => (t || '').slice(0, 5);
+
+    const liveSchedule = daysOfWeek.map(day => {
+      const daySlots = rows.filter(r => r.day_of_week === day);
+      const lectures = daySlots.map(slot => {
+        const cls = slot.classes;
+        const timeStr = `${toHHMM(slot.start_time)} – ${toHHMM(slot.end_time)}`; // en dash, same format as mock
+        return {
+          code: cls?.code || '',
+          name: cls?.name || '',
+          dept: cls?.programmes?.name || '',
+          lecturer: teacherNames[cls?.teacher_id] || 'TBA',
+          room: slot.room,
+          time: timeStr,
+          mode: slot.mode || null,
+          // Carries the real row id so editing/deleting a live-sourced
+          // lecture can target it directly by id, rather than re-deriving
+          // which row it was via a field-matching lookup that's fragile to
+          // exactly this kind of format mismatch.
+          _liveSlotId: slot.id,
+        };
+      });
+      return {
+        day,
+        isToday: day === today,
+        lectures,
+      };
+    });
+
+    // Merge into existing SCHEDULE array.
+    //
+    // Why this needs more than a simple (day, code, room) match: that key
+    // alone has two failure modes that pull in opposite directions.
+    // Including time in the key breaks reschedules (a slot moved to a new
+    // time would no longer match its old mock counterpart on the next
+    // reload, since SCHEDULE always rebuilds fresh from the same static
+    // mock baseline — so the stale old-time mock entry would keep showing
+    // up alongside the new one). Excluding time fixes that, but then two
+    // genuinely different sessions sharing the same course/room/day at
+    // different times collide into a single merged entry, silently
+    // dropping one of them.
+    //
+    // The actual fix: remember which specific mock entry a given live slot
+    // claimed, persistently (localStorage — the same place this app
+    // already keeps device-level preferences like the dark mode setting),
+    // keyed by the live slot's own database id. Once a live slot has
+    // claimed a mock entry once, every future reload recognizes it by that
+    // id and updates the same entry directly, no matter how its time/day/
+    // room have since changed. A brand-new live slot only ever needs the
+    // simple content match on its first appearance; after that, its own id
+    // takes over. Two distinct sessions in the same room/day don't
+    // collide either, since a mock entry can only ever be claimed once —
+    // the second live slot's first-time match simply finds a different
+    // unclaimed entry (or adds a new one if none remain).
+    const CLAIMS_KEY = 'vusap-timetable-claims';
+    let claims = {};
+    try { claims = JSON.parse(localStorage.getItem(CLAIMS_KEY) || '{}'); } catch(e){ claims = {}; }
+    // Reverse lookup: live slot id -> the mock signature it already claimed
+    const claimedSignatureByLiveId = {};
+    Object.entries(claims).forEach(([sig, liveId]) => { claimedSignatureByLiveId[liveId] = sig; });
+    const signatureOf = (day, l) => `${day}::${l.code}::${l.room}::${l.time}`;
+    const claimedSignaturesThisRun = new Set(Object.keys(claims));
+
+    liveSchedule.forEach(liveDay => {
+      const existingDayIndex = SCHEDULE.findIndex(d => d.day === liveDay.day);
+      if(existingDayIndex < 0){
+        // Day doesn't exist in mock data at all — add the whole day, and
+        // record a fresh claim for each of its slots so future reloads
+        // recognize them by id too.
+        liveDay.lectures.forEach(l => {
+          const sig = signatureOf(liveDay.day, l);
+          claims[sig] = l._liveSlotId;
+        });
+        SCHEDULE.push(liveDay);
+        return;
+      }
+
+      const existingDay = SCHEDULE[existingDayIndex];
+      liveDay.lectures.forEach(liveLecture => {
+        const alreadyClaimedSig = claimedSignatureByLiveId[liveLecture._liveSlotId];
+        let existingLectureIndex = -1;
+
+        if(alreadyClaimedSig){
+          // This live slot has claimed a mock entry before — find that
+          // exact original entry (SCHEDULE is fresh from the static
+          // baseline this reload, so its original signature still matches)
+          // regardless of what this slot's current day/time/room say.
+          existingLectureIndex = existingDay.lectures.findIndex(
+            l => signatureOf(existingDay.day, l) === alreadyClaimedSig
+          );
+        }
+
+        if(existingLectureIndex < 0){
+          // No existing claim for this live slot yet — first-time match:
+          // find an UNCLAIMED mock entry with the same (day, code, room).
+          existingLectureIndex = existingDay.lectures.findIndex(l => {
+            const sig = signatureOf(existingDay.day, l);
+            return l.code === liveLecture.code && l.room === liveLecture.room && !claims[sig];
+          });
+          if(existingLectureIndex >= 0){
+            const sig = signatureOf(existingDay.day, existingDay.lectures[existingLectureIndex]);
+            claims[sig] = liveLecture._liveSlotId;
+          }
+        }
+
+        if(existingLectureIndex >= 0){
+          existingDay.lectures[existingLectureIndex] = liveLecture;
+        } else {
+          // Genuinely new — no unclaimed mock entry to match. Add it, and
+          // record a claim under its own (new) signature so it's
+          // recognized by id on future reloads too.
+          existingDay.lectures.push(liveLecture);
+          claims[signatureOf(existingDay.day, liveLecture)] = liveLecture._liveSlotId;
+        }
+      });
+    });
+
+    try { localStorage.setItem(CLAIMS_KEY, JSON.stringify(claims)); } catch(e){ /* storage unavailable — merge still works this run, just won't persist across reloads */ }
+  } catch(e){
+    console.warn('loadTimetableFromSupabase error, keeping mock SCHEDULE:', e);
+  }
+}
+
 async function loadStudentsFromSupabase(){
   if(!LIVE_BACKEND) return;
   try {
@@ -3536,7 +3703,7 @@ function renderSchedule(opts){
         return `
         <div class="section-title" style="margin:18px 0 8px;">${mode==='day'?ICONS.clock:ICONS.calendar} ${label}</div>
         ${daysForMode.length
-          ? daysForMode.map(d=>scheduleDayGroup(d, showDeptFilter, false)).join('')
+          ? daysForMode.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession, SCHEDULE.find(sd => sd.day === d.day))).join('')
           : `<div class="empty-state-sm">No ${mode} sessions scheduled</div>`}
       `;
       }).join('') + (() => {
@@ -3548,7 +3715,7 @@ function renderSchedule(opts){
           .filter(d => d.lectures.length > 0);
         return unset.length ? `
         <div class="section-title" style="margin:18px 0 8px;">${ICONS.alertTriangle} Mode Not Set</div>
-        ${unset.map(d=>scheduleDayGroup(d, showDeptFilter, false)).join('')}
+        ${unset.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession, SCHEDULE.find(sd => sd.day === d.day))).join('')}
         ` : '';
       })()
     : SCHEDULE.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession)).join('');
@@ -3612,7 +3779,10 @@ function renderSchedule(opts){
 // code can legitimately appear on more than one day), so slots are targeted
 // by (day, index within that day) rather than by code — recomputed fresh on
 // every re-render, so it stays correct even as slots are added/removed.
-function scheduleDayGroup(d, showDept, editable){
+function scheduleDayGroup(d, showDept, editable, originalDay = null){
+  // If originalDay is provided, use it to find correct indices in the unfiltered array
+  const sourceDay = originalDay || d;
+  
   return `
   <div class="day-group" data-day-group data-day="${d.day}">
     <div class="day-header ${d.isToday?'today-day':''}">
@@ -3633,8 +3803,8 @@ function scheduleDayGroup(d, showDept, editable){
           ${l.status==='pending' ? '<span class="badge pending" style="margin-top:8px;display:inline-block;">Pending</span>' : ''}
           ${editable ? `
           <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
-            <button class="icon-btn" style="width:28px;height:28px;background:var(--unmarked-bg);" onclick="event.stopPropagation();openNewSessionSheet('${d.day}', ${i})" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
-            <button class="icon-btn" style="width:28px;height:28px;background:#fee2e2;color:#b91c1c;" onclick="event.stopPropagation();confirmDeleteSlot('${d.day}', ${i})" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
+            <button class="icon-btn" style="width:28px;height:28px;background:var(--unmarked-bg);" onclick="event.stopPropagation();openNewSessionSheet('${sourceDay.day}', ${sourceDay.lectures.findIndex(sl => sl.code === l.code && sl.room === l.room && sl.time === l.time)})" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
+            <button class="icon-btn" style="width:28px;height:28px;background:#fee2e2;color:#b91c1c;" onclick="event.stopPropagation();confirmDeleteSlot('${sourceDay.day}', ${sourceDay.lectures.findIndex(sl => sl.code === l.code && sl.room === l.room && sl.time === l.time)})" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
           </div>` : ''}
         </div>
       </div>`).join('')}
@@ -8874,41 +9044,6 @@ function submitNewSession(e){
   if(!room){ showToast("Enter a room"); return false; }
   if(!startTime || !endTime || startTime >= endTime){ showToast("End time must be after start time"); return false; }
 
-  // Room-conflict check: no two slots on the same day, in the same room,
-  // can have overlapping times — same overlap rule as the live
-  // timetable_slots trigger (start1 < end2 && start2 < end1), so a slot
-  // moved into an already-occupied room/time gets rejected here too, not
-  // just once the live table exists.
-  //
-  // Lecturer-conflict check, same overlap rule: a lecturer can't teach two
-  // overlapping sessions even in two DIFFERENT rooms — they're one person,
-  // physically in one place at a time. This is a separate check from the
-  // room one above (different room doesn't save it if it's the same
-  // lecturer double-booked).
-  const refDay = new Date();
-  const newRange = parseLectureTimeRange(`${startTime} – ${endTime}`, refDay);
-  const conflictDayEntry = SCHEDULE.find(d => d.day === day);
-  if(newRange && conflictDayEntry){
-    const overlaps = (l) => {
-      const existingRange = parseLectureTimeRange(l.time, refDay);
-      if(!existingRange) return false;
-      return newRange.start < existingRange.end && existingRange.start < newRange.end;
-    };
-    const isBeingEdited = (i) => isEdit && day === editDay && i === parseInt(editIndex, 10);
-
-    const roomConflict = conflictDayEntry.lectures.find((l, i) => !isBeingEdited(i) && l.room === room && overlaps(l));
-    if(roomConflict){
-      showToast(`${room} is already booked ${roomConflict.time} by ${roomConflict.code} on ${day}`);
-      return false;
-    }
-
-    const lecturerConflict = conflictDayEntry.lectures.find((l, i) => !isBeingEdited(i) && l.lecturer === lecturer && overlaps(l));
-    if(lecturerConflict){
-      showToast(`${lecturer} is already teaching ${lecturerConflict.code} at ${lecturerConflict.time} on ${day}`);
-      return false;
-    }
-  }
-
   const course = COURSES.find(c => c.code === courseCode);
   const timeStr = `${startTime} – ${endTime}`;
 
@@ -8925,6 +9060,16 @@ function submitNewSession(e){
     mode: mode || null,
   };
 
+  // Store old lecture data for edit comparison (Part 3: reschedule announcements)
+  let oldLecture = null;
+  if(isEdit){
+    const oldDayEntry = SCHEDULE.find(d => d.day === editDay);
+    if(oldDayEntry && oldDayEntry.lectures[parseInt(editIndex, 10)]){
+      oldLecture = oldDayEntry.lectures[parseInt(editIndex, 10)];
+    }
+  }
+
+  // Apply local mock change optimistically
   if(isEdit){
     // Editing can also move a slot to a different day — remove from the old
     // day/index first, then push onto the (possibly different) target day,
@@ -8942,6 +9087,172 @@ function submitNewSession(e){
     closeSheet('newSessionSheet');
     showToast(`${course?.name||courseCode} added to ${day}`);
   }
+
+  // Fire live write if backend is enabled
+  if(LIVE_BACKEND){
+    (async () => {
+      try {
+        // Resolve class_id and teacher_id from course code and lecturer name
+        const { data: classRow, error: classErr } = await SUPABASE_CLIENT
+          .from('classes')
+          .select('id, teacher_id')
+          .eq('code', courseCode)
+          .maybeSingle();
+        
+        if(classErr || !classRow){
+          console.warn('Timetable write: classes lookup failed, keeping local change:', classErr);
+          return; // Keep local change, don't fail the UI
+        }
+
+        const { data: userRow, error: userErr } = await SUPABASE_CLIENT
+          .from('users')
+          .select('id')
+          .eq('name', lecturer)
+          .maybeSingle();
+        
+        if(userErr || !userRow){
+          console.warn('Timetable write: lecturer lookup failed, keeping local change:', userErr);
+          return; // Keep local change, don't fail the UI
+        }
+
+        const slotData = {
+          class_id: classRow.id,
+          day_of_week: day,
+          start_time: startTime,
+          end_time: endTime,
+          room,
+          mode: mode || null,
+        };
+
+        let result;
+        if(isEdit){
+          // Prefer the live row's own id, carried on oldLecture if it came
+          // from loadTimetableFromSupabase() — direct id lookup sidesteps
+          // any risk of a field-matching mismatch (e.g. Postgres returning
+          // "08:00:00" for a time column while the mock/display value is
+          // "08:00") entirely, rather than depending on the two staying in
+          // sync. Only fall back to field-matching for a slot that's never
+          // been live before (no id to target yet).
+          let existingSlotId = oldLecture?._liveSlotId || null;
+          if(!existingSlotId){
+            const { data: existingSlots, error: findErr } = await SUPABASE_CLIENT
+              .from('timetable_slots')
+              .select('id')
+              .eq('class_id', classRow.id)
+              .eq('day_of_week', editDay)
+              .eq('start_time', oldLecture.time.split(' – ')[0])
+              .eq('end_time', oldLecture.time.split(' – ')[1])
+              .eq('room', oldLecture.room)
+              .maybeSingle();
+
+            if(findErr || !existingSlots){
+              console.warn('Timetable edit: existing slot not found, keeping local change:', findErr);
+              return;
+            }
+            existingSlotId = existingSlots.id;
+          }
+
+          result = await SUPABASE_CLIENT
+            .from('timetable_slots')
+            .update(slotData)
+            .eq('id', existingSlotId);
+
+          // Part 3: Send reschedule announcement if day/time/room changed
+          if(!result.error && oldLecture){
+            const dayChanged = editDay !== day;
+            const timeChanged = oldLecture.time !== timeStr;
+            const roomChanged = oldLecture.room !== room;
+            
+            if(dayChanged || timeChanged || roomChanged){
+              // Fetch enrolled students for this course
+              const { data: enrollments } = await SUPABASE_CLIENT
+                .from('enrollments')
+                .select('student_id')
+                .eq('class_id', classRow.id);
+              
+              const studentIds = enrollments?.map(e => e.student_id) || [];
+              
+              // Build notification body describing what changed
+              const changes = [];
+              if(dayChanged) changes.push(`moved from ${editDay} to ${day}`);
+              if(timeChanged) changes.push(`rescheduled from ${oldLecture.time} to ${timeStr}`);
+              if(roomChanged) changes.push(`relocated from ${oldLecture.room} to ${room}`);
+              
+              const notifBody = `Your ${course?.name||courseCode} session has been ${changes.join(', ')}.`;
+              
+              // Send to students
+              studentIds.forEach(studentId => {
+                pushNotification({
+                  recipientRole: 'student',
+                  recipientId: studentId,
+                  type: 'reschedule',
+                  title: `Schedule Change: ${course?.name||courseCode}`,
+                  body: notifBody,
+                  courseCode,
+                  from: 'System',
+                  fromId: 'system',
+                });
+              });
+              
+              // Send to lecturer
+              pushNotification({
+                recipientRole: 'lecturer',
+                recipientId: userRow.id,
+                type: 'reschedule',
+                title: `Schedule Change: ${course?.name||courseCode}`,
+                body: notifBody,
+                courseCode,
+                from: 'System',
+                fromId: 'system',
+              });
+            }
+          }
+        } else {
+          // Insert new slot
+          result = await SUPABASE_CLIENT
+            .from('timetable_slots')
+            .insert(slotData);
+        }
+
+        if(result.error){
+          // Database trigger rejected the write (room or lecturer conflict)
+          // Roll back local change and show the actual error message
+          console.warn('Timetable write rejected by database trigger:', result.error);
+          
+          // Roll back local change
+          if(isEdit){
+            // Put the old lecture back where it was
+            const oldDayEntry = SCHEDULE.find(d => d.day === editDay);
+            if(oldDayEntry){
+              oldDayEntry.lectures.splice(parseInt(editIndex, 10), 0, oldLecture);
+            }
+            // Remove the new lecture from the target day
+            const targetDayEntry = SCHEDULE.find(d => d.day === day);
+            if(targetDayEntry){
+              const newIdx = targetDayEntry.lectures.findIndex(l => 
+                l.code === newLecture.code && l.room === newLecture.room && l.time === newLecture.time
+              );
+              if(newIdx >= 0) targetDayEntry.lectures.splice(newIdx, 1);
+            }
+          } else {
+            // Remove the newly added lecture
+            const removeIdx = dayEntry.lectures.findIndex(l => 
+              l.code === newLecture.code && l.room === newLecture.room && l.time === newLecture.time
+            );
+            if(removeIdx >= 0) dayEntry.lectures.splice(removeIdx, 1);
+          }
+          
+          // Show the actual conflict message from the database
+          showToast(`Schedule conflict: ${result.error.message}`);
+          refreshScreenContentOnly();
+        }
+      } catch(err){
+        console.warn('Timetable write error, keeping local change:', err);
+        // Keep local change, don't fail the UI
+      }
+    })();
+  }
+
   navigate('allSchedules', { replace: true });
   return false;
 }
@@ -8951,9 +9262,69 @@ function confirmDeleteSlot(day, index){
   if(!dayEntry) return;
   const lecture = dayEntry.lectures[index];
   if(!lecture) return;
+  
+  // Store lecture data for live deletion
+  const lectureToDelete = { ...lecture };
+  
+  // Apply local mock change optimistically
   dayEntry.lectures.splice(index, 1);
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Class session removed', lecture.code, `${lecture.name} removed from ${day}`);
   showToast(`${lecture.name} removed from ${day}`);
+  
+  // Fire live delete if backend is enabled
+  if(LIVE_BACKEND){
+    (async () => {
+      try {
+        // Resolve class_id from course code
+        const { data: classRow, error: classErr } = await SUPABASE_CLIENT
+          .from('classes')
+          .select('id')
+          .eq('code', lecture.code)
+          .maybeSingle();
+        
+        if(classErr || !classRow){
+          console.warn('Timetable delete: classes lookup failed, keeping local change:', classErr);
+          return; // Keep local change, don't fail the UI
+        }
+
+        // Prefer the live row's own id when this lecture came from a live
+        // load — see the matching comment in submitNewSession() for why.
+        let existingSlotId = lectureToDelete._liveSlotId || null;
+        if(!existingSlotId){
+          const timeParts = lecture.time.split(' – ');
+          const { data: existingSlot, error: findErr } = await SUPABASE_CLIENT
+            .from('timetable_slots')
+            .select('id')
+            .eq('class_id', classRow.id)
+            .eq('day_of_week', day)
+            .eq('start_time', timeParts[0])
+            .eq('end_time', timeParts[1])
+            .eq('room', lecture.room)
+            .maybeSingle();
+
+          if(findErr || !existingSlot){
+            console.warn('Timetable delete: slot not found, keeping local change:', findErr);
+            return; // Keep local change, don't fail the UI
+          }
+          existingSlotId = existingSlot.id;
+        }
+
+        const { error: deleteErr } = await SUPABASE_CLIENT
+          .from('timetable_slots')
+          .delete()
+          .eq('id', existingSlotId);
+        
+        if(deleteErr){
+          console.warn('Timetable delete failed, keeping local change:', deleteErr);
+          // Keep local change, don't fail the UI
+        }
+      } catch(err){
+        console.warn('Timetable delete error, keeping local change:', err);
+        // Keep local change, don't fail the UI
+      }
+    })();
+  }
+  
   navigate('allSchedules', { replace: true });
 }
 
@@ -9167,7 +9538,7 @@ function getScreenHTML(screenId){
       case 'records': return renderAttendanceCatalog();
       case 'courseRecords': return renderCourseRecords();
       case 'register': return renderRegister({ backTarget:'dashboard' });
-      case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true });
+      case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true, groupByMode:true });
       // Sept 2026 handoff (Register/Timetable/Records), Part 2: Registrars can
       // now edit the course catalog too, scoped to their own faculty —
       // previously this screen was Administrator-only even though the
@@ -9207,7 +9578,7 @@ function getScreenHTML(screenId){
       case 'auditSystem': return renderAuditSystem();
       case 'backups': return renderBackups();
       case 'database': return renderDatabaseManagement();
-      case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true });
+      case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true, groupByMode:true });
       case 'notifications': return renderNotifications();
       case 'profile': return renderStaffProfile();
     }
@@ -9554,6 +9925,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // would shrink the visible roster from hundreds down to a handful the
   // moment this succeeds, which is never what should happen silently).
   loadStudentsFromSupabase();
+  // Gate 6: live timetable_slots loader — same merge philosophy as
+  // STUDENTS, for the same reason: the mock SCHEDULE baseline stays as
+  // fallback/coexisting data rather than being wiped by a handful of real
+  // slots the moment they exist.
+  loadTimetableFromSupabase();
 
   resumeSupabaseSession().then(() => {
     if(!State.role) renderApp(); // no session found — show login
