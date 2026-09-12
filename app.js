@@ -1492,7 +1492,18 @@ async function loadEnrollmentsFromSupabase(){
 // renders identically whether this app is served from a single file or
 // deployed as the full multi-file PWA structure.
 const VU_LOGO_DATA_URI = "data:image/png;base64,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";
-const VU_LOGO_MARK = `<img src="${VU_LOGO_DATA_URI}" alt="Victoria University" style="width:100%;height:100%;object-fit:contain;display:block;" />`;
+const DEFAULT_VU_LOGO_MARK = `<img src="${VU_LOGO_DATA_URI}" alt="Victoria University" style="width:100%;height:100%;object-fit:contain;display:block;" />`;
+
+// Returns the institute's crest markup — the admin-uploaded logo (System
+// Settings → Institute Logo) if one's been set, otherwise the default VU
+// shield. Called fresh on every render (rather than a cached const) so a
+// logo change takes effect immediately everywhere it's used.
+function currentLogoMark(){
+  if(SYSTEM_SETTINGS.logoDataUri){
+    return `<img src="${SYSTEM_SETTINGS.logoDataUri}" alt="${SYSTEM_SETTINGS.institutionName}" style="width:100%;height:100%;object-fit:contain;display:block;" />`;
+  }
+  return DEFAULT_VU_LOGO_MARK;
+}
 
 const ICONS = {
   edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
@@ -1937,8 +1948,10 @@ const SYSTEM_SETTINGS = {
   requireEmailVerification: true,
   systemName: 'VUSAP',
   institutionName: 'Victoria University',
+  portalName: 'Victoria University Smart Attendance Portal', // shown under the system name on the login screen — different for every institution running this software
   supportEmail: 'support@vu.ac.ug',
   academicYear: '2025/2026',
+  logoDataUri: null, // custom institute crest; null falls back to the default VU shield
 };
 
 // ============================================================
@@ -2895,10 +2908,10 @@ function renderLogin(){
   <div class="login-screen" id="loginScreen">
     <div class="login-hero">
       <div class="login-logo">
-        ${VU_LOGO_MARK}
+        ${currentLogoMark()}
       </div>
-      <div class="login-brand-headline">VUSAP</div>
-      <div class="login-uni-sub">Victoria University · Attendance</div>
+      <div class="login-brand-headline">${SYSTEM_SETTINGS.systemName}</div>
+      <div class="login-uni-sub">${SYSTEM_SETTINGS.portalName}</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -2994,10 +3007,10 @@ function renderForcedPasswordChange(){
   <div class="login-screen">
     <div class="login-hero">
       <div class="login-logo">
-        ${VU_LOGO_MARK}
+        ${currentLogoMark()}
       </div>
-      <div class="login-brand-headline">VUSAP</div>
-      <div class="login-uni-sub">Victoria University · Attendance</div>
+      <div class="login-brand-headline">${SYSTEM_SETTINGS.systemName}</div>
+      <div class="login-uni-sub">${SYSTEM_SETTINGS.portalName}</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3064,10 +3077,10 @@ function renderForgotPasswordRequest(opts){
   <div class="login-screen">
     <div class="login-hero">
       <div class="login-logo">
-        ${VU_LOGO_MARK}
+        ${currentLogoMark()}
       </div>
-      <div class="login-brand-headline">VUSAP</div>
-      <div class="login-uni-sub">Victoria University · Attendance</div>
+      <div class="login-brand-headline">${SYSTEM_SETTINGS.systemName}</div>
+      <div class="login-uni-sub">${SYSTEM_SETTINGS.portalName}</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3121,10 +3134,10 @@ function renderForgotPasswordSent(identifier, liveReset){
   <div class="login-screen">
     <div class="login-hero">
       <div class="login-logo">
-        ${VU_LOGO_MARK}
+        ${currentLogoMark()}
       </div>
-      <div class="login-brand-headline">VUSAP</div>
-      <div class="login-uni-sub">Victoria University · Attendance</div>
+      <div class="login-brand-headline">${SYSTEM_SETTINGS.systemName}</div>
+      <div class="login-uni-sub">${SYSTEM_SETTINGS.portalName}</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3160,10 +3173,10 @@ function renderResetPasswordForm(){
   <div class="login-screen">
     <div class="login-hero">
       <div class="login-logo">
-        ${VU_LOGO_MARK}
+        ${currentLogoMark()}
       </div>
-      <div class="login-brand-headline">VUSAP</div>
-      <div class="login-uni-sub">Victoria University · Attendance</div>
+      <div class="login-brand-headline">${SYSTEM_SETTINGS.systemName}</div>
+      <div class="login-uni-sub">${SYSTEM_SETTINGS.portalName}</div>
     </div>
     <div class="login-form-area">
       <div class="login-card">
@@ -3425,7 +3438,7 @@ function renderLecturerDashboard(){
   <div class="app-header">
     <div class="brand-row">
       <div class="brand-id">
-        <div class="brand-mark">${VU_LOGO_MARK}</div>
+        <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
           <div class="name">VUSAP</div>
           <div class="sub">Lecturer Portal</div>
@@ -4766,7 +4779,7 @@ function renderStudentHome(){
   <div class="app-header">
     <div class="brand-row">
       <div class="brand-id">
-        <div class="brand-mark">${VU_LOGO_MARK}</div>
+        <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
           <div class="name">VUSAP</div>
           <div class="sub">Student Portal</div>
@@ -5678,7 +5691,7 @@ function renderRegistrarDashboard(){
   <div class="app-header">
     <div class="brand-row">
       <div class="brand-id">
-        <div class="brand-mark">${VU_LOGO_MARK}</div>
+        <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
           <div class="name">VUSAP</div>
           <div class="sub">Registrar's Office</div>
@@ -6622,7 +6635,7 @@ function renderAdministratorDashboard(){
   <div class="app-header">
     <div class="brand-row">
       <div class="brand-id">
-        <div class="brand-mark">${VU_LOGO_MARK}</div>
+        <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
           <div class="name">VUSAP</div>
           <div class="sub">System Administration</div>
@@ -7869,6 +7882,11 @@ function renderSystemSettings(){
         <input class="input" id="ssInstitutionName" value="${s.institutionName}" />
       </div>
       <div class="field" style="margin-top:14px;">
+        <label>Portal Name</label>
+        <div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px;">The full name shown under the system name on the login screen — different for every institution running this platform</div>
+        <input class="input" id="ssPortalName" value="${s.portalName}" placeholder="e.g. Victoria University Smart Attendance Portal" />
+      </div>
+      <div class="field" style="margin-top:14px;">
         <label>Support Email</label>
         <input class="input" type="email" id="ssSupportEmail" value="${s.supportEmail}" />
       </div>
@@ -7876,6 +7894,23 @@ function renderSystemSettings(){
         <label>Academic Year</label>
         <input class="input" id="ssAcademicYear" value="${s.academicYear}" placeholder="e.g. 2025/2026" />
       </div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="section-title">${ICONS.building} Institute Logo</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;">
+        Shown on the login screen, the boot splash, and in every screen header. Replace it with your own institution's crest — a square PNG with a transparent background works best.
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div id="ssLogoPreview" style="width:64px;height:64px;border-radius:16px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:8px;flex-shrink:0;overflow:hidden;">
+          ${currentLogoMark()}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
+          <button class="btn btn-ghost" type="button" onclick="document.getElementById('ssLogoFile').click()">${ICONS.edit} Upload New Logo</button>
+          ${s.logoDataUri ? `<button class="btn btn-ghost" type="button" style="color:var(--absent);border-color:#fecaca;" onclick="resetInstituteLogo()">Reset to Default</button>` : ''}
+        </div>
+      </div>
+      <input type="file" id="ssLogoFile" accept="image/*" style="display:none;" onchange="handleLogoFileChange(event)" />
     </div>
 
     <div class="card card-pad">
@@ -7939,6 +7974,7 @@ function saveSystemSettings(){
 
   SYSTEM_SETTINGS.systemName = document.getElementById('ssSystemName')?.value.trim() || SYSTEM_SETTINGS.systemName;
   SYSTEM_SETTINGS.institutionName = document.getElementById('ssInstitutionName')?.value.trim() || SYSTEM_SETTINGS.institutionName;
+  SYSTEM_SETTINGS.portalName = document.getElementById('ssPortalName')?.value.trim() || SYSTEM_SETTINGS.portalName;
   SYSTEM_SETTINGS.supportEmail = document.getElementById('ssSupportEmail')?.value.trim() || SYSTEM_SETTINGS.supportEmail;
   SYSTEM_SETTINGS.academicYear = document.getElementById('ssAcademicYear')?.value.trim() || SYSTEM_SETTINGS.academicYear;
   SYSTEM_SETTINGS.autoLogoutMinutes = autoLogout;
@@ -7952,6 +7988,32 @@ function saveSystemSettings(){
   }
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'System settings updated', 'system', `autoLogout=${autoLogout}min`);
   showToast("System settings saved");
+  navigate('systemSettings', { replace: true });
+}
+
+// Applies immediately on selection (not gated behind "Save Settings") since
+// there's no text field involved to batch with the rest of the form — the
+// preview updating right away IS the confirmation the upload worked.
+function handleLogoFileChange(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast("Please choose an image file"); return; }
+  if(file.size > 2 * 1024 * 1024){ showToast("Logo must be under 2MB"); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    SYSTEM_SETTINGS.logoDataUri = reader.result;
+    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Institute logo changed', 'system', '');
+    showToast("Logo updated");
+    navigate('systemSettings', { replace: true });
+  };
+  reader.onerror = () => showToast("Couldn't read that file — try another image");
+  reader.readAsDataURL(file);
+}
+
+function resetInstituteLogo(){
+  SYSTEM_SETTINGS.logoDataUri = null;
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Institute logo reset to default', 'system', '');
+  showToast("Logo reset to default");
   navigate('systemSettings', { replace: true });
 }
 
@@ -10016,7 +10078,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // synchronously before any session-resume network call resolves), so
   // there's nothing meaningful to actually wait on here.
   const splashLogoWrap = document.querySelector('#splashScreen .splash-logo-wrap');
-  if(splashLogoWrap) splashLogoWrap.innerHTML = VU_LOGO_MARK;
+  if(splashLogoWrap) splashLogoWrap.innerHTML = currentLogoMark();
+  const splashBrand = document.querySelector('#splashScreen .splash-brand');
+  if(splashBrand) splashBrand.textContent = SYSTEM_SETTINGS.systemName;
+  const splashUni = document.querySelector('#splashScreen .splash-uni');
+  if(splashUni) splashUni.textContent = SYSTEM_SETTINGS.institutionName;
   setTimeout(() => {
     const splash = document.getElementById('splashScreen');
     if(!splash) return;
