@@ -9084,7 +9084,7 @@ function openNewSessionSheet(day, index){
   openSheet('newSessionSheet');
 }
 
-function submitNewSession(e){
+async function submitNewSession(e){
   e.preventDefault();
   const editDay = document.getElementById('sessionEditDay')?.value;
   const editIndex = document.getElementById('sessionEditIndex')?.value;
@@ -9128,7 +9128,34 @@ function submitNewSession(e){
     }
   }
 
-  // Apply local mock change optimistically
+  // Sept 2026 handoff: block on the live conflict check BEFORE touching
+  // anything, rather than applying the change, closing this sheet, and only
+  // rolling back afterward. A rejected submit used to close the form and
+  // surface the reason as a toast on whatever screen the Registrar had
+  // already been navigated to — by the time they saw why it failed, the
+  // form (and everything they'd typed) was gone. Now a conflict just
+  // re-enables this form with its values intact and shows the reason right
+  // here, so the one field that's wrong can be fixed and resubmitted
+  // immediately instead of redoing the whole thing.
+  if(LIVE_BACKEND){
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalLabel = submitBtn ? submitBtn.innerHTML : '';
+    if(submitBtn){ submitBtn.disabled = true; submitBtn.innerHTML = 'Checking…'; }
+
+    const liveError = await writeSessionLive({
+      isEdit, editDay, editIndex, day, courseCode, lecturer, room,
+      startTime, endTime, timeStr, mode, oldLecture, course,
+    });
+
+    if(submitBtn){ submitBtn.disabled = false; submitBtn.innerHTML = originalLabel; }
+
+    if(liveError){
+      showToast(`Schedule conflict: ${liveError.message}`);
+      return false; // stay open — nothing local has changed yet
+    }
+  }
+
+  // Apply the local mock change now that the live write (if any) is confirmed
   if(isEdit){
     // Editing can also move a slot to a different day — remove from the old
     // day/index first, then push onto the (possibly different) target day,
@@ -9147,180 +9174,158 @@ function submitNewSession(e){
     showToast(`${course?.name||courseCode} added to ${day}`);
   }
 
-  // Fire live write if backend is enabled
-  if(LIVE_BACKEND){
-    (async () => {
-      try {
-        // Resolve class_id and teacher_id from course code and lecturer name
-        const { data: classRow, error: classErr } = await SUPABASE_CLIENT
-          .from('classes')
-          .select('id, teacher_id')
-          .eq('code', courseCode)
-          .maybeSingle();
-        
-        if(classErr || !classRow){
-          console.warn('Timetable write: classes lookup failed, keeping local change:', classErr);
-          return; // Keep local change, don't fail the UI
-        }
-
-        const { data: userRow, error: userErr } = await SUPABASE_CLIENT
-          .from('users')
-          .select('id')
-          .eq('name', lecturer)
-          .maybeSingle();
-        
-        if(userErr || !userRow){
-          console.warn('Timetable write: lecturer lookup failed, keeping local change:', userErr);
-          return; // Keep local change, don't fail the UI
-        }
-
-        const slotData = {
-          class_id: classRow.id,
-          day_of_week: day,
-          start_time: startTime,
-          end_time: endTime,
-          room,
-          mode: mode || null,
-          // The lecturer picked in this specific session's form — not
-          // classes.teacher_id, which is fixed per course and can't tell two
-          // different courses' sessions taught by the same real person
-          // apart, nor let one session diverge from the course's default
-          // teacher. This is what the conflict trigger now checks (see
-          // migrate-per-session-lecturer.sql).
-          teacher_id: userRow.id,
-        };
-
-        let result;
-        if(isEdit){
-          // Prefer the live row's own id, carried on oldLecture if it came
-          // from loadTimetableFromSupabase() — direct id lookup sidesteps
-          // any risk of a field-matching mismatch (e.g. Postgres returning
-          // "08:00:00" for a time column while the mock/display value is
-          // "08:00") entirely, rather than depending on the two staying in
-          // sync. Only fall back to field-matching for a slot that's never
-          // been live before (no id to target yet).
-          let existingSlotId = oldLecture?._liveSlotId || null;
-          if(!existingSlotId){
-            const { data: existingSlots, error: findErr } = await SUPABASE_CLIENT
-              .from('timetable_slots')
-              .select('id')
-              .eq('class_id', classRow.id)
-              .eq('day_of_week', editDay)
-              .eq('start_time', oldLecture.time.split(' – ')[0])
-              .eq('end_time', oldLecture.time.split(' – ')[1])
-              .eq('room', oldLecture.room)
-              .maybeSingle();
-
-            if(findErr || !existingSlots){
-              console.warn('Timetable edit: existing slot not found, keeping local change:', findErr);
-              return;
-            }
-            existingSlotId = existingSlots.id;
-          }
-
-          result = await SUPABASE_CLIENT
-            .from('timetable_slots')
-            .update(slotData)
-            .eq('id', existingSlotId);
-
-          // Part 3: Send reschedule announcement if day/time/room changed
-          if(!result.error && oldLecture){
-            const dayChanged = editDay !== day;
-            const timeChanged = oldLecture.time !== timeStr;
-            const roomChanged = oldLecture.room !== room;
-            
-            if(dayChanged || timeChanged || roomChanged){
-              // Fetch enrolled students for this course
-              const { data: enrollments } = await SUPABASE_CLIENT
-                .from('enrollments')
-                .select('student_id')
-                .eq('class_id', classRow.id);
-              
-              const studentIds = enrollments?.map(e => e.student_id) || [];
-              
-              // Build notification body describing what changed
-              const changes = [];
-              if(dayChanged) changes.push(`moved from ${editDay} to ${day}`);
-              if(timeChanged) changes.push(`rescheduled from ${oldLecture.time} to ${timeStr}`);
-              if(roomChanged) changes.push(`relocated from ${oldLecture.room} to ${room}`);
-              
-              const notifBody = `Your ${course?.name||courseCode} session has been ${changes.join(', ')}.`;
-              
-              // Send to students
-              studentIds.forEach(studentId => {
-                pushNotification({
-                  recipientRole: 'student',
-                  recipientId: studentId,
-                  type: 'reschedule',
-                  title: `Schedule Change: ${course?.name||courseCode}`,
-                  body: notifBody,
-                  courseCode,
-                  from: 'System',
-                  fromId: 'system',
-                });
-              });
-              
-              // Send to lecturer
-              pushNotification({
-                recipientRole: 'lecturer',
-                recipientId: userRow.id,
-                type: 'reschedule',
-                title: `Schedule Change: ${course?.name||courseCode}`,
-                body: notifBody,
-                courseCode,
-                from: 'System',
-                fromId: 'system',
-              });
-            }
-          }
-        } else {
-          // Insert new slot
-          result = await SUPABASE_CLIENT
-            .from('timetable_slots')
-            .insert(slotData);
-        }
-
-        if(result.error){
-          // Database trigger rejected the write (room or lecturer conflict)
-          // Roll back local change and show the actual error message
-          console.warn('Timetable write rejected by database trigger:', result.error);
-          
-          // Roll back local change
-          if(isEdit){
-            // Put the old lecture back where it was
-            const oldDayEntry = SCHEDULE.find(d => d.day === editDay);
-            if(oldDayEntry){
-              oldDayEntry.lectures.splice(parseInt(editIndex, 10), 0, oldLecture);
-            }
-            // Remove the new lecture from the target day
-            const targetDayEntry = SCHEDULE.find(d => d.day === day);
-            if(targetDayEntry){
-              const newIdx = targetDayEntry.lectures.findIndex(l => 
-                l.code === newLecture.code && l.room === newLecture.room && l.time === newLecture.time
-              );
-              if(newIdx >= 0) targetDayEntry.lectures.splice(newIdx, 1);
-            }
-          } else {
-            // Remove the newly added lecture
-            const removeIdx = dayEntry.lectures.findIndex(l => 
-              l.code === newLecture.code && l.room === newLecture.room && l.time === newLecture.time
-            );
-            if(removeIdx >= 0) dayEntry.lectures.splice(removeIdx, 1);
-          }
-          
-          // Show the actual conflict message from the database
-          showToast(`Schedule conflict: ${result.error.message}`);
-          refreshScreenContentOnly();
-        }
-      } catch(err){
-        console.warn('Timetable write error, keeping local change:', err);
-        // Keep local change, don't fail the UI
-      }
-    })();
-  }
-
   navigate('allSchedules', { replace: true });
   return false;
+}
+
+// Resolves class_id/teacher_id, writes (or updates) the timetable_slots row,
+// and — for an edit whose day/time/room changed — sends the reschedule
+// announcement. Returns the write's error (a genuine trigger rejection) for
+// submitNewSession() to block on, or null if the write succeeded OR if a
+// lookup/network failure means there's nothing live to verify against (same
+// "keep the local-only fallback working" stance the original fire-and-forget
+// version had — only an actual conflict from the database should block the
+// form now).
+async function writeSessionLive({ isEdit, editDay, editIndex, day, courseCode, lecturer, room, startTime, endTime, timeStr, mode, oldLecture, course }){
+  try {
+    // Resolve class_id and teacher_id from course code and lecturer name
+    const { data: classRow, error: classErr } = await SUPABASE_CLIENT
+      .from('classes')
+      .select('id, teacher_id')
+      .eq('code', courseCode)
+      .maybeSingle();
+
+    if(classErr || !classRow){
+      console.warn('Timetable write: classes lookup failed, keeping local change:', classErr);
+      return null; // Keep local change, don't fail the UI
+    }
+
+    const { data: userRow, error: userErr } = await SUPABASE_CLIENT
+      .from('users')
+      .select('id')
+      .eq('name', lecturer)
+      .maybeSingle();
+
+    if(userErr || !userRow){
+      console.warn('Timetable write: lecturer lookup failed, keeping local change:', userErr);
+      return null; // Keep local change, don't fail the UI
+    }
+
+    const slotData = {
+      class_id: classRow.id,
+      day_of_week: day,
+      start_time: startTime,
+      end_time: endTime,
+      room,
+      mode: mode || null,
+      // The lecturer picked in this specific session's form — not
+      // classes.teacher_id, which is fixed per course and can't tell two
+      // different courses' sessions taught by the same real person
+      // apart, nor let one session diverge from the course's default
+      // teacher. This is what the conflict trigger now checks (see
+      // migrate-per-session-lecturer.sql).
+      teacher_id: userRow.id,
+    };
+
+    let result;
+    if(isEdit){
+      // Prefer the live row's own id, carried on oldLecture if it came
+      // from loadTimetableFromSupabase() — direct id lookup sidesteps
+      // any risk of a field-matching mismatch (e.g. Postgres returning
+      // "08:00:00" for a time column while the mock/display value is
+      // "08:00") entirely, rather than depending on the two staying in
+      // sync. Only fall back to field-matching for a slot that's never
+      // been live before (no id to target yet).
+      let existingSlotId = oldLecture?._liveSlotId || null;
+      if(!existingSlotId){
+        const { data: existingSlots, error: findErr } = await SUPABASE_CLIENT
+          .from('timetable_slots')
+          .select('id')
+          .eq('class_id', classRow.id)
+          .eq('day_of_week', editDay)
+          .eq('start_time', oldLecture.time.split(' – ')[0])
+          .eq('end_time', oldLecture.time.split(' – ')[1])
+          .eq('room', oldLecture.room)
+          .maybeSingle();
+
+        if(findErr || !existingSlots){
+          console.warn('Timetable edit: existing slot not found, keeping local change:', findErr);
+          return null;
+        }
+        existingSlotId = existingSlots.id;
+      }
+
+      result = await SUPABASE_CLIENT
+        .from('timetable_slots')
+        .update(slotData)
+        .eq('id', existingSlotId);
+
+      // Part 3: Send reschedule announcement if day/time/room changed
+      if(!result.error && oldLecture){
+        const dayChanged = editDay !== day;
+        const timeChanged = oldLecture.time !== timeStr;
+        const roomChanged = oldLecture.room !== room;
+
+        if(dayChanged || timeChanged || roomChanged){
+          // Fetch enrolled students for this course
+          const { data: enrollments } = await SUPABASE_CLIENT
+            .from('enrollments')
+            .select('student_id')
+            .eq('class_id', classRow.id);
+
+          const studentIds = enrollments?.map(e => e.student_id) || [];
+
+          // Build notification body describing what changed
+          const changes = [];
+          if(dayChanged) changes.push(`moved from ${editDay} to ${day}`);
+          if(timeChanged) changes.push(`rescheduled from ${oldLecture.time} to ${timeStr}`);
+          if(roomChanged) changes.push(`relocated from ${oldLecture.room} to ${room}`);
+
+          const notifBody = `Your ${course?.name||courseCode} session has been ${changes.join(', ')}.`;
+
+          // Send to students
+          studentIds.forEach(studentId => {
+            pushNotification({
+              recipientRole: 'student',
+              recipientId: studentId,
+              type: 'reschedule',
+              title: `Schedule Change: ${course?.name||courseCode}`,
+              body: notifBody,
+              courseCode,
+              from: 'System',
+              fromId: 'system',
+            });
+          });
+
+          // Send to lecturer
+          pushNotification({
+            recipientRole: 'lecturer',
+            recipientId: userRow.id,
+            type: 'reschedule',
+            title: `Schedule Change: ${course?.name||courseCode}`,
+            body: notifBody,
+            courseCode,
+            from: 'System',
+            fromId: 'system',
+          });
+        }
+      }
+    } else {
+      // Insert new slot
+      result = await SUPABASE_CLIENT
+        .from('timetable_slots')
+        .insert(slotData);
+    }
+
+    if(result.error){
+      console.warn('Timetable write rejected by database trigger:', result.error);
+      return result.error;
+    }
+    return null;
+  } catch(err){
+    console.warn('Timetable write error, keeping local change:', err);
+    return null; // Keep local change, don't fail the UI
+  }
 }
 
 function confirmDeleteSlot(day, index){
