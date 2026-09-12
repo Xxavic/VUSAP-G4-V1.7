@@ -5360,13 +5360,12 @@ function renderStartSession(){
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
       <div class="page-title" style="font-size:18px;">Live Session</div>
     </div>
+    <div class="header-greet" style="text-align:center;">
+      <h2 style="font-size:18px;">${LIVE_SESSION.courseCode} — ${LIVE_SESSION.courseName}</h2>
+      <p>${LIVE_SESSION.room}</p>
+    </div>
   </div>
   <div class="content">
-    <div class="info-box" style="text-align:center;">
-      <div class="k">${LIVE_SESSION.courseCode} — ${LIVE_SESSION.courseName}</div>
-      <div class="v" style="font-size:13px;">${LIVE_SESSION.room}</div>
-    </div>
-
     <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:14px;">
       <div class="qr-display-wrap">
         <div id="qrCanvasHolder" class="qr-code-box"></div>
