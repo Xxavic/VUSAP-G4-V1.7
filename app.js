@@ -9952,11 +9952,6 @@ function renderBottomNav(){
     </button>`).join('');
 }
 
-function hideSplash(){
-  const splash = document.getElementById('bootSplash');
-  if(splash) splash.classList.add('hide');
-}
-
 function renderApp(){
   const app = document.getElementById('app');
   const screensEl = document.getElementById('screens');
@@ -9971,7 +9966,6 @@ function renderApp(){
     // Anchor history here so a stray back-press after logout can't resurrect
     // a previous session's screen underneath the login form.
     history.replaceState({ vusapScreen: null }, '', '');
-    hideSplash();
     return;
   }
   navEl.style.display = 'flex';
@@ -9980,7 +9974,6 @@ function renderApp(){
   // Replace (not push) so this home screen becomes the back-button floor —
   // pressing back here falls through to exiting/backgrounding the app.
   navigate(currentScreen, { replace: true });
-  hideSplash();
 }
 
 let _autoLogoutTimer = null;
@@ -10013,6 +10006,23 @@ function boot(){
 document.addEventListener('DOMContentLoaded', ()=>{
   // Initialize theme on app load
   initializeTheme();
+
+  // Splash screen: shows briefly on every load (not just when installed as
+  // a PWA, unlike the OS-level splash the manifest's background_color
+  // already provides) — reuses the same logo mark as the login screen for
+  // visual consistency, rather than a separate asset. A fixed duration
+  // rather than tying dismissal to load-completion: the app underneath is
+  // already ready almost immediately regardless (renderApp() runs
+  // synchronously before any session-resume network call resolves), so
+  // there's nothing meaningful to actually wait on here.
+  const splashLogoWrap = document.querySelector('#splashScreen .splash-logo-wrap');
+  if(splashLogoWrap) splashLogoWrap.innerHTML = VU_LOGO_MARK;
+  setTimeout(() => {
+    const splash = document.getElementById('splashScreen');
+    if(!splash) return;
+    splash.classList.add('splash-hide');
+    setTimeout(() => splash.remove(), 450); // matches the CSS transition duration, then cleans up entirely
+  }, 1800);
 
   document.getElementById('sheetOverlay').addEventListener('click', ()=>{
     if(openSheetId){
