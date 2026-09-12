@@ -3489,9 +3489,7 @@ function renderLecturerDashboard(){
         <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(State.user.name)}</button>
       </div>
     </div>
-  </div>
-  <div class="content">
-    <div class="greeting-card">
+    <div class="header-greet">
       <h2>Good evening, ${firstName(State.user.name)}</h2>
       <p>Manage your course sessions and attendance.</p>
       <div class="greeting-tags">
@@ -3499,7 +3497,8 @@ function renderLecturerDashboard(){
         <span class="tag-pill">Wednesday</span>
       </div>
     </div>
-
+  </div>
+  <div class="content">
     <div class="stat-grid">
       <div class="stat-tile">
         <div class="top"><span class="label">Assigned Courses</span>
@@ -4831,9 +4830,7 @@ function renderStudentHome(){
         <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(u.name)}</button>
       </div>
     </div>
-  </div>
-  <div class="content">
-    <div class="greeting-card">
+    <div class="header-greet">
       <h2>${timeGreeting()}, ${firstName(u.name)} 👋</h2>
       <p>${todayLong()}</p>
       <div class="greeting-tags">
@@ -4843,7 +4840,8 @@ function renderStudentHome(){
       </div>
       ${streak >= 2 ? `<div class="streak-chip">${ICONS.flame} ${streak}-day streak — keep it up!</div>` : ''}
     </div>
-
+  </div>
+  <div class="content">
     ${sessionOpenForMe ? (State.hasCheckedInToday ? `
     <button class="checkin-cta" onclick="navigate('checkin')" style="background:linear-gradient(135deg, var(--present), #0d8a3e);">
       <div class="ci-icon">${ICONS.checkCircle.replace(/width="\d+" height="\d+"/,'width="26" height="26"')}</div>
@@ -5747,9 +5745,7 @@ function renderRegistrarDashboard(){
         <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(State.user.name)}</button>
       </div>
     </div>
-  </div>
-  <div class="content">
-    <div class="greeting-card">
+    <div class="header-greet">
       <h2>Good evening, ${firstName(State.user.name)}</h2>
       <p>Registrar's Attendance Management Dashboard</p>
       <div class="greeting-tags">
@@ -5757,7 +5753,8 @@ function renderRegistrarDashboard(){
         <span class="tag-pill">${facultyName(State.user.facultyKey)}</span>
       </div>
     </div>
-
+  </div>
+  <div class="content">
     <div class="stat-grid">
       <div class="stat-tile">
         <div class="top"><span class="label">Faculty Students</span>
@@ -6692,9 +6689,7 @@ function renderAdministratorDashboard(){
         <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(State.user.name)}</button>
       </div>
     </div>
-  </div>
-  <div class="content">
-    <div class="greeting-card">
+    <div class="header-greet">
       <h2>Good evening, ${firstName(State.user.name)}</h2>
       <p>Full system access — users, roles, and platform configuration.</p>
       <div class="greeting-tags">
@@ -6702,7 +6697,8 @@ function renderAdministratorDashboard(){
         <span class="tag-pill">Full Access</span>
       </div>
     </div>
-
+  </div>
+  <div class="content">
     <div class="stat-grid">
       <div class="stat-tile" onclick="navigate('register')" style="cursor:pointer;">
         <div class="top"><span class="label">Total Users</span>
