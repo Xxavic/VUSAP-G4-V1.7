@@ -6044,7 +6044,9 @@ function renderStudentAnalyticsCharts(){
 
   const students = scopedStudents();
   const records = scopedRecords();
-  const CHART_COLORS = ['#1d4ed8','#7e22a3','#0f766e','#d97706','#dc2626','#0891b2','#c026d3','#65a30d','#be185d','#475569','#9333ea','#0369a1','#b45309','#4d7c0f'];
+  const rootStyle = getComputedStyle(document.documentElement);
+  const cssColor = (name, fallback) => (rootStyle.getPropertyValue(name).trim() || fallback);
+  const CHART_COLORS = ['#6c3ef5','#0d9488','#c026d3','#ff6b57','#22d3ee','#f5a524','#4a22c9','#14b8a6','#e879f9','#94a3b8','#8b6ff8','#0891b2','#fb923c','#5eead4'];
 
   // 1) Students by course (programme)
   const byCourse = {};
@@ -6070,7 +6072,7 @@ function renderStudentAnalyticsCharts(){
   if(ctx2){
     _analyticsCharts.gender = new Chart(ctx2, {
       type: 'pie',
-      data: { labels: genderLabels, datasets: [{ data: genderData, backgroundColor: ['#1d4ed8','#be185d','#94a3b8'] }] },
+      data: { labels: genderLabels, datasets: [{ data: genderData, backgroundColor: ['#6c3ef5','#ff6b57','#94a3b8'] }] },
       options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } } } }
     });
   }
@@ -6084,7 +6086,7 @@ function renderStudentAnalyticsCharts(){
   if(ctx3){
     _analyticsCharts.status = new Chart(ctx3, {
       type: 'doughnut',
-      data: { labels:['Present','Late','Absent'], datasets:[{ data:[present,late,absent], backgroundColor:['#16a34a','#d97706','#dc2626'] }] },
+      data: { labels:['Present','Late','Absent'], datasets:[{ data:[present,late,absent], backgroundColor:[cssColor('--present','#17b978'),cssColor('--late','#f5a524'),cssColor('--absent','#ef4444')] }] },
       options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } } } }
     });
   }
@@ -6099,8 +6101,8 @@ function renderStudentAnalyticsCharts(){
     _analyticsCharts.yearSemester = new Chart(ctx4, {
       type: 'bar',
       data: { labels: years, datasets: [
-        { label:'Semester 1', data: sem1, backgroundColor:'#1d4ed8' },
-        { label:'Semester 2', data: sem2, backgroundColor:'#0f766e' },
+        { label:'Semester 1', data: sem1, backgroundColor:'#6c3ef5' },
+        { label:'Semester 2', data: sem2, backgroundColor:'#0d9488' },
       ] },
       options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
     });
