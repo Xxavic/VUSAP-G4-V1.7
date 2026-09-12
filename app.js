@@ -1069,6 +1069,20 @@ async function loadFacultiesAndProgrammesFromSupabase(){
 
     FACULTIES = newFaculties;
     PROGRAMMES = newProgrammes;
+
+    // COURSES[].programmeKey was resolved once, at module load, against the
+    // mock PROGRAMMES array (see buildInitialCourseCatalog()). Swapping in
+    // the live PROGRAMMES above leaves those keys pointing at nothing
+    // whenever the live `programmes.key` values don't match the mock's —
+    // which silently empties scopedCourses() for every faculty (the
+    // Course dropdown in Create/Edit Session goes blank, since its find()
+    // never matches). Re-resolve each course's programmeKey by programme
+    // *name* — which is stable across mock/live — against the PROGRAMMES
+    // set that's actually live now.
+    COURSES.forEach(c => {
+      const prog = PROGRAMMES.find(p => p.name === c.programme);
+      if(prog) c.programmeKey = prog.key;
+    });
   } catch(e){
     console.warn('loadFacultiesAndProgrammesFromSupabase error, keeping mock data:', e);
   }
