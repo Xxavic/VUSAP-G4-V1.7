@@ -488,9 +488,33 @@ function subscribeToLiveSession(courseCode){
 async function checkLecturerActiveSession(){
   if(!LIVE_BACKEND) return;
   try {
-    const row = await liveFindActiveSession(LIVE_SESSION.courseCode);
+    // LIVE_SESSION.courseCode only reflects the Lecturer's real course once
+    // a session has actually been applied THIS page load (applyLiveSessionRow()
+    // / startSessionForLecture()) — right after a reload it's back to the
+    // module's hardcoded default ("CSC3103"), so checking only that one course
+    // silently missed a genuinely-running session on any other course, making
+    // the Dashboard tile (and everything gated on it, like the roster below)
+    // look like nothing was running. Search every course this Lecturer
+    // actually teaches instead — same discovery pattern as the Student
+    // side's startStudentLiveSessionSync().
+    let row = null, resumedCode = null;
+    for(const code of coursesForLecturer().map(c => c.code)){
+      row = await liveFindActiveSession(code);
+      if(row){ resumedCode = code; break; }
+    }
     if(row){
       applyLiveSessionRow(row);
+      subscribeToLiveSession(resumedCode);
+      // applyLiveSessionRow() has no scheduling `sessions` row id to give us
+      // (live_qr_sessions doesn't carry one) — without re-resolving it here,
+      // updateLiveRoster()'s guard on LIVE_SESSION.schedulingSessionId stays
+      // blocked forever after a rediscovery like this, even though a session
+      // is genuinely running. Same idempotent select-then-insert
+      // startSessionForLecture() already relies on for the same field.
+      liveEnsureSchedulingSession(resumedCode).then(id => {
+        LIVE_SESSION.schedulingSessionId = id;
+        updateDebugPanel();
+      });
       refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
     } else if(LIVE_SESSION.active || LIVE_SESSION.liveSessionId){
       // This is the fix for a real bug found in testing: endSession() sets
@@ -2215,10 +2239,17 @@ async function loadNotificationsFromSupabase(){
 function notificationsForCurrentUser(){
   if(!State.role || !State.user) return [];
   const userId = State.user.id || State.user.reg || State.user.staffId;
+  // Some writers (e.g. the reschedule announcement in submitNewSession)
+  // address recipientId by the raw Supabase users.id UUID — the same id
+  // enrollments.student_id/attendance.student_id FK against — rather than
+  // the university-ID-shaped `id` above. Match either shape so those
+  // notifications actually reach the recipient instead of being silently
+  // filtered out.
+  const supabaseId = State.user.supabaseId || null;
   return NOTIFICATIONS.filter(n => {
     if(n.recipientRole === 'all') return true;
     if(n.recipientRole !== State.role) return false;
-    if(n.recipientId && n.recipientId !== userId) return false;
+    if(n.recipientId && n.recipientId !== userId && n.recipientId !== supabaseId) return false;
     if(n.courseCode){
       if(State.role !== 'student') return false;
       return STUDENT_COURSES.some(c => c.code === n.courseCode);
@@ -2241,13 +2272,18 @@ async function liveMarkNotificationsRead(){
   if(!LIVE_BACKEND || !State.role) return;
   try {
     const userId = State.user ? (State.user.id || State.user.reg || State.user.staffId) : null;
+    const supabaseId = State.user ? (State.user.supabaseId || null) : null;
     // Mirrors notificationsForCurrentUser()'s filter: this role or 'all',
-    // and either no specific recipient or it's this user.
+    // and either no specific recipient or it's this user — matched against
+    // either id shape a writer may have used (see that function's comment).
     let query = SUPABASE_CLIENT
       .from('notifications')
       .update({ read: true })
       .in('recipient_role', [State.role, 'all']);
-    if(userId) query = query.or(`recipient_id.is.null,recipient_id.eq.${userId}`);
+    const idFilters = ['recipient_id.is.null'];
+    if(userId) idFilters.push(`recipient_id.eq.${userId}`);
+    if(supabaseId) idFilters.push(`recipient_id.eq.${supabaseId}`);
+    query = query.or(idFilters.join(','));
     const { error } = await query;
     if(error) console.warn('liveMarkNotificationsRead failed:', error);
   } catch(e){
