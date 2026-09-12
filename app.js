@@ -7860,6 +7860,73 @@ function saveNotifTemplate(key){
 // ADMINISTRATOR: SYSTEM SETTINGS
 // ============================================================
 
+// SYSTEM_SETTINGS started as a plain in-memory object with no persistence
+// at all — any change reset to the hardcoded defaults on the very next
+// page load, and was never visible to any other visitor/device either.
+// This loader (fire-and-forget, same failure philosophy as the other
+// Supabase loaders above: keep the in-memory defaults on any error rather
+// than blocking or showing broken UI) and saveSystemSettingsToSupabase()
+// below back it with the `system_settings` singleton table instead
+// (see migrate-system-settings.sql).
+async function loadSystemSettingsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data, error } = await SUPABASE_CLIENT
+      .from('system_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+    if(error || !data){
+      console.warn('System settings fetch returned nothing usable, keeping defaults:', error);
+      return;
+    }
+    SYSTEM_SETTINGS.systemName = data.system_name ?? SYSTEM_SETTINGS.systemName;
+    SYSTEM_SETTINGS.institutionName = data.institution_name ?? SYSTEM_SETTINGS.institutionName;
+    SYSTEM_SETTINGS.portalName = data.portal_name ?? SYSTEM_SETTINGS.portalName;
+    SYSTEM_SETTINGS.supportEmail = data.support_email ?? SYSTEM_SETTINGS.supportEmail;
+    SYSTEM_SETTINGS.academicYear = data.academic_year ?? SYSTEM_SETTINGS.academicYear;
+    SYSTEM_SETTINGS.autoLogoutMinutes = data.auto_logout_minutes ?? SYSTEM_SETTINGS.autoLogoutMinutes;
+    SYSTEM_SETTINGS.requireEmailVerification = data.require_email_verification ?? SYSTEM_SETTINGS.requireEmailVerification;
+    SYSTEM_SETTINGS.allowSelfEnrollment = data.allow_self_enrollment ?? SYSTEM_SETTINGS.allowSelfEnrollment;
+    SYSTEM_SETTINGS.maintenanceMode = data.maintenance_mode ?? SYSTEM_SETTINGS.maintenanceMode;
+    SYSTEM_SETTINGS.logoDataUri = data.logo_data_uri ?? null;
+
+    // Unlike FACULTIES/PROGRAMMES etc., this data can already be on screen
+    // by the time this resolves (the splash paints synchronously at boot,
+    // and login is often still showing) — refresh both explicitly instead
+    // of waiting for whatever the user navigates to next.
+    applySplashBranding();
+    if(!State.role) renderApp();
+  } catch(e){
+    console.warn('loadSystemSettingsFromSupabase error, keeping defaults:', e);
+  }
+}
+
+async function saveSystemSettingsToSupabase(){
+  if(!LIVE_BACKEND) return true;
+  try {
+    const { error } = await SUPABASE_CLIENT.from('system_settings').upsert({
+      id: 1,
+      system_name: SYSTEM_SETTINGS.systemName,
+      institution_name: SYSTEM_SETTINGS.institutionName,
+      portal_name: SYSTEM_SETTINGS.portalName,
+      support_email: SYSTEM_SETTINGS.supportEmail,
+      academic_year: SYSTEM_SETTINGS.academicYear,
+      auto_logout_minutes: SYSTEM_SETTINGS.autoLogoutMinutes,
+      require_email_verification: SYSTEM_SETTINGS.requireEmailVerification,
+      allow_self_enrollment: SYSTEM_SETTINGS.allowSelfEnrollment,
+      maintenance_mode: SYSTEM_SETTINGS.maintenanceMode,
+      logo_data_uri: SYSTEM_SETTINGS.logoDataUri,
+      updated_at: new Date().toISOString(),
+    });
+    if(error){ console.warn('saveSystemSettingsToSupabase failed:', error); return false; }
+    return true;
+  } catch(e){
+    console.warn('saveSystemSettingsToSupabase error:', e);
+    return false;
+  }
+}
+
 function renderSystemSettings(){
   const s = SYSTEM_SETTINGS;
   return `
@@ -7968,7 +8035,7 @@ function renderSystemSettings(){
   </div>`;
 }
 
-function saveSystemSettings(){
+async function saveSystemSettings(){
   const autoLogout = parseInt(document.getElementById('ssAutoLogout')?.value||'30', 10);
   if(autoLogout < 5 || autoLogout > 480){ showToast("Auto-logout must be 5–480 minutes"); return; }
 
@@ -7987,8 +8054,11 @@ function saveSystemSettings(){
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', SYSTEM_SETTINGS.maintenanceMode ? 'Maintenance mode enabled' : 'Maintenance mode disabled', 'system', '');
   }
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'System settings updated', 'system', `autoLogout=${autoLogout}min`);
-  showToast("System settings saved");
+  // Optimistic: reflect the change immediately, then confirm (or flag)
+  // whether it actually made it to the database once the write resolves.
   navigate('systemSettings', { replace: true });
+  const persisted = await saveSystemSettingsToSupabase();
+  showToast(persisted ? "System settings saved" : "Saved on this device only — couldn't reach the server");
 }
 
 // Applies immediately on selection (not gated behind "Save Settings") since
@@ -8000,21 +8070,23 @@ function handleLogoFileChange(event){
   if(!file.type.startsWith('image/')){ showToast("Please choose an image file"); return; }
   if(file.size > 2 * 1024 * 1024){ showToast("Logo must be under 2MB"); return; }
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     SYSTEM_SETTINGS.logoDataUri = reader.result;
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Institute logo changed', 'system', '');
-    showToast("Logo updated");
     navigate('systemSettings', { replace: true });
+    const persisted = await saveSystemSettingsToSupabase();
+    showToast(persisted ? "Logo updated" : "Updated on this device only — couldn't reach the server");
   };
   reader.onerror = () => showToast("Couldn't read that file — try another image");
   reader.readAsDataURL(file);
 }
 
-function resetInstituteLogo(){
+async function resetInstituteLogo(){
   SYSTEM_SETTINGS.logoDataUri = null;
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Institute logo reset to default', 'system', '');
-  showToast("Logo reset to default");
   navigate('systemSettings', { replace: true });
+  const persisted = await saveSystemSettingsToSupabase();
+  showToast(persisted ? "Logo reset to default" : "Reset on this device only — couldn't reach the server");
 }
 
 // ============================================================
@@ -10064,6 +10136,21 @@ function boot(){
   });
 }
 
+// Applies current SYSTEM_SETTINGS branding to the splash screen. Called
+// once synchronously at boot (before any network round-trip can possibly
+// resolve) and again once loadSystemSettingsFromSupabase() resolves, so a
+// rebranded institution's logo/name actually show up rather than only
+// taking effect on the next reload. No-ops harmlessly if the splash has
+// already been dismissed/removed.
+function applySplashBranding(){
+  const splashLogoWrap = document.querySelector('#splashScreen .splash-logo-wrap');
+  if(splashLogoWrap) splashLogoWrap.innerHTML = currentLogoMark();
+  const splashBrand = document.querySelector('#splashScreen .splash-brand');
+  if(splashBrand) splashBrand.textContent = SYSTEM_SETTINGS.systemName;
+  const splashUni = document.querySelector('#splashScreen .splash-uni');
+  if(splashUni) splashUni.textContent = SYSTEM_SETTINGS.institutionName;
+}
+
 // close sheet on overlay tap
 document.addEventListener('DOMContentLoaded', ()=>{
   // Initialize theme on app load
@@ -10077,12 +10164,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // already ready almost immediately regardless (renderApp() runs
   // synchronously before any session-resume network call resolves), so
   // there's nothing meaningful to actually wait on here.
-  const splashLogoWrap = document.querySelector('#splashScreen .splash-logo-wrap');
-  if(splashLogoWrap) splashLogoWrap.innerHTML = currentLogoMark();
-  const splashBrand = document.querySelector('#splashScreen .splash-brand');
-  if(splashBrand) splashBrand.textContent = SYSTEM_SETTINGS.systemName;
-  const splashUni = document.querySelector('#splashScreen .splash-uni');
-  if(splashUni) splashUni.textContent = SYSTEM_SETTINGS.institutionName;
+  applySplashBranding();
   setTimeout(() => {
     const splash = document.getElementById('splashScreen');
     if(!splash) return;
@@ -10119,6 +10201,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // fallback/coexisting data rather than being wiped by a handful of real
   // slots the moment they exist.
   loadTimetableFromSupabase();
+  // System Settings (portal name, institute logo, etc.) — see
+  // loadSystemSettingsFromSupabase() for why this one also re-applies to
+  // the splash/login screen once it resolves, unlike the loaders above.
+  loadSystemSettingsFromSupabase();
 
   resumeSupabaseSession().then(() => {
     if(!State.role) renderApp(); // no session found — show login
