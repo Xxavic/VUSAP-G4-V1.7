@@ -393,7 +393,6 @@ async function liveWriteSession(){
   } catch(e){
     console.warn('liveWriteSession error:', e);
   }
-  updateDebugPanel();
 }
 
 // Student side: find the currently active broadcast row for a given course code.
@@ -462,7 +461,6 @@ function subscribeToLiveSession(courseCode){
       // session we're already tracking (so we still see it flip to ended).
       if(row.active || row.id === LIVE_SESSION.liveSessionId){
         applyLiveSessionRow(row);
-        updateDebugPanel();
       }
     })
     .subscribe();
@@ -471,7 +469,6 @@ function subscribeToLiveSession(courseCode){
     SUPABASE_CLIENT.removeChannel(channel);
     liveSessionUpdatesUnsubscribe = null;
   };
-  updateDebugPanel();
 }
 
 // Mirrors the Student side's active-session discovery, but for the
@@ -513,7 +510,6 @@ async function checkLecturerActiveSession(){
       // startSessionForLecture() already relies on for the same field.
       liveEnsureSchedulingSession(resumedCode).then(id => {
         LIVE_SESSION.schedulingSessionId = id;
-        updateDebugPanel();
       });
       refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
     } else if(LIVE_SESSION.active || LIVE_SESSION.liveSessionId){
@@ -552,7 +548,6 @@ async function startStudentLiveSessionSync(){
       return;
     }
   }
-  updateDebugPanel();
 }
 
 // hasCheckedInToday only ever gets set true locally, inside completeCheckIn()
@@ -720,7 +715,6 @@ async function liveWriteAttendance(){
       .single();
     if(error){ console.warn('liveWriteAttendance insert failed:', error); return; }
     const markedAt = data?.marked_at || new Date().toISOString();
-    updateDebugPanel();
 
     // Fraud detection only runs after a confirmed successful write, using
     // the device id and server-assigned timestamp that was actually just recorded.
@@ -1871,53 +1865,6 @@ function isLiveSessionOpenForStudent(){
   // on it — only compare when there's actually something to compare.
   const modeOk = !LIVE_SESSION.mode || !State.user?.mode || LIVE_SESSION.mode === State.user.mode;
   return isLiveSessionActive() && STUDENT_COURSES.some(c => c.code === LIVE_SESSION.courseCode) && modeOk;
-}
-
-// ============================================================
-// LIVE SESSION DEBUG PANEL (temporary — remove once Gate 3 Realtime
-// sync is confirmed working end-to-end). Shows a small on-screen readout
-// of the Realtime subscription state on Lecturer's Start Session screen
-// and Student's Check-In screen, so this can be verified on a phone
-// without needing a plugged-in console.
-// ============================================================
-let DEBUG_LIVE_SESSION_PANEL = false;
-
-function ensureLiveDebugPanel(){
-  let panel = document.getElementById('liveDebugPanel');
-  if(!panel){
-    panel = document.createElement('div');
-    panel.id = 'liveDebugPanel';
-    panel.style.cssText = `
-      position:fixed; bottom:76px; left:8px; right:8px; z-index:99999;
-      background:rgba(17,24,39,0.94); color:#e5e7eb; font-family:monospace;
-      font-size:11px; line-height:1.6; padding:8px 10px; border-radius:10px;
-      border:1px solid rgba(255,255,255,0.15); pointer-events:none;
-      white-space:pre-wrap;
-    `;
-    document.body.appendChild(panel);
-  }
-  return panel;
-}
-
-function removeLiveDebugPanel(){
-  const panel = document.getElementById('liveDebugPanel');
-  if(panel) panel.remove();
-}
-
-function updateDebugPanel(){
-  if(!DEBUG_LIVE_SESSION_PANEL) return;
-  const panel = ensureLiveDebugPanel();
-  const subStatus = typeof liveSessionUpdatesUnsubscribe === 'function' ? 'subscribed ✅' : 'not subscribed ❌';
-  panel.textContent =
-`LIVE SESSION DEBUG
-backend: ${LIVE_BACKEND ? 'live' : 'offline/mock'}
-sync: ${subStatus}
-broadcast id: ${LIVE_SESSION.liveSessionId || '—'}
-scheduling session id: ${LIVE_SESSION.schedulingSessionId || '—'}
-course: ${LIVE_SESSION.courseCode}
-token: ${LIVE_SESSION.token}
-active: ${LIVE_SESSION.active}
-updated: ${new Date().toLocaleTimeString()}`;
 }
 
 const SUSPICION_LOG = [
@@ -5656,7 +5603,6 @@ async function startSessionForLecture(lecture){
   // it themselves. Fire-and-forget, same as the broadcast write above.
   liveEnsureSchedulingSession(LIVE_SESSION.courseCode).then(id => {
     LIVE_SESSION.schedulingSessionId = id;
-    updateDebugPanel();
   });
   navigate('startSession');
 }
@@ -9823,7 +9769,6 @@ function navigate(screenId, opts){
   if(previousScreen === 'checkin' && screenId !== 'checkin' && screenId !== 'home') resetStudentLiveSync();
   if(previousScreen === 'home' && screenId !== 'home' && screenId !== 'checkin') resetStudentLiveSync();
   if(previousScreen === 'home' && screenId !== 'home') stopStudentBannerTicker();
-  if(screenId !== 'startSession' && screenId !== 'checkin') removeLiveDebugPanel();
   // The analytics canvases get torn down and replaced every time this
   // screen is (re-)entered — destroy the previous Chart.js instances first
   // so a returning visit doesn't hit "Canvas is already in use".
@@ -9836,11 +9781,9 @@ function navigate(screenId, opts){
     startRosterPolling();
     updateLiveCheckinCount(); // Gate 4: show a real count immediately, don't wait for the first tick
     updateLiveRoster();
-    updateDebugPanel();
   }
   if(screenId === 'checkin'){
     startStudentLiveSessionSync();
-    updateDebugPanel();
   }
   if(screenId === 'home'){
     startStudentBannerTicker();
