@@ -1048,8 +1048,14 @@ async function loadFacultiesAndProgrammesFromSupabase(){
       .select('*, faculties(key, name)')
       .order('name');
 
-    if(fErr || pErr || !facultyRows || !programmeRows){
-      console.warn('Faculties/Programmes fetch failed, keeping mock data:', fErr || pErr);
+    if(fErr || pErr || !facultyRows || !programmeRows || facultyRows.length === 0 || programmeRows.length === 0){
+      // A successful-but-empty result (an unseeded `faculties`/`programmes`
+      // table) is not safe to treat as authoritative: it would null out
+      // every programme's facultyKey via the `faculties(key, name)` embed,
+      // which silently empties scopedCourses() for every Registrar even
+      // though courses genuinely exist. Keep the mock defaults, same as
+      // an outright fetch error.
+      console.warn('Faculties/Programmes fetch returned nothing usable, keeping mock data:', fErr || pErr);
       return;
     }
 
