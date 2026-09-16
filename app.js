@@ -235,6 +235,30 @@ async function authUpdatePassword(newPassword) {
   return { ok: false, error: 'No user session found' };
 }
 
+// Records the signed-in user's acceptance of the attendance/device-tracking
+// consent notice (the first-login gate shown alongside the forced password
+// change — see CONSENT GATE). Live path: users.consent_at. Fallback:
+// in-memory USERS[id].consentAt via recordConsent().
+async function authRecordConsent() {
+  if (LIVE_BACKEND && State.user && State.user.supabaseId) {
+    try {
+      const { error } = await SUPABASE_CLIENT
+        .from('users')
+        .update({ consent_at: new Date().toISOString() })
+        .eq('id', State.user.supabaseId);
+      if (!handleDatabaseError(error, 'Recording consent')) {
+        return { ok: true, live: true };
+      }
+      // Column may not exist yet if the migration hasn't been run against
+      // this project — fall through to local-only so the demo isn't
+      // blocked on that.
+    } catch(e) {
+      console.warn('Live consent recording failed, falling back to local-only:', e);
+    }
+  }
+  return { ok: true, live: false };
+}
+
 // Provision a new staff account.
 // Live path: supabase.auth.admin requires the service-role key (not safe
 // client-side), so we use a Supabase Edge Function "create-user" that
@@ -295,6 +319,8 @@ async function resumeSupabaseSession() {
       const mustChange = normalized.mustChangePassword ?? normalized.must_change_password ?? false;
       if(mustChange){
         renderForcedPasswordChange();
+      } else if(needsConsent(normalized)){
+        renderConsentScreen();
       } else {
         boot();
       }
@@ -360,6 +386,7 @@ async function liveWriteSession(){
     active: LIVE_SESSION.active,
     window_seconds: LIVE_SESSION.windowSeconds,
     token_rotate_seconds: LIVE_SESSION.tokenRotateSeconds,
+    coordinator_authorized: LIVE_SESSION.coordinatorAuthorized,
     updated_at: new Date().toISOString(),
   };
   // started_at is deliberately NOT sent from this client's clock. It's only
@@ -430,6 +457,7 @@ function applyLiveSessionRow(row){
   LIVE_SESSION.serverStartedAt = row.started_at; // authoritative — see liveWriteSession()
   LIVE_SESSION.windowSeconds = row.window_seconds;
   LIVE_SESSION.tokenRotateSeconds = row.token_rotate_seconds;
+  LIVE_SESSION.coordinatorAuthorized = !!row.coordinator_authorized;
 }
 
 let liveSessionUpdatesUnsubscribe = null;
@@ -461,6 +489,15 @@ function subscribeToLiveSession(courseCode){
       // session we're already tracking (so we still see it flip to ended).
       if(row.active || row.id === LIVE_SESSION.liveSessionId){
         applyLiveSessionRow(row);
+        // Keeps a Class Coordinator's open QR display in sync with the
+        // Lecturer's device — a token rotation redraws the code, and a
+        // revoked authorization (or an ended session) drops back to the
+        // "not authorized" empty state, both without the Coordinator
+        // needing to manually refresh.
+        if(currentScreen === 'coordinatorQrDisplay'){
+          refreshScreenContentOnly();
+          drawQrPlaceholder();
+        }
       }
     })
     .subscribe();
@@ -1707,6 +1744,13 @@ const USERS = {
   },
 };
 
+// Existing demo/seed accounts predate the consent notice (see
+// CONSENT GATE below) — mark them already accepted so login isn't
+// interrupted by a policy that didn't exist when they were created.
+// Mirrors Mak-BAMS's own stance: a new consent requirement applies to new
+// registrations going forward, not retroactively to existing staff.
+Object.values(USERS).forEach(u => { if(u.consentAt === undefined) u.consentAt = '2026-01-01T00:00:00.000Z'; });
+
 // Courses the demo student is enrolled in
 const STUDENT_COURSES = [
   { code:"CSC3101", name:"Data Structures & Algorithms", lecturer:"Dr. Patrick Mukasa", color:"#3b82f6" },
@@ -1813,6 +1857,25 @@ const ATTENDANCE_APPEALS = [
   { id:3, student:"Opio Emmanuel", course:"BAR4301", session:"2026-06-22", reason:"Was in the room but check-in window had already closed.", status:"resolved" },
 ];
 
+// ============================================================
+// SUPPORT TICKETS ("Report an Issue") — mirrors Mak-BAMS's tiered support
+// model (college IT -> DICTS -> hardware vendor): a Student/Lecturer report
+// lands with their faculty Registrar (tier:'registrar', the 1st line closest
+// to the reporter); a Registrar's own report lands with the Administrator
+// (tier:'administrator'); the Administrator can mark a ticket escalated to
+// developer/vendor support (tier:'developer', the 3rd line) via
+// escalateSupportTicket(). Same mock-array + live-read/write shape as
+// ATTENDANCE_APPEALS just above — see scopedSupportTickets() near
+// scopedAppeals(), and the live functions near liveWriteAppeal().
+// ============================================================
+const SUPPORT_TICKET_CATEGORIES = ["App/Device Issue", "Attendance Discrepancy", "Account/Access", "Other"];
+
+const SUPPORT_TICKETS = [
+  { id:1, supabaseId:null, reporterId:"VU-CSF-2401-0002-DAY", reporterName:"Brian Ssemwanga", reporterRole:"student", facultyKey:"computing", category:"App/Device Issue", subject:"QR scan not opening", description:"The scan screen shows a black rectangle instead of the camera view on my phone.", status:"open", tier:"registrar", createdAt:"2026-06-24T08:10:00.000Z", resolvedAt:null, resolvedBy:null, resolutionNote:null },
+  { id:2, supabaseId:null, reporterId:"VU-LEC-101", reporterName:"Dr. Patrick Mukasa", reporterRole:"lecturer", facultyKey:"computing", category:"Attendance Discrepancy", subject:"Session didn't close on time", description:"CSC3103's check-in window stayed open a few minutes past the 10-minute limit.", status:"resolved", tier:"registrar", createdAt:"2026-06-20T09:05:00.000Z", resolvedAt:"2026-06-20T14:30:00.000Z", resolvedBy:"Denis Okwir", resolutionNote:"Confirmed a one-off delay; window timing verified correct going forward." },
+];
+let supportTicketNextId = SUPPORT_TICKETS.length + 1;
+
 // Live session — what the lecturer is currently broadcasting for students to check into.
 // In a real backend this token rotates server-side; here we simulate rotation client-side.
 // ============================================================
@@ -1845,6 +1908,7 @@ let LIVE_SESSION = {
   pin: "482917".slice(0,6),
   tokenRotateSeconds: 30, // refreshed from policy on each new startSessionForLecture()
   token: "QR-" + Math.random().toString(36).slice(2,10).toUpperCase(),
+  coordinatorAuthorized: false, // Lecturer-granted: lets the class's Class Coordinator also display this session's QR — see toggleCoordinatorAuthorization()
 };
 
 function regenerateSessionToken(){
@@ -2067,6 +2131,27 @@ function pushNotification({ recipientRole, recipientId, type, title, body, cours
     });
   }
   liveWriteNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId }); // fire-and-forget — local push above already succeeded either way
+  liveSendEmailNotification({ recipientRole, recipientId, title, body }); // fire-and-forget — see its own comment for why this only fires for Registrar/Administrator
+}
+
+// Hands a notification off to email for the two roles institutional staff
+// actually expect it for (Registrar, Administrator) — not students or
+// lecturers, who already get everything via the in-app inbox they check
+// daily. No-ops safely until the notify-email Edge Function is deployed and
+// its RESEND_API_KEY secret is set (see supabase/functions/notify-email/) —
+// same "live path optional, never blocks the app" convention every other
+// liveWrite*/liveSend* function in this file already follows.
+async function liveSendEmailNotification({ recipientRole, recipientId, title, body }){
+  if(!LIVE_BACKEND) return;
+  if(recipientRole !== 'registrar' && recipientRole !== 'administrator') return;
+  try {
+    const { error } = await SUPABASE_CLIENT.functions.invoke('notify-email', {
+      body: { recipientRole, recipientId, title, body },
+    });
+    if(error) console.warn('liveSendEmailNotification failed:', error);
+  } catch(e){
+    console.warn('liveSendEmailNotification error:', e);
+  }
 }
 
 // Formats an ISO timestamp the way a receiver should see it: relative
@@ -2414,6 +2499,7 @@ function createAccount({ id, name, email, role, extra }){
     name, role, email,
     password: tempPassword,
     mustChangePassword: true,
+    consentAt: null, // gates the one-time consent notice on this account's first real login — see CONSENT GATE
     ...extra,
   };
   return tempPassword;
@@ -2424,6 +2510,16 @@ function changePassword(userId, newPassword){
   if(!user) return false;
   user.password = newPassword;
   user.mustChangePassword = false;
+  return true;
+}
+
+// Records acceptance of the attendance/device-tracking consent notice —
+// mock-layer counterpart to authRecordConsent()'s live path, same
+// relationship changePassword() has to authUpdatePassword().
+function recordConsent(userId){
+  const user = USERS[userId];
+  if(!user) return false;
+  user.consentAt = new Date().toISOString();
   return true;
 }
 
@@ -2815,6 +2911,41 @@ function scopedAppeals(){
   return ATTENDANCE_APPEALS.filter(a => facultyKeyForStudentName(a.student) === fk);
 }
 
+// Best-effort faculty key for whoever is currently signed in, used to scope
+// support tickets the same way appeals/records are scoped above. Students
+// and Lecturers don't carry facultyKey directly on State.user, so this
+// resolves it the same way facultyKeyForStudentName()/facultyKeyForProgrammeName()
+// already do elsewhere; Registrar/Administrator already have it (or null,
+// meaning university-wide, same convention as currentRegistrarFacultyKey()).
+function reporterFacultyKey(){
+  if(!State.user) return null;
+  if(State.role === 'student') return facultyKeyForStudentName(State.user.name);
+  if(State.role === 'lecturer') return facultyKeyForProgrammeName(State.user.dept);
+  return State.user.facultyKey || null;
+}
+
+function registrarIdForFacultyKey(fk){
+  if(!fk) return null;
+  const r = REGISTRARS.find(r => r.facultyKey === fk);
+  return r ? r.id : null;
+}
+
+function scopedSupportTickets(){
+  if(State.role === 'student' || State.role === 'lecturer'){
+    // A reporter only ever sees their own reports — never anyone else's.
+    return SUPPORT_TICKETS.filter(t => t.reporterId === State.user.id);
+  }
+  if(State.role === 'registrar'){
+    const fk = currentRegistrarFacultyKey();
+    // 1st-line view: tickets from this Registrar's own faculty, plus any
+    // ticket this Registrar personally submitted (which escalates to the
+    // Administrator rather than to themselves).
+    return SUPPORT_TICKETS.filter(t => (fk && t.facultyKey === fk) || t.reporterId === State.user.id);
+  }
+  // Administrator: university-wide visibility, mirroring DICTS/3rd-line scope.
+  return SUPPORT_TICKETS;
+}
+
 function scopedSuspicionLog(){
   const fk = currentRegistrarFacultyKey();
   if(!fk) return SUSPICION_LOG;
@@ -3062,6 +3193,78 @@ async function submitForcedPasswordChange(e){
   if(State.pendingUserId) changePassword(State.pendingUserId, pw1);
   State.pendingUserId = null;
   showToast("Password set. Welcome to VUSAP!");
+  boot();
+  return false;
+}
+
+// ============================================================
+// CONSENT GATE (first login, after any forced password change) — a
+// one-time notice about attendance/device tracking a person must accept
+// before reaching any screen. Mirrors Mak-BAMS's own signed biometric
+// consent form, adapted to what VUSAP actually collects (a rotating
+// check-in code + an anonymized device identifier, not biometrics).
+// needsConsent()/consentGate() live next to mustChangePasswordGate() below;
+// this screen and its submit handler live here, next to the forced
+// password change screen they're chained after.
+// ============================================================
+
+function renderConsentScreen(){
+  const u = State.user;
+  pushAuthScreenState('consent');
+  document.getElementById('screens').innerHTML = `<div class="screen active">
+  <div class="login-screen">
+    <div class="login-hero">
+      <div class="login-logo">
+        ${currentLogoMark()}
+      </div>
+      <div class="login-brand-headline">${SYSTEM_SETTINGS.systemName}</div>
+      <div class="login-uni-sub">${SYSTEM_SETTINGS.portalName}</div>
+    </div>
+    <div class="login-form-area">
+      <div class="login-card">
+        <h1>Before you continue, ${firstName(u.name)}</h1>
+        <p class="sub">VUSAP verifies your attendance using your device and session data. Please review before continuing.</p>
+        <ul style="margin:0 0 18px; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink-soft);">
+          <li>Attendance is verified using a rotating check-in code and an anonymized device identifier — not your camera, microphone, or location.</li>
+          <li>This data is used only to verify attendance and detect fraud, such as duplicate or expired check-ins.</li>
+          <li>Access to your records is limited to your Lecturer, your faculty Registrar, and system Administrators, enforced at the database level.</li>
+          <li>VUSAP will never sell, lease, or share this data with any third party.</li>
+        </ul>
+        <form id="consentForm" onsubmit="return submitConsent(event)">
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.5; cursor:pointer;">
+            <input type="checkbox" id="consentCheckbox" onchange="document.getElementById('consentSubmitBtn').disabled = !this.checked;" style="margin-top:3px;" required />
+            <span>I understand and agree to attendance/device tracking for anti-fraud purposes as described above.</span>
+          </label>
+          <div style="margin-top:20px;">
+            <button class="btn btn-primary" type="submit" id="consentSubmitBtn" disabled>Agree & Continue</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  </div>`;
+  document.getElementById('bottomNav').style.display = 'none';
+}
+
+async function submitConsent(e){
+  e.preventDefault();
+  const checked = document.getElementById('consentCheckbox')?.checked;
+  if(!checked){
+    showToast("Please check the box to continue");
+    return false;
+  }
+  const btn = document.getElementById('consentSubmitBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  await authRecordConsent();
+  // Also update in-memory mock so offline fallback stays consistent —
+  // same relationship submitForcedPasswordChange() has to changePassword().
+  const userId = State.pendingUserId || State.user.id;
+  if(userId) recordConsent(userId);
+  State.user.consentAt = new Date().toISOString();
+  logAuditEvent(State.user.id, State.user.name, 'Consent recorded', State.user.id, 'Attendance/device-tracking notice accepted');
+
+  showToast("Thanks — welcome to VUSAP!");
   boot();
   return false;
 }
@@ -3327,6 +3530,8 @@ async function handleLogin(e){
   const mustChange = user.mustChangePassword ?? user.must_change_password ?? false;
   if(mustChange){
     renderForcedPasswordChange();
+  } else if(needsConsent(user)){
+    renderConsentScreen();
   } else {
     boot();
   }
@@ -3526,6 +3731,11 @@ function renderLecturerDashboard(){
     <a class="quick-action" onclick="navigate('reports')">
       <div class="qa-icon">${ICONS.fileText}</div>
       <div class="qa-text"><div class="t">Export Course Attendance</div><div class="s">PDF / Excel for your courses</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('supportTickets')">
+      <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
+      <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems or attendance discrepancies</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
   </div>
@@ -4003,6 +4213,13 @@ function renderEnrollFormBody(){
           </select>
         </div>
       </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="enrollIsCoordinator" style="width:16px;height:16px;flex-shrink:0;" />
+          Class Coordinator for this Programme &amp; Year
+        </label>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Uniquely identifies this student as the Class Coordinator for their programme and year — only one student per class can hold it, so assigning it here replaces whoever currently does.</div>
+      </div>
       <div class="btn-row" style="margin-top:6px;">
         <button type="button" class="btn btn-ghost" onclick="closeSheet('enrollSheet')">Cancel</button>
         <button type="submit" class="btn btn-primary">${ICONS.check} Enroll Student</button>
@@ -4175,11 +4392,26 @@ function handleEnroll(e){
   const mode = document.getElementById('enrollMode').value;
   const gender = document.getElementById('enrollGender').value;
   const semester = document.getElementById('enrollSemester').value;
+  const isCoordinator = document.getElementById('enrollIsCoordinator')?.checked || false;
   if(!name || !email || !deptKey){ return false; }
 
   const prog = PROGRAMMES.find(p => p.key === deptKey);
   const reg = `VU-${prog.codePrefix}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
   regNoCounter++;
+
+  // Exactly one Class Coordinator per programme+year — handing the badge to
+  // this new student demotes whoever currently holds it for the same class,
+  // rather than letting two students both claim to be "the" coordinator.
+  let replacedCoordinatorName = null;
+  if(isCoordinator){
+    const previous = Object.values(USERS).find(a => a.role === 'student' && a.is_class_coordinator && a.dept === prog.name && a.year === year);
+    if(previous){
+      replacedCoordinatorName = previous.name;
+      previous.is_class_coordinator = false;
+      previous.coordinator_for_programme = null;
+      previous.coordinator_for_year = null;
+    }
+  }
 
   // Add to the visible Student Register immediately...
   STUDENTS.push({
@@ -4206,9 +4438,14 @@ function handleEnroll(e){
   // parsing the registration number string.
   const tempPassword = createAccount({
     id: reg, name, role: 'student', email,
-    extra: { reg, dept: prog.name, year, gender, semester, mode: mode === 'DAY' ? 'day' : 'evening', is_class_coordinator: false },
+    extra: {
+      reg, dept: prog.name, year, gender, semester, mode: mode === 'DAY' ? 'day' : 'evening',
+      is_class_coordinator: isCoordinator,
+      ...(isCoordinator ? { coordinator_for_programme: prog.name, coordinator_for_year: year } : {}),
+    },
   });
 
+  if(replacedCoordinatorName) showToast(`${replacedCoordinatorName} is no longer Class Coordinator — replaced by ${name}`);
   showTempPasswordConfirmation(name, reg, tempPassword);
   return false;
 }
@@ -4895,6 +5132,11 @@ function renderStudentHome(){
           <div class="qa-text"><div class="t">Submit Class Report</div><div class="s">Report lecturer absence or issues</div></div>
           <div class="chev">${ICONS.chevR}</div>
         </a>
+        <a class="quick-action" style="background:var(--surface);" onclick="navigate('coordinatorQrDisplay')">
+          <div class="qa-icon" style="background:var(--coord-flag);">${ICONS.qrcode}</div>
+          <div class="qa-text"><div class="t">Display QR Code</div><div class="s">${isLiveSessionActive() && LIVE_SESSION.coordinatorAuthorized && STUDENT_COURSES.some(c=>c.code===LIVE_SESSION.courseCode) ? 'Authorized — tap to display' : 'Requires lecturer authorization'}</div></div>
+          <div class="chev">${ICONS.chevR}</div>
+        </a>
       </div>
     </div>` : ''}
 
@@ -4910,6 +5152,10 @@ function renderStudentHome(){
       <a class="quick-action" onclick="navigate('timetable')">
         <div class="qa-icon">${ICONS.calendar}</div>
         <div class="qa-text"><div class="t">My Timetable</div><div class="s">Full weekly schedule</div></div>
+      </a>
+      <a class="quick-action" onclick="navigate('supportTickets')">
+        <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
+        <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems or account access</div></div>
       </a>
       <a class="quick-action" onclick="navigate('profile')">
         <div class="qa-icon">${ICONS.user}</div>
@@ -4960,6 +5206,7 @@ function renderStudentProfile(){
       <div class="profile-avatar-lg">${initials(u.name)}</div>
       <div class="profile-name">${u.name}</div>
       <div class="profile-reg">${u.reg}</div>
+      ${u.is_class_coordinator ? `<span class="tag-pill" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;">${ICONS.shield.replace(/<svg /,'<svg style="width:12px;height:12px;" ')} Class Coordinator</span>` : ''}
     </div>
 
     <div class="card card-pad">
@@ -5415,6 +5662,19 @@ function renderStartSession(){
       </div>
     </div>
 
+    <div class="card card-pad">
+      <div class="section-head-row" style="margin-bottom:${LIVE_SESSION.coordinatorAuthorized ? '8px' : '0'};">
+        <div class="section-title" style="margin-bottom:0;">${ICONS.shield} Class Coordinator</div>
+        <label class="toggle-wrap">
+          <input type="checkbox" id="coordAuthToggle" ${LIVE_SESSION.coordinatorAuthorized ? 'checked' : ''} onchange="toggleCoordinatorAuthorization()">
+          <div class="toggle-slider"></div>
+        </label>
+      </div>
+      ${LIVE_SESSION.coordinatorAuthorized
+        ? `<div style="font-size:11.5px;color:var(--ink-soft);">On — your Class Coordinator can now display this session's QR code from their own device.</div>`
+        : `<div style="font-size:11.5px;color:var(--ink-faint);">Off — only you can display the QR code. Turn this on if you'd like your Class Coordinator to help display it.</div>`}
+    </div>
+
     <button class="btn btn-ghost" onclick="endSession()">${ICONS.close} End Session Now</button>
   </div>`;
 }
@@ -5588,6 +5848,7 @@ async function startSessionForLecture(lecture){
     LIVE_SESSION.liveSessionId = LIVE_BACKEND ? null : ('mock-' + Date.now());
     LIVE_SESSION.serverStartedAt = null; // set once liveWriteSession()'s insert returns the DB-assigned value
     LIVE_SESSION.startedAt = Date.now();
+    LIVE_SESSION.coordinatorAuthorized = false; // every new broadcast starts unauthorized — the Lecturer re-grants it per session, never inherited
     regenerateSessionToken();
     if(LIVE_BACKEND){
       // Compliance classification must use the server-assigned started_at,
@@ -5657,6 +5918,33 @@ function recordLectureComplianceEvent(lecture){
     State.user.id || State.user.staffId, State.user.name,
     `Lecture session ${status}`, lecture.code, body
   );
+}
+
+// Lecturer-only control (Live Session screen toggle): grants or revokes the
+// class's Class Coordinator permission to display THIS broadcast's QR code
+// from their own device — e.g. useful if the Lecturer is occupied taking
+// attendance manually, setting up equipment, or simply wants a second
+// screen showing the code. The Coordinator never gets any session control
+// (can't start/end it or see the roster) — display only, and only while
+// this stays on. Persisted on the live_qr_sessions row itself (see
+// migrate-coordinator-qr-authorization.sql) so it syncs to the Coordinator's
+// device the same way the rotating token already does.
+function toggleCoordinatorAuthorization(){
+  LIVE_SESSION.coordinatorAuthorized = !LIVE_SESSION.coordinatorAuthorized;
+  if(LIVE_BACKEND) liveWriteSession();
+  if(LIVE_SESSION.coordinatorAuthorized){
+    pushNotification({
+      recipientRole: 'student', recipientId: null, type: 'coordinatorAuthorization',
+      title: `Class Coordinator QR access — ${LIVE_SESSION.courseCode}`,
+      body: `${State.user?.name || 'Your lecturer'} authorized the Class Coordinator to display the attendance QR code for ${LIVE_SESSION.courseCode} — ${LIVE_SESSION.courseName}.`,
+      courseCode: LIVE_SESSION.courseCode,
+      from: State.user?.name || 'Unknown', fromId: State.user?.id || State.user?.staffId || null,
+    });
+    showToast("Class Coordinator authorized for this session");
+  } else {
+    showToast("Class Coordinator authorization revoked");
+  }
+  refreshScreenContentOnly();
 }
 
 function qrPayloadForSession(){
@@ -5769,6 +6057,11 @@ function renderRegistrarDashboard(){
       <div class="qa-text"><div class="t">Data Analytics & Reports</div><div class="s">Student attendance & lecturer compliance</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+    <a class="quick-action" onclick="navigate('announcements')">
+      <div class="qa-icon">${ICONS.megaphone}</div>
+      <div class="qa-text"><div class="t">Announcements</div><div class="s">Post updates and send notifications to your faculty</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
     <a class="quick-action" onclick="navigate('appeals')">
       <div class="qa-icon">${ICONS.gavel}</div>
       <div class="qa-text"><div class="t">Appeals & Disputes</div><div class="s">${scopedAppeals().filter(a=>a.status==='pending').length} pending review</div></div>
@@ -5777,6 +6070,11 @@ function renderRegistrarDashboard(){
     <a class="quick-action" onclick="navigate('fraudCenter')">
       <div class="qa-icon" style="background:#dc2626;">${ICONS.flag}</div>
       <div class="qa-text"><div class="t">Fraud Center</div><div class="s">${scopedSuspicionLog().length} flagged check-ins to review</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('supportTickets')">
+      <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
+      <div class="qa-text"><div class="t">Support Tickets</div><div class="s">${scopedSupportTickets().filter(t=>t.status==='open').length} open in your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('register')">
@@ -6628,6 +6926,7 @@ const SYSTEM_MODULES = [
   { id:'auditSystem', label:'Audit System', sub:'Full system-wide audit trail', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
   { id:'backups', label:'Backups', sub:'Schedule and restore backups', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
   { id:'database', label:'Database Management', sub:'Tables, migrations, integrity checks', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
+  { id:'supportTickets', label:'Support Tickets', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
 ];
 
 function renderAdministratorDashboard(){
@@ -6743,6 +7042,10 @@ function openSystemModule(moduleId){
   }
   if(moduleId === 'database'){
     navigate('database');
+    return;
+  }
+  if(moduleId === 'supportTickets'){
+    navigate('supportTickets');
     return;
   }
   // All known modules are wired above — this path should never be reached.
@@ -8594,12 +8897,60 @@ function handleClassReportSubmit(e){
   return false;
 }
 
+// Display-only view of the Lecturer's live QR code, reachable by a Class
+// Coordinator once the Lecturer explicitly authorizes it for the current
+// broadcast (see toggleCoordinatorAuthorization() on the Lecturer's Live
+// Session screen). No session controls here at all — can't start/end the
+// session, can't see the roster — the Coordinator is only ever holding up
+// a display, never operating the session itself.
+function renderCoordinatorQrDisplay(){
+  const enrolledInLiveCourse = STUDENT_COURSES.some(c => c.code === LIVE_SESSION.courseCode);
+  const authorized = isLiveSessionActive() && LIVE_SESSION.coordinatorAuthorized && enrolledInLiveCourse;
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('home')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Display QR Code</div>
+    </div>
+    ${authorized ? `
+    <div class="header-greet" style="text-align:center;">
+      <h2 style="font-size:18px;">${LIVE_SESSION.courseCode} — ${LIVE_SESSION.courseName}</h2>
+      <p>${LIVE_SESSION.room}</p>
+    </div>` : ''}
+  </div>
+  <div class="content">
+    ${authorized ? `
+    <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:14px;">
+      <div class="qr-display-wrap">
+        <div id="qrCanvasHolder" class="qr-code-box"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-faint); font-weight:600; text-align:center;">
+        ${ICONS.shield.replace(/<svg /,'<svg style="width:13px;height:13px;flex-shrink:0;" ')} Authorized by your lecturer · updates live
+      </div>
+    </div>
+    <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:10px;">
+      <div style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">OR STUDENTS CAN ENTER THIS CODE</div>
+      <div class="session-pin-display">
+        ${LIVE_SESSION.pin.split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
+      </div>
+    </div>
+    <button class="btn btn-ghost" onclick="navigate('home')">${ICONS.close} Stop Displaying</button>
+    ` : `
+    <div class="empty-state">
+      ${ICONS.qrcode}
+      <div class="t" style="margin-top:14px;">Not authorized right now</div>
+      <div class="s">Your lecturer hasn't authorized the Class Coordinator to display a QR code for a live session. Ask them to turn it on from their Live Session screen.</div>
+    </div>
+    `}
+  </div>`;
+}
+
 // ============================================================
 // SHARED: ANNOUNCEMENTS
 // ============================================================
 
 function renderAnnouncements(){
-  const backTarget = State.role === 'lecturer' ? 'dashboard' : 'home';
+  const backTarget = State.role === 'student' ? 'home' : 'dashboard';
   const canPost = State.role === 'lecturer' || State.role === 'registrar';
   return `
   <div class="app-header">
@@ -8766,14 +9117,22 @@ function renderComposeNotification(){
 
       <div class="field" id="notifCourseField" style="display:none;">
         <label>Course</label>
-        <select class="select" id="notifCourseSelect" onchange="updateNotifPreview()">
-          ${COURSES.map(c => `<option value="${c.code}">${c.code} — ${c.name}</option>`).join('')}
-        </select>
+        <div class="search-wrap" style="margin-bottom:8px;">
+          ${ICONS.search}
+          <input class="input" id="notifCourseSearch" placeholder="Search course name or code..." oninput="filterNotifPickList('notifCourseList', this.value)" />
+        </div>
+        <input type="hidden" id="notifCourseSelect" />
+        <div class="notif-pick-list" id="notifCourseList"></div>
       </div>
 
       <div class="field" id="notifPersonField" style="display:none;">
         <label id="notifPersonLabel">Recipient</label>
-        <select class="select" id="notifPersonSelect" onchange="updateNotifPreview()"></select>
+        <div class="search-wrap" style="margin-bottom:8px;">
+          ${ICONS.search}
+          <input class="input" id="notifPersonSearch" placeholder="Search by name..." oninput="filterNotifPickList('notifPersonList', this.value)" />
+        </div>
+        <input type="hidden" id="notifPersonSelect" />
+        <div class="notif-pick-list" id="notifPersonList"></div>
       </div>
 
       <div class="field">
@@ -8828,30 +9187,103 @@ function selectNotifRecipientType(value){
   updateNotifPreview();
 }
 
+// One row in the searchable course/person picker lists below. `data-search`
+// carries the lowercased haystack that filterNotifPickList() matches against.
+function notifCourseRowHtml(c, selectedCode){
+  return `
+  <div class="notif-pick-row${c.code === selectedCode ? ' selected' : ''}" data-value="${c.code}" data-search="${(c.code + ' ' + c.name).toLowerCase()}" onclick="selectNotifCourse('${c.code}')">
+    <div class="avatar" style="background:#ccfbf1;color:#0f766e;">${ICONS.layers.replace(/<svg /,'<svg style="width:16px;height:16px;" ')}</div>
+    <div class="student-info"><div class="student-name">${c.code}</div><div class="student-meta">${c.name}</div></div>
+    <div class="notif-pick-check">${ICONS.check}</div>
+  </div>`;
+}
+function notifPersonRowHtml(p, source, selectedId){
+  const id = p[source.idKey];
+  const sub = p.reg || p.dept || p.email || '';
+  const searchText = [p.name, p.reg, p.dept, p.email].filter(Boolean).join(' ').toLowerCase();
+  return `
+  <div class="notif-pick-row${String(id) === String(selectedId) ? ' selected' : ''}" data-value="${id}" data-search="${searchText}" onclick="selectNotifPerson('${id}')">
+    <div class="avatar">${initials(p.name)}</div>
+    <div class="student-info"><div class="student-name">${p.name}</div><div class="student-meta">${sub}</div></div>
+    <div class="notif-pick-check">${ICONS.check}</div>
+  </div>`;
+}
+
 // Populate the course/person pickers based on the chosen recipient type,
 // and toggle their visibility. Called on screen load and on tile selection.
+// Each picker defaults to its first entry (matching the old <select>'s
+// implicit default) and resets any in-progress search.
 function updateComposeNotificationFields(recipientType){
   const courseField = document.getElementById('notifCourseField');
   const personField = document.getElementById('notifPersonField');
-  const personSelect = document.getElementById('notifPersonSelect');
   const personLabel = document.getElementById('notifPersonLabel');
-  if(!courseField || !personField || !personSelect || !personLabel) return;
+  const courseList = document.getElementById('notifCourseList');
+  const personList = document.getElementById('notifPersonList');
+  const courseSearch = document.getElementById('notifCourseSearch');
+  const personSearch = document.getElementById('notifPersonSearch');
+  if(!courseField || !personField || !personLabel || !courseList || !personList) return;
 
   courseField.style.display = recipientType === 'courseStudents' ? '' : 'none';
+  if(recipientType === 'courseStudents'){
+    const first = COURSES[0]?.code || '';
+    const hidden = document.getElementById('notifCourseSelect');
+    if(hidden) hidden.value = first;
+    courseList.innerHTML = COURSES.length
+      ? COURSES.map(c => notifCourseRowHtml(c, first)).join('')
+      : `<div style="padding:16px;font-size:12px;color:var(--ink-faint);text-align:center;">No courses in the catalog yet</div>`;
+    if(courseSearch) courseSearch.value = '';
+  }
 
   const personSources = {
-    specificStudent: { list: STUDENTS, idKey:'reg', nameKey:'name', label:'Student' },
-    specificLecturer: { list: LECTURERS, idKey:'id', nameKey:'name', label:'Lecturer' },
-    specificRegistrar: { list: REGISTRARS, idKey:'id', nameKey:'name', label:'Registrar' },
+    specificStudent: { list: STUDENTS, idKey:'reg', nameKey:'name', label:'Student', placeholder:'Search student name or reg. no...' },
+    specificLecturer: { list: LECTURERS, idKey:'id', nameKey:'name', label:'Lecturer', placeholder:'Search lecturer name...' },
+    specificRegistrar: { list: REGISTRARS, idKey:'id', nameKey:'name', label:'Registrar', placeholder:'Search registrar name...' },
   };
   const source = personSources[recipientType];
   if(source){
     personField.style.display = '';
     personLabel.textContent = source.label;
-    personSelect.innerHTML = source.list.map(p => `<option value="${p[source.idKey]}">${p.name}${p.reg ? ' — ' + p.reg : ''}</option>`).join('');
+    const first = source.list[0] ? source.list[0][source.idKey] : '';
+    const hidden = document.getElementById('notifPersonSelect');
+    if(hidden) hidden.value = first;
+    personList.innerHTML = source.list.length
+      ? source.list.map(p => notifPersonRowHtml(p, source, first)).join('')
+      : `<div style="padding:16px;font-size:12px;color:var(--ink-faint);text-align:center;">No ${source.label.toLowerCase()}s found</div>`;
+    if(personSearch){ personSearch.value = ''; personSearch.placeholder = source.placeholder; }
   } else {
     personField.style.display = 'none';
   }
+}
+
+function selectNotifCourse(code){
+  const hidden = document.getElementById('notifCourseSelect');
+  if(hidden) hidden.value = code;
+  document.querySelectorAll('#notifCourseList .notif-pick-row').forEach(row => {
+    row.classList.toggle('selected', row.dataset.value === code);
+  });
+  updateNotifPreview();
+}
+function selectNotifPerson(id){
+  const hidden = document.getElementById('notifPersonSelect');
+  if(hidden) hidden.value = id;
+  document.querySelectorAll('#notifPersonList .notif-pick-row').forEach(row => {
+    row.classList.toggle('selected', row.dataset.value === String(id));
+  });
+  updateNotifPreview();
+}
+
+// Shared filter for both picker lists — hides non-matching rows in place
+// (list stays mounted, so the current selection survives a search) and
+// reuses the same empty-state helper as the attendance list search.
+function filterNotifPickList(containerId, q){
+  q = q.toLowerCase().trim();
+  let visible = 0;
+  document.querySelectorAll(`#${containerId} .notif-pick-row`).forEach(row => {
+    const match = !q || row.dataset.search.includes(q);
+    row.style.display = match ? 'flex' : 'none';
+    if(match) visible++;
+  });
+  toggleNoResultsState(containerId, visible, 'Try a different name or code');
 }
 
 // Live-updates the preview card and character counter as the person types
@@ -9146,6 +9578,296 @@ async function loadAppealsFromSupabase(){
     refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
   } catch(e){
     console.warn('loadAppealsFromSupabase error, keeping mock ATTENDANCE_APPEALS:', e);
+  }
+}
+
+// ============================================================
+// SUPPORT TICKETS ("Report an Issue") — screen + handlers. Data model and
+// scoping live up near ATTENDANCE_APPEALS/scopedAppeals(); this mirrors
+// renderAppeals()'s structure closely on purpose (submit sheet + list +
+// reviewer resolve action), plus a second sheet for the resolution note and
+// an Administrator-only Escalate action for the 3rd-line/developer tier.
+// ============================================================
+
+function renderSupportTickets(){
+  const isReviewer = State.role === 'registrar' || State.role === 'administrator';
+  const backTarget = State.role === 'student' ? 'home' : (STAFF_ROLE_META[State.role]?.backTarget || 'dashboard');
+  const tickets = scopedSupportTickets();
+  const openCount = tickets.filter(t => t.status === 'open').length;
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('${backTarget}')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${isReviewer ? 'Support Tickets' : 'Report an Issue'}</div>
+    </div>
+  </div>
+  <div class="content">
+    <a class="quick-action solid" onclick="openSheet('newSupportTicketSheet')">
+      <div class="qa-icon">${ICONS.alertTriangle}</div>
+      <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems, attendance discrepancies, or account access</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+
+    <div class="card card-pad">
+      <div class="section-title">${ICONS.fileText} ${isReviewer ? `All Tickets (${openCount} open)` : 'My Reports'}</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${tickets.map(t=>`
+        <div class="record-card">
+          <div class="record-main">
+            <div class="record-top">
+              <div class="record-name">${t.subject}</div>
+              <div class="record-date">${(t.createdAt||'').slice(0,10)}</div>
+            </div>
+            <div class="record-sub">${t.category}${isReviewer ? ` · ${t.reporterName} (${t.reporterRole})` : ''}</div>
+            <div style="font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.4;">${t.description}</div>
+            ${t.status==='resolved' && t.resolutionNote ? `<div style="font-size:12px; color:var(--present); margin-top:6px; line-height:1.4;"><strong>Resolved:</strong> ${t.resolutionNote}</div>` : ''}
+            ${t.tier==='developer' ? `<div class="status-pill late" style="margin-top:6px; display:inline-block;">Escalated to developer</div>` : ''}
+          </div>
+          <span class="status-pill ${t.status==='resolved' ? 'present' : 'late'}">${t.status}</span>
+        </div>
+        ${isReviewer && t.status==='open' ? `
+        <div class="btn-row" style="margin-top:-4px;">
+          ${State.role==='administrator' && t.tier!=='developer' ? `<button class="btn btn-ghost" style="font-size:12px; padding:9px;" onclick="escalateSupportTicket(${t.id})">Escalate</button>` : ''}
+          <button class="btn btn-primary" style="font-size:12px; padding:9px; background:var(--present);" onclick="openResolveSupportTicketSheet(${t.id})">Resolve</button>
+        </div>` : ''}
+        `).join('') || `<div class="empty-state-sm">${isReviewer ? 'No support tickets right now' : "You haven't reported any issues"}</div>`}
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="newSupportTicketSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span>Report an Issue</span>
+      <button onclick="closeSheet('newSupportTicketSheet')">${ICONS.close}</button>
+    </div>
+    <form onsubmit="return handleSupportTicketSubmit(event)" style="display:flex; flex-direction:column; gap:14px;">
+      <div class="field">
+        <label>Category <span class="req">*</span></label>
+        <select class="select" id="ticketCategory">
+          ${SUPPORT_TICKET_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>Subject <span class="req">*</span></label>
+        <input class="input" id="ticketSubject" placeholder="Short summary" required />
+      </div>
+      <div class="field">
+        <label>Description <span class="req">*</span></label>
+        <textarea class="input" id="ticketDescription" rows="4" placeholder="What happened? Include the device, screen, or record involved." required style="resize:vertical;"></textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">${ICONS.alertTriangle} Submit Report</button>
+    </form>
+  </div>
+
+  <div class="sheet" id="resolveSupportTicketSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span>Resolve Ticket</span>
+      <button onclick="closeSheet('resolveSupportTicketSheet')">${ICONS.close}</button>
+    </div>
+    <form onsubmit="return handleResolveSupportTicketSubmit(event)" style="display:flex; flex-direction:column; gap:14px;">
+      <input type="hidden" id="resolveTicketId" />
+      <div class="field">
+        <label>Resolution note <span class="req">*</span></label>
+        <textarea class="input" id="resolveTicketNote" rows="3" placeholder="What was done to fix this?" required style="resize:vertical;"></textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">${ICONS.checkCircle} Mark Resolved</button>
+    </form>
+  </div>`;
+}
+
+function openResolveSupportTicketSheet(id){
+  const input = document.getElementById('resolveTicketId');
+  if(input) input.value = id;
+  openSheet('resolveSupportTicketSheet');
+}
+
+function handleSupportTicketSubmit(e){
+  e.preventDefault();
+  const category = document.getElementById('ticketCategory')?.value;
+  const subject = document.getElementById('ticketSubject')?.value.trim();
+  const description = document.getElementById('ticketDescription')?.value.trim();
+  if(!subject || !description){
+    showToast("Fill in a subject and description");
+    return false;
+  }
+  const newId = SUPPORT_TICKETS.length ? Math.max(...SUPPORT_TICKETS.map(t=>t.id)) + 1 : 1;
+  const ticketObj = {
+    id: newId,
+    supabaseId: null, // filled in once the live insert below resolves, so resolve/escalate can target the real row
+    reporterId: State.user.id,
+    reporterName: State.user.name,
+    reporterRole: State.role,
+    facultyKey: reporterFacultyKey(),
+    category, subject, description,
+    status: 'open',
+    // Mirrors Mak-BAMS's tiered model: Student/Lecturer reports land with
+    // the Registrar first (1st line, faculty-scoped); a Registrar's own
+    // report lands with the Administrator (2nd line) instead.
+    tier: State.role === 'registrar' ? 'administrator' : 'registrar',
+    createdAt: new Date().toISOString(),
+    resolvedAt: null, resolvedBy: null, resolutionNote: null,
+  };
+  SUPPORT_TICKETS.unshift(ticketObj);
+  logAuditEvent(State.user.id, State.user.name, 'Support ticket submitted', `ticket-${newId}`, `${subject} (${category})`);
+  liveWriteSupportTicket(ticketObj); // fire-and-forget — local push above already succeeded either way
+
+  // Notify whoever should see this first: the reporter's own faculty
+  // Registrar, or — for a Registrar's own report — every Administrator.
+  if(ticketObj.tier === 'administrator'){
+    pushNotification({ recipientRole:'administrator', recipientId:null, type:'supportTicket', title:'New support ticket', body:`${State.user.name}: ${subject}`, from:State.user.name, fromId:State.user.id });
+  } else {
+    pushNotification({ recipientRole:'registrar', recipientId: registrarIdForFacultyKey(ticketObj.facultyKey), type:'supportTicket', title:'New support ticket', body:`${State.user.name} (${State.role}): ${subject}`, from:State.user.name, fromId:State.user.id });
+  }
+
+  closeSheet('newSupportTicketSheet');
+  showToast("Issue reported — you'll be notified when it's reviewed");
+  navigate('supportTickets', { replace: true });
+  return false;
+}
+
+function handleResolveSupportTicketSubmit(e){
+  e.preventDefault();
+  const id = document.getElementById('resolveTicketId')?.value;
+  const note = document.getElementById('resolveTicketNote')?.value.trim();
+  if(!note){
+    showToast("Add a resolution note");
+    return false;
+  }
+  resolveSupportTicket(id, note);
+  closeSheet('resolveSupportTicketSheet');
+  return false;
+}
+
+function resolveSupportTicket(id, note){
+  const ticket = SUPPORT_TICKETS.find(t => String(t.id) === String(id));
+  if(!ticket) return;
+  ticket.status = 'resolved';
+  ticket.resolvedAt = new Date().toISOString();
+  ticket.resolvedBy = State.user.name;
+  ticket.resolutionNote = note;
+  logAuditEvent(State.user.id, State.user.name, 'Support ticket resolved', `ticket-${id}`, `${ticket.subject} — ${note}`);
+  liveResolveSupportTicket(ticket); // fire-and-forget — local status change above already succeeded either way
+  pushNotification({ recipientRole: ticket.reporterRole, recipientId: ticket.reporterId, type:'supportTicketResolved', title:'Your report was resolved', body:`${ticket.subject}: ${note}`, from:State.user.name, fromId:State.user.id });
+  showToast("Ticket marked resolved");
+  // refreshScreenContentOnly(), not rerenderCurrentScreen() — same
+  // read-after-write race reasoning as resolveAppeal() just above.
+  refreshScreenContentOnly();
+}
+
+function escalateSupportTicket(id){
+  const ticket = SUPPORT_TICKETS.find(t => String(t.id) === String(id));
+  if(!ticket) return;
+  ticket.tier = 'developer';
+  logAuditEvent(State.user.id, State.user.name, 'Support ticket escalated', `ticket-${id}`, `${ticket.subject} — escalated to developer/vendor support`);
+  liveEscalateSupportTicket(ticket); // fire-and-forget
+  showToast("Escalated — awaiting developer support");
+  refreshScreenContentOnly();
+}
+
+// ------------------------------------------------------------
+// SUPPORT TICKETS — live read/write. Same additive/fallback shape as
+// liveWriteAppeal()/liveResolveAppeal()/loadAppealsFromSupabase() above —
+// mock SUPPORT_TICKETS stays the source of truth until a live row
+// round-trips. Targets a `support_tickets` table (migration delivered
+// separately, per Chris's own rule for destructive/new-table SQL).
+// ------------------------------------------------------------
+
+async function liveWriteSupportTicket(ticketObj){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data, error } = await SUPABASE_CLIENT
+      .from('support_tickets')
+      .insert({
+        reporter_supabase_id: State.user?.supabaseId || null,
+        reporter_id: ticketObj.reporterId,
+        reporter_name: ticketObj.reporterName,
+        reporter_role: ticketObj.reporterRole,
+        faculty_key: ticketObj.facultyKey,
+        category: ticketObj.category,
+        subject: ticketObj.subject,
+        description: ticketObj.description,
+        status: ticketObj.status,
+        tier: ticketObj.tier,
+      })
+      .select()
+      .single();
+    if(error){ console.warn('liveWriteSupportTicket failed:', error); return; }
+    if(data) ticketObj.supabaseId = data.id;
+  } catch(e){
+    console.warn('liveWriteSupportTicket error:', e);
+  }
+}
+
+async function liveResolveSupportTicket(ticket){
+  if(!LIVE_BACKEND) return;
+  if(!ticket.supabaseId){
+    console.warn('liveResolveSupportTicket: no supabaseId yet for this ticket — insert may still be in flight, skipping live update');
+    return;
+  }
+  try {
+    const { error } = await SUPABASE_CLIENT
+      .from('support_tickets')
+      .update({ status:'resolved', resolved_at: ticket.resolvedAt, resolved_by: ticket.resolvedBy, resolution_note: ticket.resolutionNote })
+      .eq('id', ticket.supabaseId);
+    if(error) console.warn('liveResolveSupportTicket failed:', error);
+  } catch(e){
+    console.warn('liveResolveSupportTicket error:', e);
+  }
+}
+
+async function liveEscalateSupportTicket(ticket){
+  if(!LIVE_BACKEND) return;
+  if(!ticket.supabaseId) return;
+  try {
+    const { error } = await SUPABASE_CLIENT
+      .from('support_tickets')
+      .update({ tier:'developer' })
+      .eq('id', ticket.supabaseId);
+    if(error) console.warn('liveEscalateSupportTicket failed:', error);
+  } catch(e){
+    console.warn('liveEscalateSupportTicket error:', e);
+  }
+}
+
+async function loadSupportTicketsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('support_tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if(error){ console.warn('Support tickets fetch failed, keeping mock SUPPORT_TICKETS:', error); return; }
+    if(!rows || rows.length === 0) return; // no live rows yet — keep mock so the list isn't empty
+
+    const fetched = rows.map(r => ({
+      id: r.id,
+      supabaseId: r.id,
+      reporterId: r.reporter_id,
+      reporterName: r.reporter_name,
+      reporterRole: r.reporter_role,
+      facultyKey: r.faculty_key,
+      category: r.category,
+      subject: r.subject,
+      description: r.description,
+      status: r.status,
+      tier: r.tier,
+      createdAt: r.created_at,
+      resolvedAt: r.resolved_at,
+      resolvedBy: r.resolved_by,
+      resolutionNote: r.resolution_note,
+    }));
+
+    const isDuplicate = (local, live) => local.reporterName === live.reporterName && local.subject === live.subject && local.description === live.description;
+    const localOnly = SUPPORT_TICKETS.filter(local => !local.supabaseId && !fetched.some(live => isDuplicate(local, live)));
+
+    SUPPORT_TICKETS.length = 0;
+    SUPPORT_TICKETS.push(...localOnly, ...fetched);
+    refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadSupportTicketsFromSupabase error, keeping mock SUPPORT_TICKETS:', e);
   }
 }
 
@@ -9770,6 +10492,7 @@ function getScreenHTML(screenId){
       case 'attendanceCatalog': return renderAttendanceCatalog();
       case 'courseRecords': return renderCourseRecords();
       case 'notifications': return renderNotifications();
+      case 'supportTickets': return renderSupportTickets();
       case 'profile': return renderStaffProfile();
     }
   } else if(State.role === 'registrar'){
@@ -9791,9 +10514,11 @@ function getScreenHTML(screenId){
       case 'fraudCenter': return renderFraudCenter();
       case 'reports': return renderReports();
       case 'appeals': return renderAppeals();
+      case 'supportTickets': return renderSupportTickets();
       case 'compliance': return renderCompliance();
       case 'dataAnalytics': return renderDataAnalyticsHub();
       case 'analyticsAttendance': return renderStudentAttendanceAnalytics();
+      case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
       case 'notifications': return renderNotifications();
@@ -9821,6 +10546,7 @@ function getScreenHTML(screenId){
       case 'auditSystem': return renderAuditSystem();
       case 'backups': return renderBackups();
       case 'database': return renderDatabaseManagement();
+      case 'supportTickets': return renderSupportTickets();
       case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true, groupByMode:true });
       case 'notifications': return renderNotifications();
       case 'profile': return renderStaffProfile();
@@ -9833,10 +10559,12 @@ function getScreenHTML(screenId){
       case 'profile': return renderStudentProfile();
       case 'announcements': return renderAnnouncements();
       case 'appeals': return renderAppeals();
+      case 'supportTickets': return renderSupportTickets();
       case 'notifications': return renderNotifications();
       case 'classSummary': return renderClassSummary();
       case 'missingStudents': return renderMissingStudents();
       case 'classReport': return renderClassReport();
+      case 'coordinatorQrDisplay': return renderCoordinatorQrDisplay();
     }
   }
   if(State.role && DEFAULT_SCREEN[State.role] && screenId !== DEFAULT_SCREEN[State.role]){
@@ -9872,6 +10600,29 @@ function mustChangePasswordGate(){
   return false;
 }
 
+// True until a person has accepted the attendance/device-tracking consent
+// notice — checked against whichever shape is present (local mock field or
+// the live users.consent_at column, same either-shape handling as
+// mustChangePassword above).
+function needsConsent(user){
+  return !(user.consentAt || user.consent_at);
+}
+
+// Same gate pattern as mustChangePasswordGate() immediately above — checked
+// at every navigate()/refreshScreenContentOnly() call so no stale screen id
+// or recovery path can let someone skip past the consent notice either.
+// Deliberately a SEPARATE function/call rather than folded into
+// mustChangePasswordGate(): password comes first (renderForcedPasswordChange
+// already gates on its own), consent only after a real password is set.
+function consentGate(){
+  if(!(State.role && State.user)) return false;
+  if(needsConsent(State.user)){
+    renderConsentScreen();
+    return true;
+  }
+  return false;
+}
+
 function navigate(screenId, opts){
   opts = opts || {};
   // Absolute gate, checked here rather than only at login: no matter what
@@ -9881,6 +10632,7 @@ function navigate(screenId, opts){
   // (screenId is ignored entirely) because the alternative is trusting
   // every single call site to remember this check individually.
   if(mustChangePasswordGate()) return;
+  if(consentGate()) return;
   const previousScreen = currentScreen;
   currentScreen = screenId;
   document.getElementById('screens').innerHTML = `<div class="screen active">${getScreenHTML(screenId)}</div>`;
@@ -9893,13 +10645,16 @@ function navigate(screenId, opts){
   if(previousScreen === 'startSession' && screenId !== 'startSession') stopSessionTicker();
   if(previousScreen === 'startSession' && screenId !== 'startSession') stopRosterPolling();
   if(previousScreen === 'checkin' && screenId !== 'checkin') stopQrScanner();
-  // home<->checkin transitions deliberately don't reset the sync guard —
-  // the discovered LIVE_SESSION state is equally valid on either screen, no
-  // need to re-fetch just for switching between them. Leaving to anywhere
-  // else resets it, so returning later triggers a fresh discovery rather
-  // than trusting a potentially-stale state from whenever it was last checked.
-  if(previousScreen === 'checkin' && screenId !== 'checkin' && screenId !== 'home') resetStudentLiveSync();
-  if(previousScreen === 'home' && screenId !== 'home' && screenId !== 'checkin') resetStudentLiveSync();
+  // home<->checkin<->coordinatorQrDisplay transitions deliberately don't
+  // reset the sync guard — the discovered LIVE_SESSION state (and its
+  // Realtime subscription) is equally valid across all three screens, no
+  // need to re-fetch or re-subscribe just for switching between them
+  // (coordinatorQrDisplay especially needs that live subscription to stay
+  // open, or its QR box would go stale the moment it's opened from Home).
+  // Leaving to anywhere else resets it, so returning later triggers a fresh
+  // discovery rather than trusting a potentially-stale state.
+  const liveAwareScreens = ['checkin', 'home', 'coordinatorQrDisplay'];
+  if(liveAwareScreens.includes(previousScreen) && !liveAwareScreens.includes(screenId)) resetStudentLiveSync();
   if(previousScreen === 'home' && screenId !== 'home') stopStudentBannerTicker();
   // The analytics canvases get torn down and replaced every time this
   // screen is (re-)entered — destroy the previous Chart.js instances first
@@ -9916,6 +10671,19 @@ function navigate(screenId, opts){
   }
   if(screenId === 'checkin'){
     startStudentLiveSessionSync();
+  }
+  if(screenId === 'coordinatorQrDisplay'){
+    // Fills the QR box immediately if LIVE_SESSION is already known (e.g. the
+    // Coordinator came from Home, which already synced it) — and re-syncs
+    // from scratch if this is the first live-session-aware screen visited
+    // this session, then redraws once that resolves.
+    drawQrPlaceholder();
+    startStudentLiveSessionSync().then(() => {
+      if(currentScreen === 'coordinatorQrDisplay'){
+        refreshScreenContentOnly();
+        drawQrPlaceholder();
+      }
+    });
   }
   if(screenId === 'home'){
     startStudentBannerTicker();
@@ -9951,6 +10719,7 @@ function navigate(screenId, opts){
   if(screenId === 'auditSystem') loadAuditLogFromSupabase();
   if(screenId === 'fraudCenter') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
+  if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
 
   if(!opts.fromPopstate){
     const state = { vusapScreen: screenId, vusapRole: State.role };
@@ -9980,6 +10749,7 @@ function refreshScreenContentOnly(){
   // why this needs its own explicit check rather than trusting navigate()
   // alone to cover every path.
   if(mustChangePasswordGate()) return;
+  if(consentGate()) return;
   const screensEl = document.getElementById('screens');
   if(!screensEl || !currentScreen) return;
   screensEl.innerHTML = `<div class="screen active">${getScreenHTML(currentScreen)}</div>`;

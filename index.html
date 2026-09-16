@@ -952,6 +952,15 @@ input,select,textarea{font-family:inherit;}
 .report-option{transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;}
 .report-option:hover{transform:translateY(-2px); box-shadow:var(--shadow-card); border-color:color-mix(in srgb, var(--theme-primary) 25%, var(--line));}
 
+/* searchable single-select picker (Send Notification: course / person lists) */
+.notif-pick-list{max-height:220px; overflow-y:auto; border:1.5px solid var(--line); border-radius:var(--radius-sm); padding:0 10px;}
+.notif-pick-row{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s;}
+.notif-pick-row:last-child{border-bottom:none;}
+.notif-pick-row:hover{background:color-mix(in srgb, var(--theme-primary) 6%, transparent);}
+.notif-pick-row.selected{background:color-mix(in srgb, var(--theme-primary) 8%, transparent);}
+.notif-pick-check{color:var(--theme-primary); opacity:0; flex-shrink:0; display:flex;}
+.notif-pick-row.selected .notif-pick-check{opacity:1;}
+
 /* skeleton loading */
 .skeleton{
   background:linear-gradient(90deg, var(--unmarked-bg) 25%, #e8ecf3 37%, var(--unmarked-bg) 63%);
