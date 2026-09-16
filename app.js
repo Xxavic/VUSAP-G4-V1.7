@@ -1830,7 +1830,12 @@ function getStaffDirectory(){
       // field (and `mode`) rather than only ever deriving it on the fly —
       // fall back to vuEmail() for any legacy record that somehow lacks one.
       id:s.reg, name:s.name, role:"student", dept:s.dept, email: s.email || vuEmail(s.name),
-      status: account ? (account.status || 'active') : (provisioned ? 'active' : 'unprovisioned'),
+      // A mock USERS record existing is NOT proof of a real account (see
+      // isProvisionedAccount()) — only an explicit suspension there should
+      // override the provisioned check, otherwise a demo-only fixture like
+      // Brian's silently reported "active" here even though it can never
+      // actually sign in once the live backend is up.
+      status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
       hasAccount: provisioned,
     };
   });
@@ -4604,10 +4609,18 @@ async function loadProvisionedAccountsFromSupabase(){
 }
 
 // Shared by both tagging functions below so they can't drift on what
-// "provisioned" means — checks the mock USERS object (demo/test accounts)
-// OR the live Supabase account list, either one counts as a real account.
+// "provisioned" means — the live Supabase account list is always the real
+// signal. The mock USERS object only counts as "an account" while running
+// fully offline (LIVE_BACKEND false), since that's the only time
+// authSignIn() ever actually reaches its mock fallback — once the live
+// backend is up, an id that's only in USERS (never seeded live, e.g. a
+// leftover demo fixture like Brian's) can never really sign in: the live
+// path returns Supabase's own auth error directly and never falls through.
+// Previously this counted mock-USERS presence as proof of a real account
+// unconditionally, so a demo id with no live counterpart silently showed as
+// fully provisioned here while actually being unable to log in at all.
 function isProvisionedAccount(id){
-  return !!USERS[id] || LIVE_PROVISIONED_IDS.has(id);
+  return LIVE_PROVISIONED_IDS.has(id) || (!LIVE_BACKEND && !!USERS[id]);
 }
 
 function tagStudentForRegister(s){
@@ -4619,7 +4632,10 @@ function tagStudentForRegister(s){
     year: s.year, gender: s.gender, semester: s.semester, mode: s.mode,
     email: s.email || vuEmail(s.name),
     pct: s.pct, trend: s.trend,
-    status: account ? (account.status || 'active') : (provisioned ? 'active' : 'unprovisioned'),
+    // See the identical comment on getStaffDirectory()'s student mapping —
+    // a mock USERS record alone isn't proof of a real, live-login-capable
+    // account.
+    status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
     hasAccount: provisioned,
     _studentId: s.id,
   };
