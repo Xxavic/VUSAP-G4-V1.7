@@ -1070,12 +1070,13 @@ async function updateLiveRoster(){
       return;
     }
     el.innerHTML = data.map(r => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="width:6px;height:6px;border-radius:50%;background:var(--present);flex-shrink:0;"></span>
-          <div style="font-size:13px;font-weight:600;">${r.student_name || 'Unknown student'}</div>
+      <div class="live-roster-row">
+        <div class="avatar">${initials(r.student_name || '?')}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:700;">${r.student_name || 'Unknown student'}</div>
+          <div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">${new Date(r.marked_at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
         </div>
-        <div style="font-size:11px;color:var(--ink-faint);">${new Date(r.marked_at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
+        <span class="badge done" style="flex-shrink:0;">Present</span>
       </div>
     `).join('');
   } catch(e){
@@ -2177,6 +2178,33 @@ function formatNotifTimestamp(n){
 // screen reads NOTIFICATIONS (via notificationsForCurrentUser()) fresh on
 // each render so a later-resolving fetch just takes effect automatically.
 // ------------------------------------------------------------
+
+// Persists a Class Coordinator assignment/demotion onto the live
+// `public.users` row for that university ID — see
+// migrate-coordinator-users-columns.sql. Best-effort: a freshly-enrolled
+// student has no live Supabase Auth account yet (enrollment itself is
+// still mock-only, Gate 4-7), so this update simply matches zero rows for
+// them, which is harmless. It only actually takes effect for accounts that
+// already exist live — e.g. a demoted previous coordinator, or a Gate 3
+// demo account like Aisha's — but that's exactly what closes the gap: any
+// live-authenticated account's real profile row now reflects the flag on
+// its next login instead of only ever living in the in-memory USERS mock.
+async function liveSyncCoordinatorStatus(universityId, { isCoordinator, programme, year }){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { error } = await SUPABASE_CLIENT
+      .from('users')
+      .update({
+        is_class_coordinator: isCoordinator,
+        coordinator_for_programme: isCoordinator ? programme : null,
+        coordinator_for_year: isCoordinator ? year : null,
+      })
+      .eq('university_id', universityId);
+    if(error) console.warn('liveSyncCoordinatorStatus failed:', error);
+  } catch(e){
+    console.warn('liveSyncCoordinatorStatus error:', e);
+  }
+}
 
 async function liveWriteNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId }){
   if(!LIVE_BACKEND) return;
@@ -4410,6 +4438,7 @@ function handleEnroll(e){
       previous.is_class_coordinator = false;
       previous.coordinator_for_programme = null;
       previous.coordinator_for_year = null;
+      liveSyncCoordinatorStatus(previous.reg, { isCoordinator: false });
     }
   }
 
@@ -4444,6 +4473,8 @@ function handleEnroll(e){
       ...(isCoordinator ? { coordinator_for_programme: prog.name, coordinator_for_year: year } : {}),
     },
   });
+
+  liveSyncCoordinatorStatus(reg, { isCoordinator, programme: prog.name, year });
 
   if(replacedCoordinatorName) showToast(`${replacedCoordinatorName} is no longer Class Coordinator — replaced by ${name}`);
   showTempPasswordConfirmation(name, reg, tempPassword);
@@ -5625,38 +5656,36 @@ function renderStartSession(){
     </div>
   </div>
   <div class="content">
-    <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:14px;">
+    <div class="live-hero-card">
       <div class="qr-display-wrap">
         <div id="qrCanvasHolder" class="qr-code-box"></div>
       </div>
-      <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-faint); font-weight:600;">
+      <div class="live-hero-refresh">
         ${ICONS.refresh.replace(/<svg /,'<svg style="width:13px;height:13px;" ')} <span id="qrRotateLabel">Refreshes in ${LIVE_SESSION.tokenRotateSeconds}s</span>
       </div>
-    </div>
 
-    <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:10px;">
-      <div style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">OR STUDENTS CAN ENTER THIS CODE</div>
+      <div class="live-hero-code-label">Or enter this code</div>
       <div class="session-pin-display">
         ${LIVE_SESSION.pin.split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
       </div>
-    </div>
 
-    <div class="status-chip-grid" style="grid-template-columns:repeat(2,1fr);">
-      <div class="status-chip present" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <div class="countdown-ring">
-          <svg width="54" height="54" viewBox="0 0 54 54">
-            <circle cx="27" cy="27" r="23" fill="none" stroke="rgba(22,163,74,0.15)" stroke-width="4"/>
-            <circle id="sessionRingProgress" cx="27" cy="27" r="23" fill="none" stroke="var(--present)" stroke-width="4" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="0"/>
-          </svg>
-          <div class="countdown-text" id="liveSessionCountdown" style="font-size:12.5px;">—</div>
-        </div>
-        <div class="l">Time Left</div>
+      <div class="live-hero-countdown">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="37" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="5"/>
+          <circle id="sessionRingProgress" cx="42" cy="42" r="37" fill="none" stroke="var(--theme-accent)" stroke-width="5" stroke-linecap="round" stroke-dasharray="232.5" stroke-dashoffset="0" transform="rotate(-90 42 42)"/>
+        </svg>
+        <div class="live-hero-countdown-text" id="liveSessionCountdown">—</div>
       </div>
-      <div class="status-chip unmarked"><div class="n" id="liveCheckinCount">0</div><div class="l">Checked In</div></div>
+      <div class="live-hero-countdown-label">Time left</div>
+
+      <div class="live-hero-footrow">
+        <div class="live-hero-count"><span id="liveCheckinCount">0</span> students checked in</div>
+        <button class="live-hero-end-btn" onclick="endSession()">${ICONS.close.replace(/<svg /,'<svg style="width:13px;height:13px;" ')} End session</button>
+      </div>
     </div>
 
     <div class="card card-pad">
-      <div class="section-title" style="margin-bottom:8px;">${ICONS.users} Checked In</div>
+      <div class="section-title" style="margin-bottom:8px;">${ICONS.users} Live check-ins</div>
       <div id="liveRosterList">
         <div class="empty-state-sm">No check-ins yet</div>
       </div>
@@ -5674,8 +5703,6 @@ function renderStartSession(){
         ? `<div style="font-size:11.5px;color:var(--ink-soft);">On — your Class Coordinator can now display this session's QR code from their own device.</div>`
         : `<div style="font-size:11.5px;color:var(--ink-faint);">Off — only you can display the QR code. Turn this on if you'd like your Class Coordinator to help display it.</div>`}
     </div>
-
-    <button class="btn btn-ghost" onclick="endSession()">${ICONS.close} End Session Now</button>
   </div>`;
 }
 
@@ -5697,7 +5724,12 @@ function startSessionTicker(){
     const ringEl = document.getElementById('sessionRingProgress');
     if(ringEl && LIVE_SESSION.windowSeconds){
       const frac = Math.max(0, Math.min(1, remaining / LIVE_SESSION.windowSeconds));
-      ringEl.setAttribute('stroke-dashoffset', (144.5 * (1 - frac)).toFixed(1));
+      // Reads the ring's own drawn length instead of a hardcoded constant tied
+      // to one specific radius, so the countdown ring can be resized (e.g. the
+      // larger hero-card ring on the Lecturer Live Session screen) without this
+      // math silently going stale.
+      const circumference = ringEl.getTotalLength ? ringEl.getTotalLength() : 232.5;
+      ringEl.setAttribute('stroke-dashoffset', (circumference * (1 - frac)).toFixed(1));
     }
 
     secondsUntilRotate -= 1;
