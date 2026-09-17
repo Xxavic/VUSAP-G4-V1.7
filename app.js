@@ -1800,6 +1800,13 @@ const LECTURERS = [
   { id:"VU-LEC-102", name:"Prof. Sarah Akwango", dept:"Computer Science", email:"s.akwango@vu.ac.ug", status:"active" },
   { id:"VU-LEC-103", name:"Mr. Ivan Tumwesigye", dept:"Computer Science", email:"i.tumwesigye@vu.ac.ug", status:"active" },
   { id:"VU-LEC-104", name:"Mr. Alex Otim", dept:"Business Administration", email:"a.otim@vu.ac.ug", status:"active" },
+  // VU-LEC-105/106: provisioned live in Supabase (and already referenced as
+  // the lecturer on real SCHEDULE entries — see BAR4302/ENG4101 and
+  // BAR4303/BAR4305 below) but never added here, so the Administrator's
+  // People/Register screen had no record of them at all despite their
+  // accounts genuinely working.
+  { id:"VU-LEC-105", name:"Dr. Grace Atim", dept:"Civil Engineering", email:"g.atim@vu.ac.ug", status:"active" },
+  { id:"VU-LEC-106", name:"Ms. Joy Tumwesigye", dept:"Business Administration", email:"j.tumwesigye@vu.ac.ug", status:"active" },
 ];
 
 const REGISTRARS = [
