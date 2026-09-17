@@ -1259,6 +1259,7 @@ async function loadFacultiesAndProgrammesFromSupabase(){
     }
 
     const newProgrammes = programmeRows.map(p => ({
+      id: p.id, // needed to write classes.programme_id — see loadClassesFromSupabase()
       facultyKey: p.faculties ? p.faculties.key : null,
       facultyName: p.faculties ? p.faculties.name : null,
       key: p.key,
@@ -1291,6 +1292,105 @@ async function loadFacultiesAndProgrammesFromSupabase(){
   } catch(e){
     console.warn('loadFacultiesAndProgrammesFromSupabase error, keeping mock data:', e);
   }
+}
+
+// Course Catalog — live read. Replaces the mock COURSES with the real
+// `classes` rows so Course Catalog CRUD (createCourse/editCourse/
+// deleteCourse) can write live instead of only ever mutating memory.
+// Same fallback shape as Faculties/Programmes above: any failure (offline,
+// table empty, RLS block) keeps the mock catalog as-is. Mutates the array
+// in place (COURSES is declared `const`) rather than reassigning it.
+//
+// Live `classes` has no `room` column — room is a timetable_slots-level
+// concept (a course can use different rooms across different scheduled
+// sessions), not a property of the course itself. Every live-loaded course
+// gets room: null rather than inventing a classes.room column that would
+// just drift out of sync with timetable_slots.room.
+async function loadClassesFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('classes')
+      .select('id, code, name, teacher_id, programme_id, mode, programmes(key, name)')
+      .order('code');
+
+    if(error){
+      console.warn('Classes fetch failed, keeping mock COURSES:', error);
+      return;
+    }
+    if(!rows || rows.length === 0){
+      // Table reachable but unseeded — keep the mock catalog rather than
+      // showing every registrar an empty Course Catalog.
+      return;
+    }
+
+    const teacherIds = [...new Set(rows.map(r => r.teacher_id).filter(Boolean))];
+    let teacherNames = {};
+    if(teacherIds.length){
+      try {
+        const { data: teacherRows } = await SUPABASE_CLIENT
+          .from('users')
+          .select('id, name')
+          .in('id', teacherIds);
+        (teacherRows || []).forEach(t => { teacherNames[t.id] = t.name; });
+      } catch(e){
+        console.warn('Classes: lecturer name lookup failed, using placeholder:', e);
+      }
+    }
+
+    const newCourses = rows.map(r => ({
+      code: r.code,
+      name: r.name,
+      programme: r.programmes ? r.programmes.name : null,
+      programmeKey: r.programmes ? r.programmes.key : null,
+      lecturer: r.teacher_id ? (teacherNames[r.teacher_id] || 'TBA') : null,
+      room: null, // see comment above — not a classes-table concept
+      mode: r.mode || null,
+    }));
+
+    if(newCourses.length){
+      COURSES.length = 0;
+      COURSES.push(...newCourses);
+    }
+  } catch(e){
+    console.warn('loadClassesFromSupabase error, keeping mock COURSES:', e);
+  }
+}
+
+// Course Catalog — live write helpers. Course rows are structural data
+// referenced by enrollments/sessions/timetable_slots, so unlike attendance
+// check-ins (where instant local feedback matters more than a rare write
+// failure), these are awaited and any error is surfaced to the caller
+// rather than fired-and-forgotten — a registrar should never end up
+// thinking a course was saved/deleted when it silently wasn't. No-ops to
+// { ok: true } when LIVE_BACKEND is off (offline/demo mode keeps today's
+// local-only behavior unchanged). RLS (can_write_faculty on programme_id)
+// is the real enforcement boundary — a cross-faculty write surfaces here
+// as a Postgres/RLS error, not a silent no-op.
+async function liveCreateClass({ code, name, programmeId, teacherId, mode }){
+  if(!LIVE_BACKEND) return { ok: true };
+  const { error } = await SUPABASE_CLIENT
+    .from('classes')
+    .insert({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null });
+  if(error) return { error: error.message };
+  return { ok: true };
+}
+
+async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mode }){
+  if(!LIVE_BACKEND) return { ok: true };
+  const { error } = await SUPABASE_CLIENT
+    .from('classes')
+    .update({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null })
+    .eq('code', oldCode);
+  if(error) return { error: error.message };
+  return { ok: true };
+}
+
+async function liveDeleteClass(code){
+  if(!LIVE_BACKEND) return { ok: true };
+  const { error } = await SUPABASE_CLIENT.from('classes').delete().eq('code', code);
+  if(error) return { error: error.message };
+  return { ok: true };
 }
 
 // ------------------------------------------------------------
@@ -2213,9 +2313,15 @@ function logAuditEvent(actor, actorName, action, target, detail){
 async function liveWriteAuditEvent(actor, actorName, action, target, detail){
   if(!LIVE_BACKEND) return;
   try {
+    // faculty_key is denormalized here (rather than resolved in SQL) because
+    // audit_log.target is free text with no FK — ticket-<id>/appeal-<id>/
+    // course code/student reg/bare facultyKey/'system' sentinels — so this
+    // reuses the same resolution logic the client already trusts for
+    // scopedAuditLog(). See migrate-faculty-scoped-reads.sql.
+    const facultyKey = auditEventFacultyKey({ target });
     const { error } = await SUPABASE_CLIENT
       .from('audit_log')
-      .insert({ actor, actor_name: actorName, action, target, detail });
+      .insert({ actor, actor_name: actorName, action, target, detail, faculty_key: facultyKey });
     if(error) console.warn('liveWriteAuditEvent failed:', error);
   } catch(e){
     console.warn('liveWriteAuditEvent error:', e);
@@ -8465,10 +8571,39 @@ function filterCourseCatalog(){
   toggleNoResultsState('courseList', visibleCount, 'Try a different search or programme filter');
 }
 
-function openCourseFormSheet(code){
+// Lecturer field: a live <select> of real users(role='lecturer'), faculty-
+// filtered the same way the Programme dropdown already is — resolving a
+// free-text name to classes.teacher_id (a real uuid) isn't reliable, and
+// this depends on the users SELECT policy being faculty-scoped (see
+// migrate-faculty-scoped-reads.sql) so a registrar only ever sees their own
+// faculty's lecturers here. Falls back to the original free-text input when
+// offline/demo (!LIVE_BACKEND) or if the live fetch fails, since neither
+// case can produce a usable live teacher_id anyway.
+async function courseLecturerFieldHtml(course, fk){
+  const fallback = `<input class="input" id="courseLecturerInput" value="${course && course.lecturer ? course.lecturer : ''}" placeholder="e.g. Dr. Patrick Mukasa" />`;
+  if(!LIVE_BACKEND) return fallback;
+  try {
+    let query = SUPABASE_CLIENT.from('users').select('id, name, faculty_key').eq('role', 'lecturer').order('name');
+    const { data: lecturerRows, error } = await query;
+    if(error || !lecturerRows) return fallback;
+    const scoped = fk ? lecturerRows.filter(l => l.faculty_key === fk) : lecturerRows;
+    return `
+      <select class="select" id="courseLecturerInput">
+        <option value="">No lecturer assigned</option>
+        ${scoped.map(l => `<option value="${l.id}" data-name="${l.name}" ${course && course.lecturer===l.name ? 'selected':''}>${l.name}</option>`).join('')}
+      </select>`;
+  } catch(e){
+    console.warn('Course form: lecturer list fetch failed, falling back to free text:', e);
+    return fallback;
+  }
+}
+
+async function openCourseFormSheet(code){
   const course = code ? COURSES.find(c => c.code === code) : null;
   const title = document.getElementById('courseFormTitle');
   if(title) title.textContent = course ? 'Edit Course' : 'Add Course';
+  const fk = currentRegistrarFacultyKey();
+  const lecturerFieldHtml = await courseLecturerFieldHtml(course, fk);
 
   const body = document.getElementById('courseFormBody');
   if(body){
@@ -8486,13 +8621,17 @@ function openCourseFormSheet(code){
         <label>Programme</label>
         <select class="select" id="courseProgrammeInput">
           <option value="">No programme</option>
-          ${(currentRegistrarFacultyKey() ? PROGRAMMES.filter(p=>p.facultyKey===currentRegistrarFacultyKey()) : PROGRAMMES).map(p => `<option value="${p.key}" ${course && course.programmeKey===p.key ? 'selected':''}>${p.name}</option>`).join('')}
+          ${(fk ? PROGRAMMES.filter(p=>p.facultyKey===fk) : PROGRAMMES).map(p => `<option value="${p.key}" ${course && course.programmeKey===p.key ? 'selected':''}>${p.name}</option>`).join('')}
         </select>
       </div>
       <div class="field" style="margin-bottom:14px;">
         <label>Lecturer</label>
-        <input class="input" id="courseLecturerInput" value="${course && course.lecturer ? course.lecturer : ''}" placeholder="e.g. Dr. Patrick Mukasa" />
+        ${lecturerFieldHtml}
       </div>
+      <!-- Room is local-only, not written to the live classes table (which
+           has no room column) — see loadClassesFromSupabase()/liveCreateClass()
+           comments. A course's actual per-session room lives on
+           timetable_slots instead. -->
       <div class="field" style="margin-bottom:14px;">
         <label>Room</label>
         <input class="input" id="courseRoomInput" value="${course && course.room ? course.room : ''}" placeholder="e.g. LT1 - Main Building" />
@@ -8514,17 +8653,27 @@ function openCourseFormSheet(code){
   openSheet('courseFormSheet');
 }
 
-function submitCourseForm(existingCode){
+async function submitCourseForm(existingCode){
   const name = document.getElementById('courseNameInput')?.value.trim();
   const programmeKey = document.getElementById('courseProgrammeInput')?.value || null;
-  const lecturer = document.getElementById('courseLecturerInput')?.value.trim();
+  const lecturerEl = document.getElementById('courseLecturerInput');
+  // A live lecturer field is a <select> (value = users.id uuid, display name
+  // on the option's data-name); the offline/demo fallback is a free-text
+  // <input> (value = a display name only, no uuid available) — see
+  // courseLecturerFieldHtml().
+  const lecturerIsLive = lecturerEl && lecturerEl.tagName === 'SELECT';
+  const teacherId = lecturerIsLive ? (lecturerEl.value || null) : null;
+  const lecturer = lecturerIsLive
+    ? (lecturerEl.selectedOptions[0]?.dataset.name || null)
+    : (lecturerEl?.value.trim() || null);
   const room = document.getElementById('courseRoomInput')?.value.trim();
   const mode = document.getElementById('courseModeInput')?.value || null; // '' -> null ("no restriction")
   const prog = PROGRAMMES.find(p => p.key === programmeKey);
 
   // Belt-and-suspenders: the Programme <select> is already restricted to the
   // Registrar's own faculty in the form itself, but its value is still
-  // readable/forgeable via JS, so this is the real enforcement point.
+  // readable/forgeable via JS, so this is the real enforcement point
+  // client-side — the actual authority is can_write_faculty() in RLS.
   const fk = currentRegistrarFacultyKey();
   if(fk && prog && prog.facultyKey !== fk){
     showToast("You can only manage courses in your own faculty");
@@ -8532,6 +8681,14 @@ function submitCourseForm(existingCode){
   }
   if(fk && !existingCode && !prog){
     showToast("Select a programme in your faculty");
+    return;
+  }
+  // A selected programme with no resolvable live id means the live
+  // Faculties/Programmes fetch hasn't completed (or failed) yet — writing
+  // classes.programme_id as null here would silently detach the course from
+  // its programme rather than surfacing the real problem.
+  if(LIVE_BACKEND && prog && !prog.id){
+    showToast("Programme data is still loading — try again in a moment");
     return;
   }
 
@@ -8544,6 +8701,11 @@ function submitCourseForm(existingCode){
     }
     if(newCode !== existingCode && COURSES.find(c => c.code === newCode)){
       showToast(`${newCode} is already in use by another course`);
+      return;
+    }
+    const live = await liveUpdateClass(existingCode, { code: newCode, name, programmeId: prog ? prog.id : null, teacherId, mode });
+    if(live.error){
+      showToast(live.error);
       return;
     }
     let touched = 0;
@@ -8559,8 +8721,18 @@ function submitCourseForm(existingCode){
     }
   } else {
     const code = document.getElementById('courseCodeInput')?.value.trim();
-    if(!name){
-      showToast("Enter a course name");
+    if(!code || !name){
+      showToast(!code ? "Course code and name are required" : "Enter a course name");
+      return;
+    }
+    const upperCode = code.toUpperCase();
+    if(COURSES.find(c => c.code === upperCode)){
+      showToast(`${upperCode} already exists in the catalog`);
+      return;
+    }
+    const live = await liveCreateClass({ code: upperCode, name, programmeId: prog ? prog.id : null, teacherId, mode });
+    if(live.error){
+      showToast(live.error);
       return;
     }
     result = createCourse(code, name, programmeKey, lecturer, room, mode);
@@ -8574,7 +8746,7 @@ function submitCourseForm(existingCode){
   navigate('courseCatalog', { replace: true });
 }
 
-function confirmDeleteCourse(code){
+async function confirmDeleteCourse(code){
   const fk = currentRegistrarFacultyKey();
   if(fk){
     const course = COURSES.find(c => c.code === code);
@@ -8583,6 +8755,18 @@ function confirmDeleteCourse(code){
       showToast("You can only manage courses in your own faculty");
       return;
     }
+  }
+  // Check dependents before attempting the live delete — no point deleting
+  // the live row (or failing on a live FK constraint) if the local
+  // dependents guard would have blocked this anyway.
+  if(courseHasDependents(code)){
+    showToast(`Can't delete ${code} — it has scheduled sessions or attendance records. Remove those first.`);
+    return;
+  }
+  const live = await liveDeleteClass(code);
+  if(live.error){
+    showToast(live.error);
+    return;
   }
   const result = deleteCourse(code);
   if(result.error){
@@ -11733,6 +11917,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // reads FACULTIES/PROGRAMMES fresh on each render, a later-resolving fetch
   // just takes effect on the next render with no extra wiring needed.
   loadFacultiesAndProgrammesFromSupabase();
+  // Course Catalog — live COURSES loader. Fire-and-forget, same reasoning
+  // as Faculties/Programmes above: scopedCourses()/renderCourseCatalog()
+  // read the COURSES array fresh on each render.
+  loadClassesFromSupabase();
   // Gate 6: live STUDENTS loader — merges live student accounts into the
   // existing mock roster (see the function itself for why merge, not
   // replace: with only a handful of real accounts so far, a full replace
