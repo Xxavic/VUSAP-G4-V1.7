@@ -3897,7 +3897,7 @@ function renderLecturerDashboard(){
     </a>
     <a class="quick-action" onclick="navigate('markAttendance')">
       <div class="qa-icon">${ICONS.check}</div>
-      <div class="qa-text"><div class="t">Attendance Corrections</div><div class="s">Submit manual corrections for a session</div></div>
+      <div class="qa-text"><div class="t">Attendance</div><div class="s">Corrections, records & export for your courses</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('schedule')">
@@ -3908,16 +3908,6 @@ function renderLecturerDashboard(){
     <a class="quick-action" onclick="navigate('announcements')">
       <div class="qa-icon">${ICONS.megaphone}</div>
       <div class="qa-text"><div class="t">Announcements</div><div class="s">Post updates to your courses</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('attendanceCatalog')">
-      <div class="qa-icon">${ICONS.records}</div>
-      <div class="qa-text"><div class="t">Attendance Records</div><div class="s">Browse records by course</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('reports')">
-      <div class="qa-icon">${ICONS.fileText}</div>
-      <div class="qa-text"><div class="t">Export Course Attendance</div><div class="s">PDF / Excel for your courses</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('supportTickets')">
@@ -4085,7 +4075,7 @@ function renderMarkAttendance(){
     <div class="app-header">
       <div class="header-back">
         <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-        <div class="page-title" style="font-size:18px;">Attendance Corrections</div>
+        <div class="page-title" style="font-size:18px;">Attendance</div>
       </div>
     </div>
     <div class="content">
@@ -4117,7 +4107,7 @@ function renderMarkAttendance(){
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
       <div>
-        <div class="page-title" style="font-size:18px;">Attendance Corrections</div>
+        <div class="page-title" style="font-size:18px;">Attendance</div>
       </div>
     </div>
   </div>
@@ -4137,6 +4127,22 @@ function renderMarkAttendance(){
         <div class="k">${lec.courseCode} — ${lec.courseName}</div>
         <div class="v" style="font-size:12px;">${lec.lecturer} · ${lec.room}</div>
         <div style="font-size:11px;color:var(--ink-faint);margin-top:3px;">${lec.day} · ${lec.time}</div>
+      </div>
+    </div>
+
+    <!-- Sept 2026 handoff, Part 6: the old separate "Attendance Records"
+    (course catalog) and "Export Course Attendance" (Reports & Export)
+    dashboard tiles are gone — both duplicated the same course-picking step
+    this screen already does via "Select Lecture" above. Reaching either one
+    now just reuses the course already selected here: Full Course Records
+    drills straight into renderCourseRecords() for lec.courseCode (skipping
+    the now-redundant catalog list), and the export links call the same
+    exportReport() the old Reports screen used, pre-scoped to this course. -->
+    <div class="section-head-row" style="margin:2px 2px 0;">
+      <button class="link-mini" onclick="openCourseRecords('${lec.courseCode}')">${ICONS.records} Full Course Records</button>
+      <div style="display:flex; gap:14px;">
+        <button class="link-mini" onclick="exportReport('pdf','${lec.courseCode}')">${ICONS.fileText} PDF</button>
+        <button class="link-mini" onclick="exportReport('excel','${lec.courseCode}')">${ICONS.fileSpreadsheet} CSV</button>
       </div>
     </div>
 
@@ -7336,9 +7342,21 @@ function renderCourseRecords(){
   const roleRecords = isLecturer ? recordsForLecturer() : scopedRecords();
   const records = roleRecords.filter(r => r.code === code);
   const sample = records[0];
+  // Sept 2026 handoff, Part 6: a Lecturer now only ever reaches this screen
+  // from the merged Attendance screen's "Full Course Records" link (the
+  // standalone catalog tile is gone), so Back goes straight there.
   const backTarget = State.role === 'administrator' ? 'facultyRecordsCatalog'
-    : State.role === 'lecturer' ? 'attendanceCatalog'
+    : State.role === 'lecturer' ? 'markAttendance'
     : 'records';
+  // Real export, scoped to this one course — replaces the old
+  // "showToast('Report exported')" placeholder that never actually
+  // exported anything, and reuses the same exportReport() the merged
+  // Attendance screen's PDF/CSV links call.
+  const exportControl = `
+    <div style="display:flex; gap:10px;">
+      <button class="link-mini" onclick="exportReport('pdf','${code}')">${ICONS.fileText} PDF</button>
+      <button class="link-mini" onclick="exportReport('excel','${code}')">${ICONS.fileSpreadsheet} CSV</button>
+    </div>`;
   return `
   <div class="app-header">
     <div class="header-back">
@@ -7346,7 +7364,7 @@ function renderCourseRecords(){
       <div class="page-title" style="font-size:18px;">${code}${sample ? ' — ' + sample.course : ''}</div>
     </div>
   </div>
-  ${renderAttendanceRecordsBlock({ records })}`;
+  ${renderAttendanceRecordsBlock({ records, exportControl })}`;
 }
 
 // ============================================================
@@ -7459,8 +7477,13 @@ function renderReports(){
   </div>`;
 }
 
-function exportReport(format){
-  const courseFilter = document.getElementById('reportCourse')?.value || '';
+// courseCode lets a caller (the merged Attendance screen's Full Course
+// Records / PDF / CSV links, or renderCourseRecords()'s export buttons)
+// pre-scope the export to one course directly, instead of going through
+// the "Course" <select> this function originally read from on the old
+// standalone Reports & Export screen — that select only exists there now.
+function exportReport(format, courseCode){
+  const courseFilter = courseCode != null ? courseCode : (document.getElementById('reportCourse')?.value || '');
   const rangeFilter = document.getElementById('reportRange')?.value || 'term';
   const records = scopedRecords();
 
@@ -11129,12 +11152,11 @@ function getScreenHTML(screenId){
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
-      case 'reports': return renderReports();
-      // Sept 2026 handoff, Part 4: Lecturer had no records-browsing screen
-      // at all before this — reached from a new dashboard quick action
-      // ("Attendance Records"), not a bottom-nav tab (the bottom nav is
-      // already at 4 tabs).
-      case 'attendanceCatalog': return renderAttendanceCatalog();
+      // Sept 2026 handoff, Part 6: the standalone "Attendance Records"
+      // catalog and "Reports & Export" screens are gone for Lecturers —
+      // merged into the Attendance screen above (Full Course Records /
+      // PDF / CSV links, pre-scoped to the lecture already selected there).
+      // courseRecords stays: that's what "Full Course Records" opens.
       case 'courseRecords': return renderCourseRecords();
       case 'notifications': return renderNotifications();
       case 'supportTickets': return renderSupportTickets();
