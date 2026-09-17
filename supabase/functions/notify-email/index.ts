@@ -81,9 +81,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // fetch() only rejects on a network-level failure — a Resend rejection
+    // (e.g. the sandbox-mode "you can only send to your own verified
+    // address" 403 you get with no custom domain verified yet) resolves
+    // normally with an ok:false response, so it must be checked explicitly
+    // per recipient. Confirmed live (Sept 2026): reporting sendResults.length
+    // as "sent" regardless of each response's actual status made a rejected
+    // send look successful from the caller's side.
     const sendResults = await Promise.all(
-      recipients.filter((r) => r.email).map((r) =>
-        fetch("https://api.resend.com/emails", {
+      recipients.filter((r) => r.email).map(async (r) => {
+        const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${RESEND_API_KEY}`,
@@ -95,12 +102,21 @@ Deno.serve(async (req) => {
             subject: title,
             text: body,
           }),
-        })
-      ),
+        });
+        const ok = res.ok;
+        let detail = null;
+        if(!ok){
+          try { detail = await res.json(); } catch(_e) { detail = await res.text(); }
+        }
+        return { email: r.email, ok, status: res.status, error: ok ? undefined : detail };
+      }),
     );
 
+    const sent = sendResults.filter((r) => r.ok).length;
+    const failed = sendResults.filter((r) => !r.ok);
+
     return new Response(
-      JSON.stringify({ sent: sendResults.length }),
+      JSON.stringify({ sent, failed: failed.length, results: sendResults }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

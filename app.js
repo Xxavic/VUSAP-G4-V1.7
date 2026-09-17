@@ -2429,10 +2429,14 @@ async function liveSendEmailNotification({ recipientRole, recipientId, title, bo
   if(!LIVE_BACKEND) return;
   if(recipientRole !== 'registrar' && recipientRole !== 'administrator') return;
   try {
-    const { error } = await SUPABASE_CLIENT.functions.invoke('notify-email', {
+    const { data, error } = await SUPABASE_CLIENT.functions.invoke('notify-email', {
       body: { recipientRole, recipientId, title, body },
     });
     if(error) console.warn('liveSendEmailNotification failed:', error);
+    // The function always returns 200 (an email failure shouldn't break the
+    // caller — see its own comment), so a rejected Resend send only shows up
+    // in the body, not `error`. Surface it here so it's not silently invisible.
+    else if(data?.failed) console.warn('liveSendEmailNotification: Resend rejected some recipients:', data.results);
   } catch(e){
     console.warn('liveSendEmailNotification error:', e);
   }
