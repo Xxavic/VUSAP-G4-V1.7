@@ -762,6 +762,149 @@ async function liveWriteAttendance(){
 }
 
 // ------------------------------------------------------------
+// ATTENDANCE CORRECTIONS — live read/write (Sept 2026 handoff, Part 5).
+// Deliberately no schema change: a real scan always carries a device_id
+// (getDeviceId(), set by the checking-in student's own browser), while
+// every staff-written row below (the no-show sweep, a routine correction,
+// or an override) omits it — that's the same "did this come from a real
+// scan" signal Attendance Corrections uses locally via RECORDS[].source,
+// just expressed through a column that already exists. Adding a dedicated
+// `source` column would have been more explicit, but it would also make
+// liveWriteAttendance()'s insert above fail outright on any project that
+// hasn't run that migration yet — silently breaking every live check-in
+// until it has. This works immediately, on every existing project, with
+// nothing to migrate.
+// ------------------------------------------------------------
+
+// Read-only half of liveEnsureSchedulingSession() — resolves an existing
+// sessions row for (course, date) without ever creating one. Attendance
+// Corrections should only ever show a date a session genuinely ran on, not
+// silently mint a new row for a date picked out of curiosity.
+async function liveResolveSessionId(courseCode, dateISO){
+  if(!LIVE_BACKEND) return null;
+  try {
+    const { data: classRow } = await SUPABASE_CLIENT.from('classes').select('id').eq('code', courseCode).maybeSingle();
+    if(!classRow) return null;
+    const { data: existing } = await SUPABASE_CLIENT
+      .from('sessions').select('id').eq('class_id', classRow.id).eq('date', dateISO)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    return existing ? existing.id : null;
+  } catch(e){
+    console.warn('liveResolveSessionId error:', e);
+    return null;
+  }
+}
+
+// Pulls the real attendance rows for one lecture+date and merges them into
+// RECORDS, tagged 'scan' or 'correction' by whether the row carries a
+// device_id. Fire-and-forget from changeLecture()/changeCorrectionsDate();
+// on any failure (offline, no live session for this date, RLS) the screen
+// just keeps showing whatever RECORDS already had — same fallback every
+// other live loader in this file uses.
+async function liveLoadAttendanceForLectureDate(lecture, dateISO){
+  if(!LIVE_BACKEND || !lecture) return;
+  try {
+    const sessionId = await liveResolveSessionId(lecture.courseCode, dateISO);
+    if(!sessionId) return;
+    const { data, error } = await SUPABASE_CLIENT
+      .from('attendance').select('student_id, student_name, status, device_id')
+      .eq('session_id', sessionId);
+    if(error || !data){
+      if(error) console.warn('liveLoadAttendanceForLectureDate failed:', error);
+      return;
+    }
+    // attendance rows carry a display name, not the human reg number, so
+    // name is the only join key available back to this course's roster —
+    // ambiguous only if two same-named students share this exact dept, an
+    // acceptable limitation of the roster still being dept-derived mock
+    // data rather than real enrollments (see getSessionStudents()).
+    const roster = getSessionStudents(lecture);
+    let changed = false;
+    data.forEach(row => {
+      const student = roster.find(s => s.name === row.student_name);
+      if(!student) return;
+      const idx = RECORDS.findIndex(r => r.code === lecture.courseCode && r.date === dateISO && r.reg === student.reg);
+      const rec = {
+        date: dateISO, reg: student.reg, name: student.name, prog: student.dept,
+        code: lecture.courseCode, course: lecture.courseName, venue: lecture.room,
+        status: row.status, source: row.device_id ? 'scan' : 'correction',
+      };
+      if(idx >= 0) RECORDS[idx] = { ...RECORDS[idx], ...rec }; else RECORDS.unshift(rec);
+      changed = true;
+    });
+    if(changed) rerenderCurrentScreen();
+  } catch(e){
+    console.warn('liveLoadAttendanceForLectureDate error:', e);
+  }
+}
+
+// Fire-and-forget live mirror for one correction/override written by
+// submitAttendance()/confirmAttendanceOverride(). No device_id is ever set
+// here — that absence is what marks the row as staff-entered to every
+// other reader of this table (see the file-level note above). Best-effort
+// only: the mock STUDENTS roster this screen is built from carries no
+// supabaseId (only the logged-in user's own State.user does), so this
+// no-ops until rosters themselves come from live enrollments rather than a
+// dept match — the mock RECORDS write already covers the actual screen.
+async function liveWriteAttendanceCorrection({ lecture, dateISO, student, status }){
+  if(!LIVE_BACKEND || !student.supabaseId) return;
+  try {
+    const sessionId = await liveResolveSessionId(lecture.courseCode, dateISO);
+    if(!sessionId) return;
+    const { data: existing } = await SUPABASE_CLIENT
+      .from('attendance').select('id').eq('session_id', sessionId).eq('student_id', student.supabaseId).maybeSingle();
+    if(existing){
+      const { error } = await SUPABASE_CLIENT.from('attendance').update({ status }).eq('id', existing.id);
+      if(error) console.warn('liveWriteAttendanceCorrection update failed:', error);
+    } else {
+      const { error } = await SUPABASE_CLIENT.from('attendance').insert({
+        session_id: sessionId, student_id: student.supabaseId, student_name: student.name, status,
+      });
+      if(error) console.warn('liveWriteAttendanceCorrection insert failed:', error);
+    }
+  } catch(e){
+    console.warn('liveWriteAttendanceCorrection error:', e);
+  }
+}
+
+// Live mirror of finalizeSessionAttendance()'s no-show sweep — kept
+// separate because it needs the REAL enrolled roster (enrollments -> users)
+// to get an actual student_id to insert against, not the mock STUDENTS/
+// dept-match roster the rest of this screen still uses. Only "Staff read
+// all attendance" RLS is confirmed in place as of this handoff — reading
+// every enrolled student's row here (not just your own) likely needs that
+// same coverage extended to `enrollments`/`users`, so this may currently
+// no-op under RLS until that policy exists. Safe to attempt either way.
+async function liveFinalizeSessionAttendance(courseCode, dateISO){
+  if(!LIVE_BACKEND) return;
+  try {
+    const sessionId = await liveResolveSessionId(courseCode, dateISO);
+    if(!sessionId) return;
+    const { data: classRow } = await SUPABASE_CLIENT.from('classes').select('id').eq('code', courseCode).maybeSingle();
+    if(!classRow) return;
+    const { data: enrolled, error: eErr } = await SUPABASE_CLIENT
+      .from('enrollments').select('student_id, users(name)').eq('class_id', classRow.id);
+    if(eErr || !enrolled){
+      if(eErr) console.warn('liveFinalizeSessionAttendance: enrollments read failed (may need broader staff RLS):', eErr);
+      return;
+    }
+    const { data: existingRows, error: aErr } = await SUPABASE_CLIENT
+      .from('attendance').select('student_id').eq('session_id', sessionId);
+    if(aErr){ console.warn('liveFinalizeSessionAttendance: attendance read failed:', aErr); return; }
+    const already = new Set((existingRows||[]).map(r=>r.student_id));
+    const toInsert = enrolled.filter(e => !already.has(e.student_id)).map(e => ({
+      session_id: sessionId, student_id: e.student_id, student_name: e.users?.name || null, status: 'absent',
+    }));
+    if(toInsert.length){
+      const { error: insErr } = await SUPABASE_CLIENT.from('attendance').insert(toInsert);
+      if(insErr) console.warn('liveFinalizeSessionAttendance insert failed:', insErr);
+    }
+  } catch(e){
+    console.warn('liveFinalizeSessionAttendance error:', e);
+  }
+}
+
+// ------------------------------------------------------------
 // FRAUD DETECTION (Gate 4, part 6). Runs two checks, both driven by the
 // existing FRAUD_THRESHOLDS admin settings (previously decorative — this is
 // what actually wires them up):
@@ -3853,23 +3996,121 @@ function donutChart(segments){
 // LECTURER: ATTENDANCE CORRECTIONS (manual override for a session)
 // ============================================================
 
-const LECTURE_OPTIONS = [
-  { id:'csc3101', label:'CSC3101 – Data Structures & Algorithms (Monday 08:00)', courseCode:'CSC3101', courseName:'Data Structures & Algorithms', lecturer:'Dr. Patrick Mukasa', room:'LT1 - Main Building', dayTime:'Monday · 08:00 – 10:00' },
-  { id:'csc3103', label:'CSC3103 – Software Engineering (Wednesday 08:00)', courseCode:'CSC3103', courseName:'Software Engineering', lecturer:'Dr. Patrick Mukasa', room:'LT1 - Main Building', dayTime:'Wednesday · 08:00 – 10:00' },
-];
+// Sept 2026 handoff, Part 5: replaces the old hardcoded 2-lecture
+// LECTURE_OPTIONS / fixed-10-student getSessionStudents() — this screen
+// previously never actually reflected the lecturer's real timetable or a
+// real class roster, just the same two demo lectures and the same ten
+// Computer Science students no matter what was picked. getLecturerLectures()
+// derives the real pickable list from SCHEDULE (this lecturer's own slots,
+// any day — not just today, since Session Date can now be any date), and
+// getSessionStudents(lecture) rosters by the lecture's own dept, same
+// fidelity SCHEDULE/STUDENTS already support elsewhere in this file.
+function getLecturerLectures(){
+  const lecturerName = State.user?.name;
+  const seen = new Set();
+  const out = [];
+  SCHEDULE.forEach(d => {
+    d.lectures.forEach(l => {
+      if(l.lecturer !== lecturerName) return;
+      const id = `${l.code}|${d.day}|${l.time}`;
+      if(seen.has(id)) return;
+      seen.add(id);
+      out.push({
+        id, day: d.day, isToday: !!d.isToday,
+        courseCode: l.code, courseName: l.name, dept: l.dept,
+        lecturer: l.lecturer, room: l.room, time: l.time, mode: l.mode || null,
+        label: `${l.code} — ${l.name} (${d.day} ${l.time.split(' ')[0]})`,
+      });
+    });
+  });
+  return out;
+}
 
-let currentLectureId = 'csc3103';
+function getSessionStudents(lecture){
+  if(!lecture || !lecture.dept) return [];
+  return STUDENTS.filter(s => s.dept === lecture.dept);
+}
 
-function getSessionStudents(){
-  return STUDENTS.filter(s=>s.deptKey==='cs').slice(0,10);
+let currentLectureId = null;
+// Defaults to today so opening the screen shows "right now", per the
+// request that Session Date reflect the current date by default — the
+// lecturer can still type or pick any other date to pull up that day's
+// attendance instead.
+let currentCorrectionsDate = new Date().toISOString().slice(0,10);
+
+function defaultLectureId(){
+  const lectures = getLecturerLectures();
+  if(!lectures.length) return null;
+  const today = lectures.find(l => l.isToday);
+  return (today || lectures[0]).id;
+}
+
+// Sept 2026 handoff, Part 5: a student's status for THIS course+date comes
+// from RECORDS, tagged with where it came from — 'scan' (the student's own
+// QR/PIN check-in), 'auto_absent' (finalizeSessionAttendance() at session
+// end, for anyone who never scanned), 'correction' (a lecturer manually
+// marking a no-scan/auto_absent student here), or 'override' (a lecturer
+// overriding a real scan — see canManuallyMark()). Pre-existing seed RECORDS
+// rows predate this field entirely and default to 'scan' — the safest
+// assumption, since it's the one that locks the row rather than leaving it
+// open to casual editing.
+function getCorrectionsStatusMap(lecture, dateISO){
+  const map = {};
+  if(!lecture) return map;
+  RECORDS.filter(r => r.code === lecture.courseCode && r.date === dateISO).forEach(r => {
+    map[r.reg] = { status: r.status, source: r.source || 'scan', overrideReason: r.overrideReason || null };
+  });
+  return map;
+}
+
+// The whole point of this screen, per the Sept 2026 handoff: a lecturer
+// should only ever be free to hand-mark a student who never scanned at all
+// (no phone, forgot it, device died) — not overwrite what a student's own
+// phone already reported, which is exactly the kind of unaccountable
+// after-the-fact change that turns an attendance system into a bias/
+// harassment vector. A 'scan' entry is locked here; everything else
+// (no record yet, or already a correction/auto_absent/override) stays
+// freely editable through the normal P/L/A buttons.
+function canManuallyMark(entry){
+  return !entry || entry.source !== 'scan';
 }
 
 function renderMarkAttendance(){
-  const lec = LECTURE_OPTIONS.find(l=>l.id===currentLectureId);
-  const students = getSessionStudents();
-  const counts = {p:0,l:0,a:0};
-  students.forEach(s=>{ const v = State.attendanceDraft[s.id]; if(v) counts[v]++; });
+  if(currentLectureId === null) currentLectureId = defaultLectureId();
+  const lectures = getLecturerLectures();
+  const lec = lectures.find(l => l.id === currentLectureId);
+
+  if(!lec){
+    return `
+    <div class="app-header">
+      <div class="header-back">
+        <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
+        <div class="page-title" style="font-size:18px;">Attendance Corrections</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="empty-state" style="padding:40px 20px;">
+        ${ICONS.calendar}
+        <div class="t" style="margin-top:14px;">No lectures on your timetable</div>
+        <div class="s">Attendance corrections need at least one scheduled lecture to work from.</div>
+      </div>
+    </div>`;
+  }
+
+  const students = getSessionStudents(lec);
+  const statusMap = getCorrectionsStatusMap(lec, currentCorrectionsDate);
+  const counts = { p:0, l:0, a:0 };
+  students.forEach(s=>{
+    const draft = State.attendanceDraft[s.id];
+    const real = statusMap[s.reg];
+    const v = draft || (real ? real.status[0] : null);
+    if(v==='p'||v==='present') counts.p++;
+    else if(v==='l'||v==='late') counts.l++;
+    else if(v==='a'||v==='absent') counts.a++;
+  });
   const unmarked = students.length - counts.p - counts.l - counts.a;
+  const isToday = currentCorrectionsDate === new Date().toISOString().slice(0,10);
+  const sessionHasRun = students.length > 0 && (counts.p + counts.l + counts.a) > 0;
 
   return `
   <div class="app-header">
@@ -3885,19 +4126,25 @@ function renderMarkAttendance(){
       <div class="field" style="margin-bottom:14px;">
         <label>Select Lecture</label>
         <select class="select" onchange="changeLecture(this.value)">
-          ${LECTURE_OPTIONS.map(l=>`<option value="${l.id}" ${l.id===currentLectureId?'selected':''}>${l.label}</option>`).join('')}
+          ${lectures.map(l=>`<option value="${l.id}" ${l.id===currentLectureId?'selected':''}>${l.label}</option>`).join('')}
         </select>
       </div>
       <div class="field" style="margin-bottom:14px;">
         <label>Session Date</label>
-        <input class="input" type="text" value="24-Jun-2026" readonly />
+        <input class="input" type="date" id="correctionsDateInput" value="${currentCorrectionsDate}" max="${new Date().toISOString().slice(0,10)}" onchange="changeCorrectionsDate(this.value)" />
       </div>
       <div class="info-box">
         <div class="k">${lec.courseCode} — ${lec.courseName}</div>
         <div class="v" style="font-size:12px;">${lec.lecturer} · ${lec.room}</div>
-        <div style="font-size:11px;color:var(--ink-faint);margin-top:3px;">${lec.dayTime}</div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:3px;">${lec.day} · ${lec.time}</div>
       </div>
     </div>
+
+    ${!sessionHasRun ? `
+    <div class="info-box" style="background:#eef2ff; border-color:#c7d2fe;">
+      <div class="k" style="color:#3730a3;">${isToday ? 'No session recorded for today yet' : 'No session was recorded on this date'}</div>
+      <div class="v" style="color:#3730a3; font-size:12px;">${isToday ? 'Start and end a live session for this lecture, or mark students manually below.' : 'Pick a date this lecture actually ran, or use Start Session to run it live today.'}</div>
+    </div>` : ''}
 
     <div class="status-chip-grid">
       <div class="status-chip present"><div class="n">${counts.p}</div><div class="l">Present</div></div>
@@ -3911,14 +4158,15 @@ function renderMarkAttendance(){
         ${ICONS.search}
         <input class="input" id="studentSearch" placeholder="Search student name or ID..." oninput="filterAttendanceList(this.value)" />
       </div>
-      <div style="font-size:11px;font-weight:700;color:var(--ink-faint);margin-bottom:8px;">MARK ALL AS</div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink-faint);margin-bottom:8px;">MARK ALL UNSCANNED AS</div>
       <div class="markall-row">
         <button class="markall-btn present" onclick="markAll('p')">Present</button>
         <button class="markall-btn late" onclick="markAll('l')">Late</button>
         <button class="markall-btn absent" onclick="markAll('a')">Absent</button>
       </div>
+      <div style="font-size:11px;color:var(--ink-faint);margin:8px 0 4px;">${ICONS.lock.replace(/width="\d+" height="\d+"/,'width="11" height="11"').replace(/<svg /,'<svg style="vertical-align:-1px;margin-right:3px;" ')}Present/Late rows already scanned by the student are locked — see Override on that row if it's genuinely wrong.</div>
       <div id="attendanceList" style="margin-top:8px; max-height:50vh; overflow-y:auto; -webkit-overflow-scrolling:touch;">
-        ${students.map(s=>studentAttendanceRow(s)).join('')}
+        ${students.map(s=>studentAttendanceRow(s, statusMap[s.reg])).join('')}
       </div>
     </div>
   </div>
@@ -3927,17 +4175,64 @@ function renderMarkAttendance(){
       ${unmarked>0 ? `<div style="font-size:11.5px;color:var(--late);font-weight:600;margin-bottom:10px;text-align:center;">⚠ ${unmarked} student${unmarked>1?'s':''} not yet marked</div>` : ''}
       <button class="btn btn-primary" onclick="submitAttendance()">${ICONS.check} Submit Corrections</button>
     </div>
+  </div>
+
+  <div class="sheet" id="attendanceOverrideSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span>Override Scanned Attendance</span>
+      <button onclick="closeSheet('attendanceOverrideSheet')">${ICONS.close}</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="info-box" style="background:#fef3c7; border-color:#fcd34d;">
+        <div class="k" style="color:#92400e;">${ICONS.alertTriangle.replace(/width="\d+" height="\d+"/,'width="14" height="14"').replace(/<svg /,'<svg style="vertical-align:-2px;margin-right:5px;" ')}This student scanned in themselves</div>
+        <div class="v" style="color:#92400e; font-size:12px;">Overriding a real check-in is logged to the audit trail and reported to your faculty Registrar. Only do this to correct a genuine error — not to relitigate a student's own record.</div>
+      </div>
+      <div id="overrideStudentSummary" style="font-size:13px;font-weight:700;"></div>
+      <div class="field">
+        <label>New Status <span class="req">*</span></label>
+        <select class="select" id="overrideStatus">
+          <option value="p">Present</option>
+          <option value="l">Late</option>
+          <option value="a">Absent</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reason <span class="req">*</span></label>
+        <textarea class="input" id="overrideReason" rows="3" placeholder="Why is the scanned status wrong?" style="resize:vertical;"></textarea>
+      </div>
+      <button class="btn btn-primary" style="background:var(--absent);" onclick="confirmAttendanceOverride()">${ICONS.alertTriangle} Confirm Override</button>
+    </div>
   </div>`;
 }
 
-function studentAttendanceRow(s){
-  const v = State.attendanceDraft[s.id];
+function studentAttendanceRow(s, entry){
+  const draft = State.attendanceDraft[s.id];
+  const locked = !canManuallyMark(entry);
+  const v = draft || (entry ? entry.status[0] : null);
+
+  if(locked){
+    const label = entry.status[0].toUpperCase() + entry.status.slice(1);
+    return `
+    <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}">
+      <div class="avatar">${initials(s.name)}</div>
+      <div class="student-info">
+        <div class="student-name">${s.name}</div>
+        <div class="student-meta">${s.reg} · ${ICONS.lock.replace(/width="\d+" height="\d+"/,'width="10" height="10"').replace(/<svg /,'<svg style="vertical-align:-1px;margin-right:2px;" ')}Scanned</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+        <span class="status-pill ${entry.status}">${label}</span>
+        <button class="link-mini" style="font-size:10.5px;" onclick="openAttendanceOverrideSheet(${s.id})">Override</button>
+      </div>
+    </div>`;
+  }
+
   return `
   <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}">
     <div class="avatar">${initials(s.name)}</div>
     <div class="student-info">
       <div class="student-name">${s.name}</div>
-      <div class="student-meta">${s.reg}</div>
+      <div class="student-meta">${s.reg}${entry && entry.status==='absent' ? ' · No scan on record' : ''}</div>
     </div>
     <div class="pla-toggle">
       <button class="pla-btn p ${v==='p'?'on':''}" onclick="setAttendance(${s.id},'p')">P</button>
@@ -3948,6 +4243,13 @@ function studentAttendanceRow(s){
 }
 
 function setAttendance(id, val){
+  const lec = getLecturerLectures().find(l => l.id === currentLectureId);
+  const student = getSessionStudents(lec).find(s => s.id === id);
+  const entry = student ? getCorrectionsStatusMap(lec, currentCorrectionsDate)[student.reg] : null;
+  // Defense in depth — the UI already hides P/L/A buttons for a locked row,
+  // but this guard means a locked row can never be changed by this path
+  // even if something upstream got that wrong.
+  if(!canManuallyMark(entry)) return;
   if(State.attendanceDraft[id] === val){
     delete State.attendanceDraft[id];
   } else {
@@ -3957,15 +4259,28 @@ function setAttendance(id, val){
 }
 
 function markAll(val){
-  getSessionStudents().forEach(s=>{ State.attendanceDraft[s.id] = val; });
+  const lec = getLecturerLectures().find(l => l.id === currentLectureId);
+  const statusMap = getCorrectionsStatusMap(lec, currentCorrectionsDate);
+  getSessionStudents(lec).forEach(s=>{
+    if(canManuallyMark(statusMap[s.reg])) State.attendanceDraft[s.id] = val;
+  });
   rerenderCurrentScreen();
-  showToast(`All students marked ${val==='p'?'Present':val==='l'?'Late':'Absent'}`);
+  showToast(`Unscanned students marked ${val==='p'?'Present':val==='l'?'Late':'Absent'}`);
 }
 
 function changeLecture(id){
   currentLectureId = id;
   State.attendanceDraft = {};
   rerenderCurrentScreen();
+  liveLoadAttendanceForLectureDate(getLecturerLectures().find(l=>l.id===id), currentCorrectionsDate);
+}
+
+function changeCorrectionsDate(dateISO){
+  if(!dateISO) return;
+  currentCorrectionsDate = dateISO;
+  State.attendanceDraft = {};
+  rerenderCurrentScreen();
+  liveLoadAttendanceForLectureDate(getLecturerLectures().find(l=>l.id===currentLectureId), dateISO);
 }
 
 function toggleNoResultsState(containerId, visibleCount, message){
@@ -3998,33 +4313,101 @@ function filterAttendanceList(q){
   toggleNoResultsState('attendanceList', visible, 'Try searching a different name or ID');
 }
 
-function submitAttendance(){
-  const lec = LECTURE_OPTIONS.find(l=>l.id===currentLectureId);
-  const students = getSessionStudents();
-  const marked = students.filter(s=>State.attendanceDraft[s.id]);
-  if(marked.length === 0){
-    showToast("Mark at least one student before submitting");
+// Opens the override sheet for one specific already-scanned student — kept
+// separate from the normal draft/Submit flow on purpose (see canManuallyMark()):
+// an override is an individually-confirmed, individually-logged action, not
+// something that should be batchable into an unrelated bulk submit.
+let overrideTargetStudentId = null;
+function openAttendanceOverrideSheet(studentId){
+  overrideTargetStudentId = studentId;
+  const lec = getLecturerLectures().find(l => l.id === currentLectureId);
+  const student = getSessionStudents(lec).find(s => s.id === studentId);
+  if(!student) return;
+  const entry = getCorrectionsStatusMap(lec, currentCorrectionsDate)[student.reg];
+  const summary = document.getElementById('overrideStudentSummary');
+  if(summary) summary.textContent = `${student.name} (${student.reg}) — currently ${entry ? entry.status : 'unmarked'}, from their own scan`;
+  const reasonEl = document.getElementById('overrideReason');
+  if(reasonEl) reasonEl.value = '';
+  openSheet('attendanceOverrideSheet');
+}
+
+function confirmAttendanceOverride(){
+  const lec = getLecturerLectures().find(l => l.id === currentLectureId);
+  const student = getSessionStudents(lec).find(s => s.id === overrideTargetStudentId);
+  if(!student) return;
+  const statusMap = { p:'present', l:'late', a:'absent' };
+  const newVal = document.getElementById('overrideStatus')?.value || 'p';
+  const newStatus = statusMap[newVal];
+  const reason = (document.getElementById('overrideReason')?.value || '').trim();
+  if(!reason){
+    showToast("A reason is required to override a scanned attendance record");
     return;
   }
-  // This previously only showed a success toast and discarded the draft —
-  // nothing was ever actually written anywhere, which is why a submitted
-  // correction never showed up in the Registrar's Recent Submissions or in
-  // the student's own attendance record. Mock-layer only, consistent with
-  // STUDENTS/COURSES/SCHEDULE/RECORDS all being mock throughout this app —
-  // this doesn't reach live Supabase attendance rows.
-  const statusMap = { p:'present', l:'late', a:'absent' };
-  const today = new Date().toISOString().slice(0,10);
-  marked.forEach(s => {
-    const status = statusMap[State.attendanceDraft[s.id]];
-    RECENT_SUBMISSIONS.unshift({ name: s.name, code: lec.courseCode, date: today, status });
+  const existing = RECORDS.find(r => r.code === lec.courseCode && r.date === currentCorrectionsDate && r.reg === student.reg);
+  const oldStatus = existing ? existing.status : 'unmarked';
+  if(existing){
+    existing.status = newStatus;
+    existing.source = 'override';
+    existing.overrideReason = reason;
+    existing.overrideBy = State.user?.name || 'Lecturer';
+  } else {
     RECORDS.unshift({
-      date: today, reg: s.reg, name: s.name, prog: s.dept,
-      code: lec.courseCode, course: lec.courseName, venue: lec.room, status,
+      date: currentCorrectionsDate, reg: student.reg, name: student.name, prog: student.dept,
+      code: lec.courseCode, course: lec.courseName, venue: lec.room, status: newStatus,
+      source: 'override', overrideReason: reason, overrideBy: State.user?.name || 'Lecturer',
     });
+  }
+  const detail = `${student.name} (${student.reg}): ${oldStatus} → ${newStatus}. Reason: ${reason}`;
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Attendance override', lec.courseCode, detail);
+  liveWriteAttendanceCorrection({ lecture: lec, dateISO: currentCorrectionsDate, student, status: newStatus, source: 'override', reason, actorName: State.user?.name });
+  // Deliberately visible to oversight, not just logged quietly — the whole
+  // point of "cautioned against" is that overriding a real scan shouldn't
+  // be something only the lecturer who did it ever sees again.
+  pushNotification({
+    recipientRole: 'registrar', recipientId: registrarIdForFacultyKey(facultyKeyForProgrammeName(student.dept)),
+    type: 'attendanceOverride', title: `Attendance override — ${lec.courseCode}`,
+    body: `${State.user?.name || 'A lecturer'} changed ${student.name}'s scanned attendance from ${oldStatus} to ${newStatus}. Reason: ${reason}`,
+    from: State.user?.name, fromId: State.user?.id,
+  });
+  closeSheet('attendanceOverrideSheet');
+  showToast(`${student.name}'s attendance overridden to ${newStatus}`);
+  rerenderCurrentScreen();
+}
+
+function submitAttendance(){
+  const lec = getLecturerLectures().find(l => l.id === currentLectureId);
+  const students = getSessionStudents(lec);
+  const statusMap = getCorrectionsStatusMap(lec, currentCorrectionsDate);
+  // Same guard as setAttendance()/markAll(): even if a stale draft entry
+  // somehow existed for an already-scanned student, submitting never
+  // applies it — only students who genuinely never scanned get written here.
+  const marked = students.filter(s => State.attendanceDraft[s.id] && canManuallyMark(statusMap[s.reg]));
+  if(marked.length === 0){
+    showToast("Mark at least one unscanned student before submitting");
+    return;
+  }
+  const statusLabel = { p:'present', l:'late', a:'absent' };
+  marked.forEach(s => {
+    const status = statusLabel[State.attendanceDraft[s.id]];
+    const existing = RECORDS.find(r => r.code === lec.courseCode && r.date === currentCorrectionsDate && r.reg === s.reg);
+    if(existing){
+      existing.status = status;
+      existing.source = 'correction';
+    } else {
+      RECORDS.unshift({
+        date: currentCorrectionsDate, reg: s.reg, name: s.name, prog: s.dept,
+        code: lec.courseCode, course: lec.courseName, venue: lec.room, status, source: 'correction',
+      });
+    }
+    RECENT_SUBMISSIONS.unshift({ name: s.name, code: lec.courseCode, date: currentCorrectionsDate, status });
+    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Attendance correction', lec.courseCode, `${s.name} (${s.reg}): marked ${status} — no scan on record`);
+    liveWriteAttendanceCorrection({ lecture: lec, dateISO: currentCorrectionsDate, student: s, status, source: 'correction', actorName: State.user?.name });
   });
   showToast(`Attendance submitted for ${marked.length} of ${students.length} students`, ICONS.checkCircle.replace('width="64" height="64"','width="16" height="16"'));
   setTimeout(()=>{ State.attendanceDraft = {}; navigate('dashboard'); }, 900);
 }
+
+// ============================================================
 
 // ============================================================
 // LECTURER: MY TIMETABLE  (also reused for Registrar "All Schedules")
@@ -5133,7 +5516,7 @@ function renderStudentHome(){
     </div>`)}
 
     <div class="stat-grid">
-      <div class="stat-tile">
+      <div class="stat-tile" style="cursor:pointer;" onclick="navigate('myAttendance')" title="View my full attendance record">
         <div class="top"><span class="label">Attendance Rate</span>
           <span class="stat-icon" style="background:#ccfbf1; color:#0f766e;">${ICONS.trend}</span></div>
         <div class="value">${STUDENT_ATTENDANCE_SUMMARY.rate}%</div>
@@ -5213,6 +5596,10 @@ function renderStudentHome(){
         <div class="qa-icon">${ICONS.calendar}</div>
         <div class="qa-text"><div class="t">My Timetable</div><div class="s">Full weekly schedule</div></div>
       </a>
+      <a class="quick-action" onclick="navigate('myAttendance')">
+        <div class="qa-icon">${ICONS.records}</div>
+        <div class="qa-text"><div class="t">My Attendance Record</div><div class="s">Every session, by day — keep a copy</div></div>
+      </a>
       <a class="quick-action" onclick="navigate('supportTickets')">
         <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
         <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems or account access</div></div>
@@ -5246,6 +5633,170 @@ function renderStudentTimetable(){
   <div class="content">
     ${filteredSchedule.map(d=>scheduleDayGroup(d, false)).join('')}
   </div>`;
+}
+
+// ============================================================
+// STUDENT: MY ATTENDANCE RECORD (Sept 2026 handoff, Part 6)
+// ============================================================
+// A student's own copy of their attendance — every session they've ever
+// been marked for, grouped by day, with an export they can keep. The
+// point isn't just visibility: if a session is ever marked wrong, this is
+// the student's own record to point back to when they raise it (via
+// Attendance Appeals), independent of whatever the lecturer's or
+// Registrar's own screens currently show.
+
+function getMyAttendanceRecords(){
+  const reg = State.user?.id || State.user?.reg || '';
+  if(!reg) return [];
+  return RECORDS.filter(r => r.reg === reg);
+}
+
+// RECORDS is already date-descending in the mock data, so a Map (which
+// preserves first-seen insertion order) groups by day without a separate
+// sort step — same approach groupRecordsByStudent() already uses for its
+// own by-student grouping.
+function groupRecordsByDate(records){
+  const map = new Map();
+  records.forEach(r => {
+    if(!map.has(r.date)) map.set(r.date, []);
+    map.get(r.date).push(r);
+  });
+  return map;
+}
+
+function renderMyAttendanceRecord(){
+  const u = State.user;
+  const records = getMyAttendanceRecords();
+  const counts = {
+    total: records.length,
+    present: records.filter(r=>r.status==='present').length,
+    late: records.filter(r=>r.status==='late').length,
+    absent: records.filter(r=>r.status==='absent').length,
+  };
+  const byDate = groupRecordsByDate(records);
+
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('home')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">My Attendance Record</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="info-box" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div>
+        <div class="k">${u.year || 'Year —'} · ${u.semester || 'Semester —'}</div>
+        <div class="v" style="font-size:12px;">${u.name || ''} · ${u.id || u.reg || ''}</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-shrink:0;">
+        <button class="link-mini" onclick="exportMyAttendance('pdf')">${ICONS.fileText} PDF</button>
+        <button class="link-mini" onclick="exportMyAttendance('excel')">${ICONS.fileSpreadsheet} CSV</button>
+      </div>
+    </div>
+
+    <div class="status-chip-grid">
+      <div class="status-chip unmarked"><div class="n">${counts.total}</div><div class="l">Total</div></div>
+      <div class="status-chip present"><div class="n">${counts.present}</div><div class="l">Present</div></div>
+      <div class="status-chip late"><div class="n">${counts.late}</div><div class="l">Late</div></div>
+      <div class="status-chip absent"><div class="n">${counts.absent}</div><div class="l">Absent</div></div>
+    </div>
+
+    <div class="info-box" style="background:#eef2ff; border-color:#c7d2fe;">
+      <div class="k" style="color:#3730a3;">${ICONS.shield.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;margin-right:5px;" ')}Keep a copy for your own records</div>
+      <div class="v" style="color:#3730a3; font-size:12px;">Download this list any time — it's your own proof of attendance if you ever need to raise an appeal against a session marked wrong.</div>
+    </div>
+
+    ${byDate.size ? Array.from(byDate.entries()).map(([date, recs]) => `
+    <div class="day-group">
+      <div class="day-header">
+        <span>${ICONS.calendar.replace('viewBox="0 0 24 24"','viewBox="0 0 24 24" width="14" height="14" style="margin-right:6px;vertical-align:-2px;"')}${new Date(date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>
+        <span class="day-count">${recs.length} session${recs.length>1?'s':''}</span>
+      </div>
+      <div class="card card-pad" style="display:flex;flex-direction:column;gap:8px;">
+        ${recs.map(r => `
+        <div class="lecture-row" style="padding:8px 0;">
+          <div>
+            <div class="lecture-code">${r.code}</div>
+            <div class="lecture-name">${r.course}</div>
+            <div class="lecture-meta">${ICONS.pin} ${r.venue}</div>
+          </div>
+          <span class="status-pill ${r.status}">${r.status[0].toUpperCase()+r.status.slice(1)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`).join('') : `
+    <div class="empty-state" style="padding:40px 20px;">
+      ${ICONS.records}
+      <div class="t" style="margin-top:14px;">No attendance records yet</div>
+      <div class="s">Sessions you check into will show up here.</div>
+    </div>`}
+  </div>`;
+}
+
+// Same CSV-via-Blob / PDF-via-print-dialog approach as exportReport() (the
+// Registrar/Administrator-side export), just scoped to this one student's
+// own records with no course/range filters to pick — this screen always
+// exports everything, since "a copy of my own attendance" means all of it.
+function exportMyAttendance(format){
+  const records = getMyAttendanceRecords();
+  if(records.length === 0){
+    showToast("No attendance records to export yet");
+    return;
+  }
+  const u = State.user;
+  const idLabel = u.id || u.reg || 'student';
+
+  if(format === 'excel'){
+    const headers = ['Date','Course Code','Course','Venue','Status'];
+    const rows = records.map(r => [
+      `"${r.date}"`, `"${r.code}"`, `"${r.course}"`, `"${r.venue}"`, `"${r.status}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vusap-my-attendance-${idLabel}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`${records.length} of your records exported as CSV`, ICONS.download.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
+
+  } else if(format === 'pdf'){
+    const html = `<!DOCTYPE html><html><head><title>VUSAP Attendance Record</title>
+    <style>
+      body{font-family:sans-serif;font-size:12px;color:#111;padding:24px;}
+      h1{font-size:18px;margin-bottom:4px;}
+      .meta{color:#666;font-size:11px;margin-bottom:20px;}
+      table{width:100%;border-collapse:collapse;}
+      th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:11px;}
+      td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;}
+      tr:nth-child(even){background:#f8fafc;}
+      .present{color:#16a34a;font-weight:700;}
+      .late{color:#d97706;font-weight:700;}
+      .absent{color:#dc2626;font-weight:700;}
+    </style></head><body>
+    <h1>VUSAP Attendance Record</h1>
+    <div class="meta">${u.name || ''} · ${idLabel} · ${u.year||''} ${u.semester||''} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
+    <table>
+      <thead><tr><th>Date</th><th>Course</th><th>Venue</th><th>Status</th></tr></thead>
+      <tbody>
+        ${records.map(r=>`<tr>
+          <td>${r.date}</td>
+          <td>${r.code} — ${r.course}</td>
+          <td>${r.venue}</td>
+          <td class="${r.status}">${r.status.toUpperCase()}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <script>window.onload=()=>window.print();<\/script>
+    </body></html>`;
+    const win = window.open('', '_blank');
+    if(win){
+      win.document.write(html);
+      win.document.close();
+    } else {
+      showToast("Allow pop-ups to export as PDF");
+    }
+  }
 }
 
 // ============================================================
@@ -5638,6 +6189,7 @@ async function completeCheckIn(){
     course: LIVE_SESSION.courseName,
     venue: LIVE_SESSION.room,
     status: 'present',
+    source: 'scan', // Sept 2026 handoff, Part 5: locks this row against casual editing in Attendance Corrections — see canManuallyMark().
   });
 
   liveWriteAttendance(); // fire-and-forget — local check-in above already succeeded either way
@@ -5816,10 +6368,42 @@ function stopRosterPolling(){
   }
 }
 
+// Sept 2026 handoff, Part 5: the moment a live session ends, every enrolled
+// student who never checked in gets an explicit 'absent' RECORDS row —
+// before this, a no-show simply left no trace at all, so Attendance
+// Corrections had nothing to show and no real Present/Late/Absent split to
+// review. This is also what makes the "only unscanned students are
+// editable" rule in Attendance Corrections meaningful: Present/Late come
+// from a real scan the instant this runs, Absent is everyone else, and
+// Absent is the one status a lecturer can freely correct (a no-show that
+// turns out to be a no-phone case), never a status they can casually flip
+// away from a real scan.
+function finalizeSessionAttendance(){
+  const { courseCode, courseName, room } = LIVE_SESSION;
+  if(!courseCode) return;
+  const lecture = getLecturerLectures().find(l => l.courseCode === courseCode) || { courseCode, courseName, dept: null, room };
+  const dateISO = new Date().toISOString().slice(0,10);
+  const roster = getSessionStudents(lecture);
+  const alreadyRecorded = new Set(RECORDS.filter(r => r.code === courseCode && r.date === dateISO).map(r => r.reg));
+  const noShows = roster.filter(s => !alreadyRecorded.has(s.reg));
+  noShows.forEach(s => {
+    RECORDS.unshift({
+      date: dateISO, reg: s.reg, name: s.name, prog: s.dept,
+      code: courseCode, course: courseName, venue: room, status: 'absent', source: 'auto_absent',
+    });
+  });
+  if(noShows.length){
+    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Session ended', courseCode,
+      `${noShows.length} student${noShows.length>1?'s':''} auto-marked absent — no check-in received`);
+  }
+  liveFinalizeSessionAttendance(courseCode, dateISO); // fire-and-forget — mock sweep above already covers the actual screen
+}
+
 function endSession(){
   LIVE_SESSION.active = false;
   stopSessionTicker();
   stopRosterPolling();
+  finalizeSessionAttendance();
   // liveWriteSession() branches on LIVE_SESSION.liveSessionId to decide
   // UPDATE vs INSERT — it must run BEFORE that field is cleared below, or
   // it would incorrectly insert a new row instead of marking the real one
@@ -10617,6 +11201,7 @@ function getScreenHTML(screenId){
       case 'home': return renderStudentHome();
       case 'checkin': return renderCheckIn();
       case 'timetable': return renderStudentTimetable();
+      case 'myAttendance': return renderMyAttendanceRecord();
       case 'profile': return renderStudentProfile();
       case 'announcements': return renderAnnouncements();
       case 'appeals': return renderAppeals();
