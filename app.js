@@ -1839,20 +1839,24 @@ function getStaffDirectory(){
       hasAccount: provisioned,
     };
   });
+  // Same fix as the student mapping above (see isProvisionedAccount()) — a
+  // mock USERS entry isn't proof of a real account, so this now flags an
+  // unprovisioned staff id (e.g. a hardcoded demo login with no live
+  // Supabase counterpart) instead of always defaulting to "active".
   const lecturers = LECTURERS.map(l => {
     const account = USERS[l.id];
     const provisioned = isProvisionedAccount(l.id);
-    return { ...l, role:"lecturer", status: account ? (account.status || 'active') : (provisioned ? 'active' : (l.status || 'active')), hasAccount: provisioned };
+    return { ...l, role:"lecturer", status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
   });
   const registrars = REGISTRARS.map(r => {
     const account = USERS[r.id];
     const provisioned = isProvisionedAccount(r.id);
-    return { ...r, role:"registrar", status: account ? (account.status || 'active') : (provisioned ? 'active' : (r.status || 'active')), hasAccount: provisioned };
+    return { ...r, role:"registrar", status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
   });
   const administrators = ADMINISTRATORS.map(a => {
     const account = USERS[a.id];
     const provisioned = isProvisionedAccount(a.id);
-    return { ...a, role:"administrator", status: account ? (account.status || 'active') : (provisioned ? 'active' : (a.status || 'active')), hasAccount: provisioned };
+    return { ...a, role:"administrator", status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
   });
   return [...administrators, ...registrars, ...lecturers, ...students];
 }
@@ -4648,7 +4652,9 @@ function tagStaffForRegister(p, role){
     id: p.id, role, name: p.name,
     dept: p.dept, facultyKey: p.facultyKey || facultyKeyForProgrammeName(p.dept),
     email: p.email,
-    status: account ? (account.status || 'active') : (provisioned ? 'active' : (p.status || 'active')),
+    // See the identical fix in getStaffDirectory() — a mock USERS entry
+    // isn't proof of a real, live-login-capable account.
+    status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
     hasAccount: provisioned,
   };
 }
