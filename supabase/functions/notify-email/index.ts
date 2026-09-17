@@ -27,7 +27,27 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Confirmed live (Sept 2026): every call from app.js's liveSendEmailNotification()
+// failed with "Response to preflight request doesn't pass access control
+// check" — this function never handled the browser's CORS preflight
+// (an OPTIONS request) at all, and never sent Access-Control-Allow-* headers
+// on any response either. supabase-js's functions.invoke() always sends a
+// real browser fetch() with a JSON content-type, which triggers a preflight
+// for any cross-origin caller (xxavic.github.io calling *.supabase.co) —
+// there's no way around needing these headers for a function called from a
+// web page, regardless of what the function itself does. Same fix Supabase's
+// own docs use: answer OPTIONS immediately, and attach the same headers to
+// every other response so the actual POST's response passes CORS too.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
   try {
     const { recipientRole, recipientId, title, body } = await req.json();
 
@@ -37,7 +57,7 @@ Deno.serve(async (req) => {
     if (!RESEND_API_KEY) {
       return new Response(
         JSON.stringify({ skipped: true, reason: "RESEND_API_KEY not set — see setup notes at the top of this file" }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -57,7 +77,7 @@ Deno.serve(async (req) => {
     if (error || !recipients || recipients.length === 0) {
       return new Response(
         JSON.stringify({ sent: 0, error: error?.message || "no matching recipient email(s)" }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -81,13 +101,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ sent: sendResults.length }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
     // Never let an email failure surface as an app-breaking error — the
     // caller (liveSendEmailNotification in app.js) already only logs a
     // console.warn either way.
     console.error("notify-email error:", e);
-    return new Response(JSON.stringify({ error: String(e) }), { status: 200 });
+    return new Response(JSON.stringify({ error: String(e) }), { status: 200, headers: corsHeaders });
   }
 });

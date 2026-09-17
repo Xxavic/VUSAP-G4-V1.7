@@ -3139,6 +3139,63 @@ function scopedSuspicionLog(){
   return SUSPICION_LOG.filter(s => facultyKeyForStudentName(s.student) === fk);
 }
 
+// Sept 2026 handoff, Part 7: Registrars previously had NO route to the Audit
+// Trail at all — renderAuditSystem() only ever appeared in the
+// Administrator's own switch block in getScreenHTML(). Confirmed live: a
+// Registrar (Denis Okwir) genuinely could not see any audit history,
+// including entries about their OWN actions (e.g. "Support ticket
+// resolved"). This gives Registrars a faculty-scoped view of the same
+// AUDIT_LOG, reusing renderAuditSystem()/auditEventRow() as-is — see that
+// function's role check.
+//
+// Scoping rule (deliberately narrower than "everything touching my
+// faculty"): a Registrar sees (a) every action THEY personally performed,
+// regardless of target, and (b) any event whose target resolves to their
+// own faculty — a course they teach under, a ticket/appeal from one of
+// their students, or an account in their faculty. Purely
+// administrator/system-level events (policy changes, fraud threshold
+// tuning, faculty create/rename/delete, system settings, backups, notification
+// templates) are excluded even when they'd technically "belong" to a
+// faculty, because they're not actions a Registrar takes or reviews —
+// mirrors the same admin/registrar split already drawn everywhere else in
+// this file (renderAttendancePolicies, renderFraudThresholds, etc. all stay
+// Administrator-only).
+function auditEventFacultyKey(e){
+  const target = e.target;
+  if(!target) return null;
+
+  if(target.startsWith('ticket-')){
+    const t = SUPPORT_TICKETS.find(t => String(t.id) === target.slice(7) || String(t.supabaseId) === target.slice(7));
+    return t ? t.facultyKey : null;
+  }
+  if(target.startsWith('appeal-')){
+    const a = ATTENDANCE_APPEALS.find(a => String(a.id) === target.slice(7) || String(a.supabaseId) === target.slice(7));
+    return a ? facultyKeyForStudentName(a.student) : null;
+  }
+
+  const course = COURSES.find(c => c.code === target);
+  if(course) return facultyKeyForProgrammeName(course.programme);
+
+  const student = STUDENTS.find(s => s.reg === target || String(s.id) === target);
+  if(student) return student.facultyKey;
+  const lecturer = LECTURERS.find(l => l.id === target);
+  if(lecturer) return facultyKeyForProgrammeName(lecturer.dept);
+  const registrar = REGISTRARS.find(r => r.id === target);
+  if(registrar) return registrar.facultyKey;
+
+  // 'policies' / 'fraud' / 'system' / 'backup' / a bare facultyKey (Faculty
+  // created/renamed/deleted) / 'all' / 'lecturer-compliance' — none of these
+  // map to a single faculty by design; see the comment above.
+  return null;
+}
+
+function scopedAuditLog(){
+  if(State.role !== 'registrar') return AUDIT_LOG;
+  const fk = currentRegistrarFacultyKey();
+  if(!fk) return AUDIT_LOG;
+  return AUDIT_LOG.filter(e => e.actor === State.user.id || auditEventFacultyKey(e) === fk);
+}
+
 function scopedStudents(){
   const fk = currentRegistrarFacultyKey();
   if(!fk) return STUDENTS;
@@ -6738,6 +6795,11 @@ function renderRegistrarDashboard(){
       <div class="qa-text"><div class="t">Courses</div><div class="s">Create and edit courses in your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+    <a class="quick-action" onclick="navigate('auditSystem')">
+      <div class="qa-icon" style="background:#334155;">${ICONS.fileText}</div>
+      <div class="qa-text"><div class="t">Audit Trail</div><div class="s">Your actions & events in your faculty</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
   </div>`;
 }
 
@@ -9202,14 +9264,23 @@ function toggleNotifExpand(id){
 }
 
 function renderAuditSystem(){
+  // Sept 2026 handoff, Part 7: shared by Administrator (full AUDIT_LOG) and
+  // Registrar (faculty-scoped, via scopedAuditLog() — see its own comment
+  // for the exact scoping rule). The action-filter dropdown drops the
+  // categories that are always empty for a Registrar (Faculty/Policy/Fraud/
+  // System are Administrator-only by design), and the back target/subtitle
+  // adjust to match where each role reached this screen from.
+  const isRegistrar = State.role === 'registrar';
+  const events = isRegistrar ? scopedAuditLog() : AUDIT_LOG;
   return `
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Audit System</div>
+      <div class="page-title" style="font-size:18px;">Audit Trail</div>
     </div>
   </div>
   <div class="content">
+    ${isRegistrar ? `<p style="font-size:12px;color:var(--ink-soft);margin:0 2px 10px;">Actions you've taken, and events affecting ${facultyName(State.user.facultyKey)} — university-wide administration isn't shown here.</p>` : ''}
     <div class="search-wrap">
       ${ICONS.search}
       <input class="input" placeholder="Search by actor, action, or detail..." oninput="filterAuditLog()" id="auditSearch" />
@@ -9219,20 +9290,25 @@ function renderAuditSystem(){
         <option value="">All Actions</option>
         <option value="Account">Account changes</option>
         <option value="Appeal">Appeals</option>
+        <option value="Support ticket">Support tickets</option>
+        <option value="Session">Sessions</option>
+        <option value="Attendance">Attendance</option>
+        <option value="Class session">Class schedule</option>
+        <option value="Report exported">Reports exported</option>
+        ${!isRegistrar ? `
         <option value="Faculty">Faculty changes</option>
         <option value="Policy">Policy changes</option>
         <option value="Fraud">Fraud events</option>
-        <option value="Session">Sessions</option>
-        <option value="System">System</option>
+        <option value="System">System</option>` : ''}
       </select>
     </div>
     <div class="card card-pad">
       <div class="section-head-row">
         <div class="section-title" style="margin-bottom:0;">${ICONS.fileText} Audit Trail</div>
-        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${AUDIT_LOG.length} events</span>
+        <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${events.length} events</span>
       </div>
       <div id="auditList" style="display:flex;flex-direction:column;gap:0;">
-        ${AUDIT_LOG.map(e => auditEventRow(e)).join('')}
+        ${events.map(e => auditEventRow(e)).join('') || `<div class="empty-state-sm">No audit events yet</div>`}
       </div>
     </div>
   </div>`;
@@ -10241,8 +10317,19 @@ async function loadAppealsFromSupabase(){
       local.session === live.session && local.reason === live.reason;
     const localOnly = ATTENDANCE_APPEALS.filter(local => !local.supabaseId && !fetched.some(live => isDuplicate(local, live)));
 
+    // Same fix as loadSupportTicketsFromSupabase() below, for the identical
+    // reason: mock ATTENDANCE_APPEALS ids and Postgres's own
+    // attendance_appeals ids both start counting from 1, so they collide —
+    // and resolveAppeal() looks an appeal up by this `id`, which Array.find()
+    // then resolves to whichever colliding appeal comes first (always the
+    // unrelated mock one, since localOnly is spread first). Renumbering here
+    // — never touching supabaseId, which liveResolveAppeal() actually writes
+    // through — keeps every id in the merged list unique.
+    const merged = [...localOnly, ...fetched];
+    merged.forEach((a, i) => { a.id = i + 1; });
+
     ATTENDANCE_APPEALS.length = 0;
-    ATTENDANCE_APPEALS.push(...localOnly, ...fetched);
+    ATTENDANCE_APPEALS.push(...merged);
     refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
   } catch(e){
     console.warn('loadAppealsFromSupabase error, keeping mock ATTENDANCE_APPEALS:', e);
@@ -10531,8 +10618,25 @@ async function loadSupportTicketsFromSupabase(){
     const isDuplicate = (local, live) => local.reporterName === live.reporterName && local.subject === live.subject && local.description === live.description;
     const localOnly = SUPPORT_TICKETS.filter(local => !local.supabaseId && !fetched.some(live => isDuplicate(local, live)));
 
+    // Confirmed live: the hardcoded mock seed tickets' ids (1, 2, ...) and
+    // Postgres's own `generated always as identity` ids on support_tickets
+    // (also 1, 2, ... — every project starts its own counter from 1) collide
+    // constantly. resolveSupportTicket()/escalateSupportTicket() look a
+    // ticket up by this `id` (it's what the Resolve button's onclick passes,
+    // since a template literal can't hand it the whole object), and
+    // Array.find() always matches whichever ticket happens to come first —
+    // which, because localOnly is spread before fetched below, is always the
+    // UNRELATED mock ticket sharing that same small number. A Registrar
+    // clicking Resolve on a real reported ticket was silently resolving a
+    // mock one instead, leaving the real ticket stuck on "open" no matter
+    // how many times they tried. Renumbering the merged list's `id` here —
+    // not `supabaseId`, which stays the untouched, authoritative id every
+    // live write already keys off — makes it unique again on every load.
+    const merged = [...localOnly, ...fetched];
+    merged.forEach((t, i) => { t.id = i + 1; });
+
     SUPPORT_TICKETS.length = 0;
-    SUPPORT_TICKETS.push(...localOnly, ...fetched);
+    SUPPORT_TICKETS.push(...merged);
     refreshScreenContentOnly();
   } catch(e){
     console.warn('loadSupportTicketsFromSupabase error, keeping mock SUPPORT_TICKETS:', e);
@@ -11189,6 +11293,7 @@ function getScreenHTML(screenId){
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
       case 'notifications': return renderNotifications();
+      case 'auditSystem': return renderAuditSystem();
       case 'profile': return renderStaffProfile();
     }
   } else if(State.role === 'administrator'){
