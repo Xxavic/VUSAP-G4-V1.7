@@ -1294,12 +1294,19 @@ async function loadFacultiesAndProgrammesFromSupabase(){
   }
 }
 
-// Course Catalog — live read. Replaces the mock COURSES with the real
-// `classes` rows so Course Catalog CRUD (createCourse/editCourse/
-// deleteCourse) can write live instead of only ever mutating memory.
-// Same fallback shape as Faculties/Programmes above: any failure (offline,
-// table empty, RLS block) keeps the mock catalog as-is. Mutates the array
-// in place (COURSES is declared `const`) rather than reassigning it.
+// Course Catalog — live read. MERGES real `classes` rows into the mock
+// COURSES rather than replacing it wholesale — same merge philosophy as
+// loadStudentsFromSupabase()/loadTimetableFromSupabase(), and for the same
+// reason: courses get migrated to the live table one at a time as they're
+// created/edited through the now-live Course Catalog CRUD, so a wholesale
+// replace would wipe out every mock course that simply hasn't been touched
+// live yet the moment even ONE course exists in `classes` — which is
+// exactly what happened before this fix (a rename on a never-migrated mock
+// course appeared to work, then silently reverted on reload once any other
+// course went live). A course whose code exists in both sets uses the live
+// version (authoritative once it's been migrated); a mock-only code is left
+// untouched. Mutates the array in place (COURSES is declared `const`)
+// rather than reassigning it.
 //
 // Live `classes` has no `room` column — room is a timetable_slots-level
 // concept (a course can use different rooms across different scheduled
@@ -1348,10 +1355,10 @@ async function loadClassesFromSupabase(){
       mode: r.mode || null,
     }));
 
-    if(newCourses.length){
-      COURSES.length = 0;
-      COURSES.push(...newCourses);
-    }
+    const liveCodes = new Set(newCourses.map(c => c.code));
+    const keptMock = COURSES.filter(c => !liveCodes.has(c.code));
+    COURSES.length = 0;
+    COURSES.push(...keptMock, ...newCourses);
   } catch(e){
     console.warn('loadClassesFromSupabase error, keeping mock COURSES:', e);
   }
@@ -1378,11 +1385,22 @@ async function liveCreateClass({ code, name, programmeId, teacherId, mode }){
 
 async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mode }){
   if(!LIVE_BACKEND) return { ok: true };
-  const { error } = await SUPABASE_CLIENT
+  const { data, error } = await SUPABASE_CLIENT
     .from('classes')
     .update({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null })
-    .eq('code', oldCode);
+    .eq('code', oldCode)
+    .select('id');
   if(error) return { error: error.message };
+  if(!data || data.length === 0){
+    // oldCode matched no live row — this is a mock-only course (never
+    // migrated to `classes`) being edited for the first time. An UPDATE
+    // with no matching row succeeds silently with zero rows changed rather
+    // than erroring, which previously made editing one of these courses
+    // look like it saved, then lose the change with no trace anywhere live
+    // the moment COURSES next merged with loadClassesFromSupabase(). Insert
+    // it live now instead, using this edit's values.
+    return liveCreateClass({ code, name, programmeId, teacherId, mode });
+  }
   return { ok: true };
 }
 
