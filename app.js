@@ -259,21 +259,29 @@ async function authRecordConsent() {
   return { ok: true, live: false };
 }
 
-// Provision a new staff account.
+// Provision a new staff or student account with a real Supabase Auth login.
 // Live path: supabase.auth.admin requires the service-role key (not safe
-// client-side), so we use a Supabase Edge Function "create-user" that
-// runs with service-role privileges. Until that function exists we fall
-// through to the mock path.
-async function authProvisionAccount({ universityId, name, email, role, tempPassword }) {
-  // Edge Function path (Gate 5) — left as a clear extension point:
-  // if (LIVE_BACKEND) {
-  //   const { data, error } = await SUPABASE_CLIENT.functions.invoke('create-user', {
-  //     body: { universityId, name, email, role, tempPassword },
-  //   });
-  //   if (!error) return { id: data.id, tempPassword };
-  // }
-  // For now, fall through to mock:
-  return null; // signals caller to use mock path
+// client-side), so this calls the "create-user" Edge Function, which runs
+// with service-role privileges and re-checks the caller's own role/faculty
+// itself rather than trusting anything passed in here (see that function's
+// own comments). Returns null (not an error) when LIVE_BACKEND is off, so
+// callers fall through to the existing mock-only path unchanged — matches
+// every other live/mock function in this file. Returns { error } — not
+// null — when LIVE_BACKEND is ON and the live call itself fails, so a real
+// failure can never look like "just use mock" to the caller.
+async function authProvisionAccount({ universityId, name, email, role, tempPassword, facultyKey, program, year, mode, isClassCoordinator, coordinatorForProgramme, coordinatorForYear }) {
+  if (!LIVE_BACKEND) return null; // signals caller to use mock path
+  try {
+    const { data, error } = await SUPABASE_CLIENT.functions.invoke('create-user', {
+      body: { universityId, name, email, role, tempPassword, facultyKey, program, year, mode, isClassCoordinator, coordinatorForProgramme, coordinatorForYear },
+    });
+    if (error) return { error: error.message || String(error) };
+    if (data?.error) return { error: data.error };
+    return { id: data.id, tempPassword };
+  } catch (e) {
+    console.warn('authProvisionAccount error:', e);
+    return { error: String(e) };
+  }
 }
 
 // Helper: map a university ID to a synthetic email for Supabase Auth.
@@ -2828,8 +2836,11 @@ function generateTempPassword(){
 // can show it ONCE in a dismissible confirmation — it is never stored or
 // displayed anywhere else afterward, which is the actual point of this design:
 // nobody should ever see a list of real passwords.
-function createAccount({ id, name, email, role, extra }){
-  const tempPassword = generateTempPassword();
+function createAccount({ id, name, email, role, extra, tempPassword }){
+  // tempPassword may already be set by the caller (the live path generates
+  // and uses it BEFORE this mock mirror runs, so both stay in sync — see
+  // handleEnroll()); only generate a fresh one when nothing was passed in.
+  tempPassword = tempPassword || generateTempPassword();
   USERS[id] = {
     name, role, email,
     password: tempPassword,
@@ -5021,7 +5032,7 @@ function updateRegPreview(){
   if(preview) preview.textContent = `VU-${deptMap[dept]}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
 }
 
-function handleEnroll(e){
+async function handleEnroll(e){
   e.preventDefault();
   const name = document.getElementById('enrollName').value.trim();
   const email = document.getElementById('enrollEmail').value.trim();
@@ -5035,6 +5046,30 @@ function handleEnroll(e){
 
   const prog = PROGRAMMES.find(p => p.key === deptKey);
   const reg = `VU-${prog.codePrefix}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
+
+  // Generated once, up front, so the live Auth account (if LIVE_BACKEND is
+  // on) and the local USERS mirror below both end up with the exact same
+  // password — createAccount() reuses this rather than generating its own,
+  // see its own comment.
+  const tempPassword = generateTempPassword();
+
+  // Provision the real login FIRST — mirrors Course Catalog's
+  // liveCreateClass-before-createCourse pattern (submitCourseForm): never
+  // let the visible Student Register/People directory show someone as
+  // enrolled when the real account behind it silently failed to create.
+  // regNoCounter is only advanced AFTER this succeeds, so a failed attempt
+  // doesn't burn a registration number.
+  const live = await authProvisionAccount({
+    universityId: reg, name, email, role: 'student', tempPassword,
+    facultyKey: prog.facultyKey, program: prog.name, year, mode: mode === 'DAY' ? 'day' : 'evening',
+    isClassCoordinator: isCoordinator,
+    ...(isCoordinator ? { coordinatorForProgramme: prog.name, coordinatorForYear: year } : {}),
+  });
+  if(live && live.error){
+    showToast(live.error);
+    return false;
+  }
+
   regNoCounter++;
 
   // Exactly one Class Coordinator per programme+year — handing the badge to
@@ -5059,24 +5094,15 @@ function handleEnroll(e){
     dept: prog.name, deptKey: prog.key, year,
     pct: null, trend: null,
     gender, semester,
-    // Sept 2026 handoff, Part 1: mode/email were already collected by this
-    // form and passed to createAccount()'s USERS record below, but were
-    // never also written onto the STUDENTS record itself — meaning the
-    // Register list/edit-sheet had no real field to read them back from.
     mode: mode === 'DAY' ? 'day' : 'evening',
     email,
   });
 
-  // ...and provision a real login account behind it, with a one-time temp
-  // password. This is the only place that password is ever shown.
-  // Sept 2026 handoff, Part 3: Mode was already collected above (it's what
-  // builds the -DAY/-EVE registration number suffix) but was never carried
-  // any further as its own structured field — add it alongside gender/semester
-  // so it's actually queryable (resolveCheckInOutcome()'s Day/Evening
-  // mismatch check reads State.user.mode) rather than only ever implied by
-  // parsing the registration number string.
-  const tempPassword = createAccount({
-    id: reg, name, role: 'student', email,
+  // ...and mirror it into the local USERS object — either as the mock
+  // stand-in (LIVE_BACKEND off) or as the local cache of the account
+  // authProvisionAccount() already created for real, above.
+  createAccount({
+    id: reg, name, role: 'student', email, tempPassword,
     extra: {
       reg, dept: prog.name, year, gender, semester, mode: mode === 'DAY' ? 'day' : 'evening',
       is_class_coordinator: isCoordinator,
