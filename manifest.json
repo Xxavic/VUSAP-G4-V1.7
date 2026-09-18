@@ -1,6 +1,6 @@
 {
-  "name": "VUSAP",
-  "short_name": "VUSAP",
+  "name": "QRAST",
+  "short_name": "QRAST",
   "description": "Victoria University Smart Attendance Portal",
   "start_url": "./index.html",
   "scope": "./",

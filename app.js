@@ -1784,7 +1784,7 @@ async function loadEnrollmentsFromSupabase(){
 }
 
 // ============================================================
-// VUSAP — App Data Layer & State
+// QRAST — App Data Layer & State
 // ============================================================
 
 // Official Victoria University shield logo, embedded as a data URI so it
@@ -2267,14 +2267,14 @@ const NOTIFICATION_TEMPLATES = {
     label: 'Low Attendance Warning',
     description: 'Sent to students who fall below the minimum attendance threshold',
     subject: 'Low Attendance Warning — {courseName}',
-    body: 'Dear {studentName},\n\nYour attendance in {courseName} has dropped to {attendancePct}%, which is below the required {minPct}%. Please take immediate steps to improve your attendance.\n\nIf you believe this is in error, submit an appeal through the VUSAP portal.\n\n{institutionName} Attendance Office',
+    body: 'Dear {studentName},\n\nYour attendance in {courseName} has dropped to {attendancePct}%, which is below the required {minPct}%. Please take immediate steps to improve your attendance.\n\nIf you believe this is in error, submit an appeal through the QRAST portal.\n\n{institutionName} Attendance Office',
     enabled: true,
   },
   sessionStarted: {
     label: 'Session Started',
     description: 'Sent to enrolled students when a lecturer opens a check-in session',
     subject: 'Check-in now open — {courseName}',
-    body: 'Dear {studentName},\n\n{lecturerName} has opened a check-in session for {courseName}. You have {windowMinutes} minutes to mark your attendance.\n\nOpen VUSAP to check in now.',
+    body: 'Dear {studentName},\n\n{lecturerName} has opened a check-in session for {courseName}. You have {windowMinutes} minutes to mark your attendance.\n\nOpen QRAST to check in now.',
     enabled: true,
   },
   appealResolved: {
@@ -2287,7 +2287,7 @@ const NOTIFICATION_TEMPLATES = {
   accountProvisioned: {
     label: 'Account Provisioned',
     description: 'Sent to new users with their login credentials',
-    subject: 'Your VUSAP account is ready',
+    subject: 'Your QRAST account is ready',
     body: 'Dear {name},\n\nYour {institutionName} Smart Attendance Portal account has been created.\n\nLogin ID: {userId}\nTemporary Password: {tempPassword}\n\nPlease log in and change your password immediately.\n\n{institutionName}',
     enabled: true,
   },
@@ -2295,7 +2295,7 @@ const NOTIFICATION_TEMPLATES = {
     label: 'Fraud Flag Alert',
     description: 'Sent to Registrars when a high-severity fraud flag is raised',
     subject: 'Fraud alert — {studentName} in {courseName}',
-    body: 'A high-severity attendance fraud flag has been raised.\n\nStudent: {studentName}\nCourse: {courseName}\nReason: {reason}\nDate: {date}\n\nPlease review in the VUSAP Fraud Center.',
+    body: 'A high-severity attendance fraud flag has been raised.\n\nStudent: {studentName}\nCourse: {courseName}\nReason: {reason}\nDate: {date}\n\nPlease review in the QRAST Fraud Center.',
     enabled: true,
   },
 };
@@ -2308,7 +2308,7 @@ const SYSTEM_SETTINGS = {
   autoLogoutMinutes: 30,        // inactivity timeout before a session is terminated
   allowSelfEnrollment: false,   // whether students can self-enroll without a Registrar
   requireEmailVerification: true,
-  systemName: 'VUSAP',
+  systemName: 'QRAST',
   institutionName: 'Victoria University',
   portalName: 'Victoria University Smart Attendance Portal', // shown under the system name on the login screen — different for every institution running this software
   supportEmail: 'support@vu.ac.ug',
@@ -3486,7 +3486,7 @@ function renderLogin(){
           </div>
         </div>
       </div>
-      <div class="login-footer">Version 1.0 · VUSAP Attendance Portal &nbsp;·&nbsp; <span id="backendStatus" style="color:var(--ink-faint);">checking…</span></div>
+      <div class="login-footer">Version 1.0 · QRAST Attendance Portal &nbsp;·&nbsp; <span id="backendStatus" style="color:var(--ink-faint);">checking…</span></div>
     </div>
   </div>`;
 }
@@ -3584,7 +3584,7 @@ async function submitForcedPasswordChange(e){
   // Also update in-memory mock so offline fallback stays consistent.
   if(State.pendingUserId) changePassword(State.pendingUserId, pw1);
   State.pendingUserId = null;
-  showToast("Password set. Welcome to VUSAP!");
+  showToast("Password set. Welcome to QRAST!");
   boot();
   return false;
 }
@@ -3593,7 +3593,7 @@ async function submitForcedPasswordChange(e){
 // CONSENT GATE (first login, after any forced password change) — a
 // one-time notice about attendance/device tracking a person must accept
 // before reaching any screen. Mirrors Mak-BAMS's own signed biometric
-// consent form, adapted to what VUSAP actually collects (a rotating
+// consent form, adapted to what QRAST actually collects (a rotating
 // check-in code + an anonymized device identifier, not biometrics).
 // needsConsent()/consentGate() live next to mustChangePasswordGate() below;
 // this screen and its submit handler live here, next to the forced
@@ -3615,12 +3615,12 @@ function renderConsentScreen(){
     <div class="login-form-area">
       <div class="login-card">
         <h1>Before you continue, ${firstName(u.name)}</h1>
-        <p class="sub">VUSAP verifies your attendance using your device and session data. Please review before continuing.</p>
+        <p class="sub">QRAST verifies your attendance using your device and session data. Please review before continuing.</p>
         <ul style="margin:0 0 18px; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink-soft);">
           <li>Attendance is verified using a rotating check-in code and an anonymized device identifier — not your camera, microphone, or location.</li>
           <li>This data is used only to verify attendance and detect fraud, such as duplicate or expired check-ins.</li>
           <li>Access to your records is limited to your Lecturer, your faculty Registrar, and system Administrators, enforced at the database level.</li>
-          <li>VUSAP will never sell, lease, or share this data with any third party.</li>
+          <li>QRAST will never sell, lease, or share this data with any third party.</li>
         </ul>
         <form id="consentForm" onsubmit="return submitConsent(event)">
           <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.5; cursor:pointer;">
@@ -3656,7 +3656,7 @@ async function submitConsent(e){
   State.user.consentAt = new Date().toISOString();
   logAuditEvent(State.user.id, State.user.name, 'Consent recorded', State.user.id, 'Attendance/device-tracking notice accepted');
 
-  showToast("Thanks — welcome to VUSAP!");
+  showToast("Thanks — welcome to QRAST!");
   boot();
   return false;
 }
@@ -3740,7 +3740,7 @@ function renderForgotPasswordSent(identifier, liveReset){
         <div class="empty-state" style="padding:10px 0 6px;">
           ${ICONS.mail.replace(/width="\d+" height="\d+"/,'width="32" height="32"')}
           <div class="t" style="margin-top:14px;">Reset instructions sent</div>
-          <div class="s">If ${identifier} matches a VUSAP account, an email with a password reset link is on its way.</div>
+          <div class="s">If ${identifier} matches a QRAST account, an email with a password reset link is on its way.</div>
         </div>
         ${liveMessage}
         ${matched ? `
@@ -3890,7 +3890,7 @@ async function handleLogin(e){
     return false;
   }
   if(SYSTEM_SETTINGS.maintenanceMode && role !== 'administrator'){
-    showToast("VUSAP is under maintenance. Only administrators can log in right now.");
+    showToast("QRAST is under maintenance. Only administrators can log in right now.");
     return false;
   }
 
@@ -4037,7 +4037,7 @@ function renderLecturerDashboard(){
       <div class="brand-id">
         <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
-          <div class="name">VUSAP</div>
+          <div class="name">QRAST</div>
           <div class="sub">Lecturer Portal</div>
         </div>
       </div>
@@ -5672,7 +5672,7 @@ function renderStudentHome(){
       <div class="brand-id">
         <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
-          <div class="name">VUSAP</div>
+          <div class="name">QRAST</div>
           <div class="sub">Student Portal</div>
         </div>
       </div>
@@ -5966,13 +5966,13 @@ function exportMyAttendance(format){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `vusap-my-attendance-${idLabel}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `qrast-my-attendance-${idLabel}-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast(`${records.length} of your records exported as CSV`, ICONS.download.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
 
   } else if(format === 'pdf'){
-    const html = `<!DOCTYPE html><html><head><title>VUSAP Attendance Record</title>
+    const html = `<!DOCTYPE html><html><head><title>QRAST Attendance Record</title>
     <style>
       body{font-family:sans-serif;font-size:12px;color:#111;padding:24px;}
       h1{font-size:18px;margin-bottom:4px;}
@@ -5985,7 +5985,7 @@ function exportMyAttendance(format){
       .late{color:#d97706;font-weight:700;}
       .absent{color:#dc2626;font-weight:700;}
     </style></head><body>
-    <h1>VUSAP Attendance Record</h1>
+    <h1>QRAST Attendance Record</h1>
     <div class="meta">${u.name || ''} · ${idLabel} · ${u.year||''} ${u.semester||''} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
     <table>
       <thead><tr><th>Date</th><th>Course</th><th>Venue</th><th>Status</th></tr></thead>
@@ -6249,7 +6249,7 @@ function handleScannedQrPayload(raw){
   const [marker, token, courseCode] = parts;
 
   if(marker !== 'VUSAP' || !token){
-    showToast("That doesn't look like a VUSAP attendance QR code");
+    showToast("That doesn't look like a QRAST attendance QR code");
     qrScanLastResult = null; // allow re-scanning immediately
     qrScanRafId = requestAnimationFrame(scanFrame);
     return;
@@ -6837,7 +6837,7 @@ function renderRegistrarDashboard(){
       <div class="brand-id">
         <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
-          <div class="name">VUSAP</div>
+          <div class="name">QRAST</div>
           <div class="sub">Registrar's Office</div>
         </div>
       </div>
@@ -7721,7 +7721,7 @@ function exportReport(format, courseCode){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `vusap-attendance-${courseFilter||'all'}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `qrast-attendance-${courseFilter||'all'}-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Report exported', courseFilter||'all', `CSV, ${filtered.length} records`);
@@ -7732,7 +7732,7 @@ function exportReport(format, courseCode){
     const courseLabel = courseFilter
       ? filtered[0]?.course || courseFilter
       : 'All Courses';
-    const html = `<!DOCTYPE html><html><head><title>VUSAP Attendance Report</title>
+    const html = `<!DOCTYPE html><html><head><title>QRAST Attendance Report</title>
     <style>
       body{font-family:sans-serif;font-size:12px;color:#111;padding:24px;}
       h1{font-size:18px;margin-bottom:4px;}
@@ -7745,7 +7745,7 @@ function exportReport(format, courseCode){
       .late{color:#d97706;font-weight:700;}
       .absent{color:#dc2626;font-weight:700;}
     </style></head><body>
-    <h1>VUSAP Attendance Report</h1>
+    <h1>QRAST Attendance Report</h1>
     <div class="meta">${SYSTEM_SETTINGS.institutionName} · ${courseLabel} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
     <table>
       <thead><tr><th>Name</th><th>Reg. No.</th><th>Programme</th><th>Course</th><th>Status</th><th>Date</th></tr></thead>
@@ -7814,7 +7814,7 @@ function renderAdministratorDashboard(){
       <div class="brand-id">
         <div class="brand-mark">${currentLogoMark()}</div>
         <div class="brand-text">
-          <div class="name">VUSAP</div>
+          <div class="name">QRAST</div>
           <div class="sub">System Administration</div>
         </div>
       </div>
@@ -7967,7 +7967,7 @@ function openAccountDetail(personId){
       </div>`;
     actionSection = `
       <div style="font-size:12px; color:var(--ink-faint); line-height:1.5;">
-        This person has an academic record but no VUSAP login. Provisioning bulk student accounts isn't available from this screen yet —
+        This person has an academic record but no QRAST login. Provisioning bulk student accounts isn't available from this screen yet —
         use Register → Enroll Student for individual accounts.
       </div>`;
   } else if(isSelf){
@@ -9024,7 +9024,7 @@ function renderNotifTemplates(){
   </div>
   <div class="content">
     <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
-      ${ICONS.megaphone.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Edit the messages VUSAP sends for each event. Use <code style="background:rgba(0,0,0,.06);padding:1px 4px;border-radius:4px;">{tokens}</code> to insert dynamic values.
+      ${ICONS.megaphone.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Edit the messages QRAST sends for each event. Use <code style="background:rgba(0,0,0,.06);padding:1px 4px;border-radius:4px;">{tokens}</code> to insert dynamic values.
     </div>
     ${templates.map(([key, t]) => notifTemplateCard(key, t)).join('')}
   </div>
@@ -9653,7 +9653,7 @@ function exportSnapshot(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `vusap-snapshot-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `qrast-snapshot-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Snapshot exported', 'backup', 'JSON state export');
@@ -11396,14 +11396,14 @@ function exportComplianceReport(format){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `vusap-lecturer-compliance-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `qrast-lecturer-compliance-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Report exported', 'lecturer-compliance', `CSV, ${data.length} lecturers`);
     showToast(`${data.length} lecturer records exported as CSV`, ICONS.download.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
 
   } else if(format === 'pdf'){
-    const html = `<!DOCTYPE html><html><head><title>VUSAP Lecturer Compliance Report</title>
+    const html = `<!DOCTYPE html><html><head><title>QRAST Lecturer Compliance Report</title>
     <style>
       body{font-family:sans-serif;font-size:12px;color:#111;padding:24px;}
       h1{font-size:18px;margin-bottom:4px;}
@@ -11416,7 +11416,7 @@ function exportComplianceReport(format){
       .warn{color:#d97706;font-weight:700;}
       .bad{color:#dc2626;font-weight:700;}
     </style></head><body>
-    <h1>VUSAP Lecturer Compliance Report</h1>
+    <h1>QRAST Lecturer Compliance Report</h1>
     <div class="meta">${SYSTEM_SETTINGS.institutionName} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
     <table>
       <thead><tr><th>Lecturer</th><th>Sessions Held</th><th>Sessions Expected</th><th>Compliance Rate</th></tr></thead>

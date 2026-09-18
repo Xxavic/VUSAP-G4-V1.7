@@ -12,7 +12,7 @@
 
 create table if not exists public.system_settings (
   id int primary key default 1,
-  system_name text not null default 'VUSAP',
+  system_name text not null default 'QRAST',
   institution_name text not null default 'Victoria University',
   portal_name text not null default 'Victoria University Smart Attendance Portal',
   support_email text not null default 'support@vu.ac.ug',

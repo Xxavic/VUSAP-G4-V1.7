@@ -2,7 +2,7 @@
 --   1. users.consent_at — records when a person accepted the one-time
 --      attendance/device-tracking consent notice shown on first login
 --      (mirrors Mak-BAMS's own signed biometric consent form, adapted to
---      what VUSAP actually collects: a rotating check-in code + an
+--      what QRAST actually collects: a rotating check-in code + an
 --      anonymized device identifier, not biometrics). NULL means "not yet
 --      accepted" and re-triggers the consent screen on next login.
 --   2. support_tickets — the "Report an Issue" feature, mirroring Mak-BAMS's

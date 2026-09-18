@@ -1,12 +1,12 @@
 # Notifications & Email — how it works
 
-This documents VUSAP's notification system: what triggers an in-app
+This documents QRAST's notification system: what triggers an in-app
 notification, and — separately — what triggers an actual email. Written
 Sept 2026 so this doesn't need to be re-explained/re-discovered later.
 
 ## Two layers, not one
 
-Every notification in VUSAP goes through `pushNotification()` in `app.js`.
+Every notification in QRAST goes through `pushNotification()` in `app.js`.
 That function always does two things:
 
 1. Writes the notification to the in-app inbox (the bell icon) — every
@@ -17,7 +17,7 @@ That function always does two things:
 only actually sends when `recipientRole` is `'registrar'` or
 `'administrator'` — see the guard at the top of that function in `app.js`
 (search `recipientRole !== 'registrar' && recipientRole !== 'administrator'`).
-Students and Lecturers never get emailed by VUSAP; they're expected to
+Students and Lecturers never get emailed by QRAST; they're expected to
 check the in-app inbox, which they do daily by design.
 
 ## When a Registrar gets emailed

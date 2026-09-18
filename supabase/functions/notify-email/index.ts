@@ -1,4 +1,4 @@
-// notify-email — sends an email for a VUSAP in-app notification.
+// notify-email — sends an email for a QRAST in-app notification.
 //
 // Called fire-and-forget from app.js's liveSendEmailNotification() (inside
 // pushNotification()) whenever recipientRole is 'registrar' or
@@ -15,7 +15,7 @@
 // Setup (once a provider is confirmed):
 //   1. Create a Resend account and API key: https://resend.com
 //   2. supabase secrets set RESEND_API_KEY=re_xxxxxxxx
-//   3. supabase secrets set NOTIFY_FROM_EMAIL="VUSAP <notify@yourdomain>"
+//   3. supabase secrets set NOTIFY_FROM_EMAIL="QRAST <notify@yourdomain>"
 //      (a domain must be verified in Resend before sending from it — until
 //      then, Resend's own onboarding@resend.dev sender works for testing)
 //   4. supabase functions deploy notify-email
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const { recipientRole, recipientId, title, body } = await req.json();
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const FROM = Deno.env.get("NOTIFY_FROM_EMAIL") || "VUSAP <onboarding@resend.dev>";
+    const FROM = Deno.env.get("NOTIFY_FROM_EMAIL") || "QRAST <onboarding@resend.dev>";
 
     if (!RESEND_API_KEY) {
       return new Response(

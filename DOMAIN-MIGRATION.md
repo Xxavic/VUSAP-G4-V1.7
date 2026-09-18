@@ -1,4 +1,4 @@
-# Domain migration — handing VUSAP to a client institution (e.g. Victoria University)
+# Domain migration — handing QRAST to a client institution (e.g. Victoria University)
 
 Written Sept 2026, before any of this has actually happened, so the plan
 exists before it's needed. Chris doesn't currently own a domain; this
