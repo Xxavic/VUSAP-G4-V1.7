@@ -6,7 +6,12 @@
 --
 -- Singleton table: exactly one row, id = 1, seeded below. Readable by
 -- anyone (the login screen and boot splash need it before any auth
--- session exists), writable only by an Administrator.
+-- session exists), updatable only by an Administrator.
+--
+-- Note: this migration only defines SELECT and UPDATE policies. The
+-- Administrator save flow uses .upsert(), which Postgres runs as
+-- INSERT ... ON CONFLICT DO UPDATE, so it also needs INSERT privilege —
+-- see migrate-system-settings-insert-policy.sql for that policy.
 --
 -- Safe to run once. The seed insert is idempotent (on conflict do nothing).
 
