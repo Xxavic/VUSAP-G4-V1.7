@@ -33,16 +33,10 @@
 // already provided automatically to every Edge Function, same as
 // notify-email already relies on.
 //
-// OPEN QUESTION for Chris to confirm: the enroll-student form also collects
-// `gender` and `semester`, but I could not confirm from the repo's own SQL
-// migrations that public.users actually has matching live columns for
-// either one (only university_id, name, role, email, faculty_key, program,
-// year, mode, must_change_password, consent_at, is_class_coordinator,
-// coordinator_for_programme, coordinator_for_year are confirmed live). This
-// function deliberately does NOT write gender/semester so it can't fail on
-// an unknown column — if those should be persisted live, tell me the real
-// column names (or that they need adding via a migration) and I'll wire
-// them in.
+// gender/semester: confirmed live on public.users (checked directly against
+// the live schema — a query for either column returns 200, not the 42703
+// "column does not exist" error a fake column name produces), so both are
+// written below along with the rest of the enroll-student fields.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -89,7 +83,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Only an Administrator or Registrar can create accounts" }, 403);
     }
 
-    const { universityId, name, email, role, tempPassword, facultyKey, program, year, mode, isClassCoordinator, coordinatorForProgramme, coordinatorForYear } = await req.json();
+    const { universityId, name, email, role, tempPassword, facultyKey, program, year, mode, gender, semester, isClassCoordinator, coordinatorForProgramme, coordinatorForYear } = await req.json();
 
     if (!universityId || !name || !role || !tempPassword) {
       return jsonResponse({ error: "universityId, name, role, and tempPassword are required" }, 400);
@@ -130,6 +124,8 @@ Deno.serve(async (req) => {
       program: program || null,
       year: year || null,
       mode: mode || null,
+      gender: gender || null,
+      semester: semester || null,
       must_change_password: true,
       consent_at: null,
       is_class_coordinator: !!isClassCoordinator,

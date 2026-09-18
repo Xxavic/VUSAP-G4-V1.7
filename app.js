@@ -269,11 +269,11 @@ async function authRecordConsent() {
 // every other live/mock function in this file. Returns { error } — not
 // null — when LIVE_BACKEND is ON and the live call itself fails, so a real
 // failure can never look like "just use mock" to the caller.
-async function authProvisionAccount({ universityId, name, email, role, tempPassword, facultyKey, program, year, mode, isClassCoordinator, coordinatorForProgramme, coordinatorForYear }) {
+async function authProvisionAccount({ universityId, name, email, role, tempPassword, facultyKey, program, year, mode, gender, semester, isClassCoordinator, coordinatorForProgramme, coordinatorForYear }) {
   if (!LIVE_BACKEND) return null; // signals caller to use mock path
   try {
     const { data, error } = await SUPABASE_CLIENT.functions.invoke('create-user', {
-      body: { universityId, name, email, role, tempPassword, facultyKey, program, year, mode, isClassCoordinator, coordinatorForProgramme, coordinatorForYear },
+      body: { universityId, name, email, role, tempPassword, facultyKey, program, year, mode, gender, semester, isClassCoordinator, coordinatorForProgramme, coordinatorForYear },
     });
     if (error) return { error: error.message || String(error) };
     if (data?.error) return { error: data.error };
@@ -5062,6 +5062,7 @@ async function handleEnroll(e){
   const live = await authProvisionAccount({
     universityId: reg, name, email, role: 'student', tempPassword,
     facultyKey: prog.facultyKey, program: prog.name, year, mode: mode === 'DAY' ? 'day' : 'evening',
+    gender, semester,
     isClassCoordinator: isCoordinator,
     ...(isCoordinator ? { coordinatorForProgramme: prog.name, coordinatorForYear: year } : {}),
   });
