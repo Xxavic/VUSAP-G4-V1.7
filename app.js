@@ -1777,6 +1777,13 @@ async function loadStudentsFromSupabase(){
         semester: row.semester || null,
         mode: row.mode || null,
         email: row.email || '',
+        // Confirmed-live marker (same field normalizeProfile() uses for
+        // the signed-in user) — STUDENTS otherwise has no way to tell a
+        // real live row apart from a permanent mock seed entry, since
+        // merge-by-reg below only ever REPLACES a matching mock entry, it
+        // never removes an unmatched one. See getCoordinatorClassStudents()
+        // for why that distinction matters.
+        supabaseId: row.id,
       };
       
       if(existingIndex >= 0){
@@ -2128,7 +2135,20 @@ const LECTURER_COURSES = [
 function getCoordinatorClassStudents(){
   const u = State.user;
   if(!u || !u.is_class_coordinator) return [];
-  return STUDENTS.filter(s => s.dept === u.coordinator_for_programme && s.year === u.coordinator_for_year);
+  const classmates = STUDENTS.filter(s => s.dept === u.coordinator_for_programme && s.year === u.coordinator_for_year);
+  // Confirmed live bug (Sept 2026): STUDENTS never purges its ~100-entry
+  // mock seed roster — loadStudentsFromSupabase() only REPLACES a mock
+  // entry that shares a real row's reg, it never removes the ones that
+  // don't match, so every fictional seed student sticks around forever
+  // alongside real ones. A real Class Coordinator whose programme+year
+  // happened to match seed data (e.g. "Information Technology · Year 1")
+  // saw a roster mixing her real classmates with a dozen fictional ones
+  // carrying fabricated attendance percentages baked straight into that
+  // mock array. Once genuinely live, only show students confirmed live
+  // (supabaseId set) — a scoped fix for this one screen; the STUDENTS
+  // mock-merge pattern itself affects other screens too (Registrar/
+  // Administrator rosters, session check-in) and is called out separately.
+  return LIVE_BACKEND ? classmates.filter(s => s.supabaseId) : classmates;
 }
 
 // Lecturer announcements visible to students/coordinators in their courses
