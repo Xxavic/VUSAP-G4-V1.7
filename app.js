@@ -1189,7 +1189,7 @@ async function loadSuspicionLogFromSupabase(){
       .limit(200);
 
     if(error){ console.warn('Fraud log fetch failed, keeping mock SUSPICION_LOG:', error); return; }
-    if(!rows || rows.length === 0) return; // no live rows yet — keep mock so the list isn't empty
+    if(!rows || rows.length === 0){ SUSPICION_LOG.length = 0; return; } // genuinely no live fraud flags — an honest empty list, not 3 named students (David Kiggundu, Fred Kibirige, Opio Emmanuel) permanently accused of cheating in a mock seed
 
     const fetched = rows.map(r => ({
       id: r.id,
@@ -2737,7 +2737,7 @@ async function loadNotificationsFromSupabase(){
       console.warn('Notifications fetch failed, keeping mock NOTIFICATIONS:', error);
       return;
     }
-    if(!rows || rows.length === 0) return; // no live rows yet — keep mock so the inbox isn't empty
+    if(!rows || rows.length === 0){ NOTIFICATIONS.length = 0; return; } // genuinely no live notifications for this user — an empty inbox, not a broken one. Also clears the mock recipientRole:'all' seed row that would otherwise broadcast to every real user of every role forever.
 
     const newNotifications = rows.map(r => ({
       id: r.id,
@@ -12287,7 +12287,7 @@ function navigate(screenId, opts){
   if(screenId === 'sentNotifications') loadSentNotificationsFromSupabase();
   if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
   if(screenId === 'compliance') loadLecturerComplianceFromSupabase();
-  if(screenId === 'fraudCenter') loadSuspicionLogFromSupabase();
+  if(screenId === 'fraudCenter' || screenId === 'database') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
 
