@@ -74,9 +74,7 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **Recommendation:** needs to be recomputed whenever the underlying live data it depends on loads, not just on a narrow set of admin actions.
 
 ### LECTURER_COMPLIANCE
-- **What:** a hardcoded compliance dataset.
-- **Problem:** this one has no mock/live branch at all — it's embedded directly into a real PDF/CSV export that presumably goes to real stakeholders. Anyone exporting this report today is handing out fabricated compliance numbers as if they were real.
-- **Recommendation:** highest priority in this section — it's not a UI display quirk, it's fake data in a document that leaves the app.
+~~- **What:** a hardcoded compliance dataset.~~ **RESOLVED (Sept 2026).** Now computed from real live data: sessions held comes from the live `sessions` table (grouped by teacher_id), sessions expected comes from confirmed-live SCHEDULE slots × weeks elapsed since a new Administrator-set `termStartDate` (System Settings screen, migration `migrate-term-start-date.sql` — Chris still needs to run this and set a date for the report to show real numbers instead of "Term Start Date isn't set yet"). A lecturer with no live-confirmed weekly slots shows "—"/N/A rather than a fabricated rate, in both the on-screen report and its CSV/PDF export. Commit `eb4a6e3`.
 
 ### DEPT_COUNTS
 - **What:** confirmed entirely dead code — not referenced anywhere live.
@@ -89,9 +87,9 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 
 ### SUSPICION_LOG / AUDIT_LOG / NOTIFICATIONS (seed data)
 - **What:** three separate structures, all sharing the identical "empty looks broken" bug — the loader deliberately keeps the mock seed rows whenever the live result comes back empty, on the same flawed reasoning that caused the notifications-before-account-existed bug you already found.
-- **Extra risk on AUDIT_LOG:** its mock rows also ship inside a real "backup" export — same category of problem as LECTURER_COMPLIANCE, fake data leaving the app in a real document.
-- **Extra risk on NOTIFICATIONS:** the mock seed includes an entry with `recipientRole: 'all'`, meaning that one fake notification broadcasts to literally every real user of every role, not just a coincidentally-matching one.
-- **Recommendation:** fix identically to the `STUDENT_COURSES` fix already shipped this week — purge on genuinely-empty live result instead of falling back to mock. This is the same bug in three places; one fix pattern covers all three.
+- ~~**Extra risk on AUDIT_LOG:** its mock rows also ship inside a real "backup" export~~ **AUDIT_LOG RESOLVED (Sept 2026).** Now clears to an honest empty log on a genuinely-empty live result instead of keeping the 5 fictional rows, and visiting Backups or Database Management now also refreshes it first — so `exportSnapshot()`'s real JSON backup can no longer ship fabricated audit history. Commit `b8b6b63`.
+- **Extra risk on NOTIFICATIONS:** the mock seed includes an entry with `recipientRole: 'all'`, meaning that one fake notification broadcasts to literally every real user of every role, not just a coincidentally-matching one. Still open.
+- **Recommendation:** SUSPICION_LOG and the NOTIFICATIONS seed still need the same fix pattern just proven twice now (STUDENT_COURSES, AUDIT_LOG) — purge on genuinely-empty live result instead of falling back to mock.
 
 ### ANNOUNCEMENTS
 - **What:** hardcoded announcements.
