@@ -2479,7 +2479,15 @@ async function loadAuditLogFromSupabase(){
       .limit(200);
 
     if(error){ console.warn('Audit log fetch failed, keeping mock AUDIT_LOG:', error); return; }
-    if(!rows || rows.length === 0) return; // no live rows yet — keep mock so the trail isn't empty
+    // Confirmed live bug (Sept 2026): this used to deliberately keep the 5
+    // fictional mock rows above (a fake account suspension, a fake policy
+    // change, a fake "Session started" event) whenever the live table
+    // genuinely had zero rows yet, on the same flawed "empty looks broken"
+    // reasoning already fixed elsewhere. Those fake rows could ship inside
+    // a real Administrator backup export (exportSnapshot()) looking like
+    // real audit history. A genuinely-empty live trail is meaningful and
+    // correct here — clear it instead of faking activity that never happened.
+    if(!rows || rows.length === 0){ AUDIT_LOG.length = 0; return; }
 
     const fetched = rows.map(r => ({
       id: r.id,
@@ -12148,7 +12156,7 @@ function navigate(screenId, opts){
   // actually show up without requiring a full logout/login.
   if(screenId === 'notifications') loadNotificationsFromSupabase();
   if(screenId === 'sentNotifications') loadSentNotificationsFromSupabase();
-  if(screenId === 'auditSystem') loadAuditLogFromSupabase();
+  if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
   if(screenId === 'fraudCenter') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
