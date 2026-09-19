@@ -1869,6 +1869,21 @@ async function loadStudentsFromSupabase(){
         STUDENTS.push(liveStudent);
       }
     });
+
+    // Sept 2026: purge every mock seed entry that didn't get matched/
+    // replaced above. Per MOCK-DATA-AUDIT.md, this used to be
+    // merge-never-purge -- ~521 fictional students stuck around forever
+    // alongside real ones, leaking into any screen that reads STUDENTS
+    // directly without its own supabaseId filter (Lecturer session
+    // rosters, Registrar-side analytics, the Administrator People
+    // directory and Database screen, global search). rows.length > 0 is
+    // guaranteed at this point (the early return above catches the empty
+    // case), so this only fires once genuinely live student data exists to
+    // replace the demo set -- it never empties STUDENTS down to nothing.
+    for(let i = STUDENTS.length - 1; i >= 0; i--){
+      if(!STUDENTS[i].supabaseId) STUDENTS.splice(i, 1);
+    }
+
     // This can resolve after the screen already rendered (it now also runs
     // after sign-in and on entering Register) — redraw so new rows show.
     // Skipped while a sheet is open: the redraw would wipe a half-filled form.
@@ -2211,18 +2226,14 @@ function getCoordinatorClassStudents(){
   const u = State.user;
   if(!u || !u.is_class_coordinator) return [];
   const classmates = STUDENTS.filter(s => s.dept === u.coordinator_for_programme && s.year === u.coordinator_for_year);
-  // Confirmed live bug (Sept 2026): STUDENTS never purges its ~100-entry
-  // mock seed roster — loadStudentsFromSupabase() only REPLACES a mock
-  // entry that shares a real row's reg, it never removes the ones that
-  // don't match, so every fictional seed student sticks around forever
-  // alongside real ones. A real Class Coordinator whose programme+year
-  // happened to match seed data (e.g. "Information Technology · Year 1")
-  // saw a roster mixing her real classmates with a dozen fictional ones
-  // carrying fabricated attendance percentages baked straight into that
-  // mock array. Once genuinely live, only show students confirmed live
-  // (supabaseId set) — a scoped fix for this one screen; the STUDENTS
-  // mock-merge pattern itself affects other screens too (Registrar/
-  // Administrator rosters, session check-in) and is called out separately.
+  // Sept 2026: this used to be the only fix for a real bug — STUDENTS never
+  // purged its ~500-entry mock seed roster, so a Class Coordinator whose
+  // programme+year happened to match seed data saw fictional classmates
+  // mixed into her real roster. loadStudentsFromSupabase() itself now
+  // purges every unmatched mock entry once genuinely live (see its own
+  // comment), so STUDENTS never contains a non-supabaseId entry in
+  // LIVE_BACKEND mode any more — this filter is now redundant, kept only
+  // as cheap defense-in-depth rather than removed.
   return LIVE_BACKEND ? classmates.filter(s => s.supabaseId) : classmates;
 }
 
@@ -11246,6 +11257,12 @@ function handleAppealSubmit(e){
   const appealObj = {
     id: newId,
     supabaseId: null, // filled in once the live insert below resolves, so resolveAppeal() can target the real row
+    // Sept 2026: distinguishes "submitted this session, live insert may
+    // still be racing" from a permanent hardcoded mock seed entry (which
+    // never has this flag at all). loadAppealsFromSupabase() used to keep
+    // ANY appeal lacking a supabaseId forever, which included every mock
+    // seed appeal, not just genuinely-pending ones -- see MOCK-DATA-AUDIT.md.
+    pendingSync: true,
     student: State.user.name,
     course: courseLabel,
     session: date,
@@ -11303,7 +11320,7 @@ async function liveWriteAppeal(appealObj){
       .select()
       .single();
     if(error){ console.warn('liveWriteAppeal failed:', error); return; }
-    if(data) appealObj.supabaseId = data.id;
+    if(data){ appealObj.supabaseId = data.id; appealObj.pendingSync = false; }
   } catch(e){
     console.warn('liveWriteAppeal error:', e);
   }
@@ -11358,7 +11375,13 @@ async function loadAppealsFromSupabase(){
     // appeal (no supabaseId yet) that isn't already present in the fetch.
     const isDuplicate = (local, live) => local.student === live.student && local.course === live.course &&
       local.session === live.session && local.reason === live.reason;
-    const localOnly = ATTENDANCE_APPEALS.filter(local => !local.supabaseId && !fetched.some(live => isDuplicate(local, live)));
+    // Sept 2026: was `!local.supabaseId`, which resurrected every hardcoded
+    // mock seed appeal forever (they never have a supabaseId either) --
+    // "merge-never-purge under a different name" per MOCK-DATA-AUDIT.md.
+    // pendingSync is only ever true for an appeal submitted this session
+    // whose live insert may not have committed yet; a mock seed entry never
+    // has it set, so it's no longer re-included once genuinely live.
+    const localOnly = ATTENDANCE_APPEALS.filter(local => local.pendingSync && !fetched.some(live => isDuplicate(local, live)));
 
     // Same fix as loadSupportTicketsFromSupabase() below, for the identical
     // reason: mock ATTENDANCE_APPEALS ids and Postgres's own
@@ -11494,6 +11517,10 @@ function handleSupportTicketSubmit(e){
   const ticketObj = {
     id: newId,
     supabaseId: null, // filled in once the live insert below resolves, so resolve/escalate can target the real row
+    // Sept 2026: same pendingSync fix as ATTENDANCE_APPEALS just above --
+    // see loadSupportTicketsFromSupabase() for why this can't just be
+    // "no supabaseId yet".
+    pendingSync: true,
     reporterId: State.user.id,
     reporterName: State.user.name,
     reporterRole: State.role,
@@ -11592,7 +11619,7 @@ async function liveWriteSupportTicket(ticketObj){
       .select()
       .single();
     if(error){ console.warn('liveWriteSupportTicket failed:', error); return; }
-    if(data) ticketObj.supabaseId = data.id;
+    if(data){ ticketObj.supabaseId = data.id; ticketObj.pendingSync = false; }
   } catch(e){
     console.warn('liveWriteSupportTicket error:', e);
   }
@@ -11659,7 +11686,9 @@ async function loadSupportTicketsFromSupabase(){
     }));
 
     const isDuplicate = (local, live) => local.reporterName === live.reporterName && local.subject === live.subject && local.description === live.description;
-    const localOnly = SUPPORT_TICKETS.filter(local => !local.supabaseId && !fetched.some(live => isDuplicate(local, live)));
+    // Sept 2026: was `!local.supabaseId` -- identical merge-never-purge bug
+    // as ATTENDANCE_APPEALS above, fixed the same way. See its comment.
+    const localOnly = SUPPORT_TICKETS.filter(local => local.pendingSync && !fetched.some(live => isDuplicate(local, live)));
 
     // Confirmed live: the hardcoded mock seed tickets' ids (1, 2, ...) and
     // Postgres's own `generated always as identity` ids on support_tickets
