@@ -4682,6 +4682,7 @@ function canManuallyMark(entry){
 }
 
 function renderMarkAttendance(){
+  _attendanceStatusFilter = null;
   if(currentLectureId === null) currentLectureId = defaultLectureId();
   const lectures = getLecturerLectures();
   const lec = lectures.find(l => l.id === currentLectureId);
@@ -4768,11 +4769,11 @@ function renderMarkAttendance(){
       <div class="v" style="color:#3730a3; font-size:12px;">${isToday ? 'Start and end a live session for this lecture, or mark students manually below.' : 'Pick a date this lecture actually ran, or use Start Session to run it live today.'}</div>
     </div>` : ''}
 
-    <div class="status-chip-grid">
-      <div class="status-chip present"><div class="n">${counts.p}</div><div class="l">Present</div></div>
-      <div class="status-chip late"><div class="n">${counts.l}</div><div class="l">Late</div></div>
-      <div class="status-chip absent"><div class="n">${counts.a}</div><div class="l">Absent</div></div>
-      <div class="status-chip unmarked"><div class="n">${unmarked}</div><div class="l">Unmarked</div></div>
+    <div class="status-chip-grid" id="attendanceStatusChips">
+      <div class="status-chip present selectable" data-chip-status="p" onclick="toggleAttendanceStatusFilter('p')" title="Tap to show only Present"><div class="n">${counts.p}</div><div class="l">Present</div></div>
+      <div class="status-chip late selectable" data-chip-status="l" onclick="toggleAttendanceStatusFilter('l')" title="Tap to show only Late"><div class="n">${counts.l}</div><div class="l">Late</div></div>
+      <div class="status-chip absent selectable" data-chip-status="a" onclick="toggleAttendanceStatusFilter('a')" title="Tap to show only Absent"><div class="n">${counts.a}</div><div class="l">Absent</div></div>
+      <div class="status-chip unmarked selectable" data-chip-status="unmarked" onclick="toggleAttendanceStatusFilter('unmarked')" title="Tap to show only Unmarked"><div class="n">${unmarked}</div><div class="l">Unmarked</div></div>
     </div>
 
     <div class="card card-pad">
@@ -4836,7 +4837,7 @@ function studentAttendanceRow(s, entry){
   if(locked){
     const label = entry.status[0].toUpperCase() + entry.status.slice(1);
     return `
-    <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}">
+    <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}" data-status="${entry.status[0]}">
       <div class="avatar">${initials(s.name)}</div>
       <div class="student-info">
         <div class="student-name">${s.name}</div>
@@ -4850,7 +4851,7 @@ function studentAttendanceRow(s, entry){
   }
 
   return `
-  <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}">
+  <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}" data-status="${v||''}">
     <div class="avatar">${initials(s.name)}</div>
     <div class="student-info">
       <div class="student-name">${s.name}</div>
@@ -4924,11 +4925,28 @@ function toggleNoResultsState(containerId, visibleCount, message){
   }
 }
 
+// Selected by tapping a Present/Late/Absent/Unmarked chip above the roster
+// (see toggleAttendanceStatusFilter()) -- null means no status filter
+// active. 'unmarked' matches an empty data-status (v is null/''), the three
+// real statuses match their own single-letter code (p/l/a).
+let _attendanceStatusFilter = null;
+
+function toggleAttendanceStatusFilter(status){
+  _attendanceStatusFilter = (_attendanceStatusFilter === status) ? null : status;
+  document.querySelectorAll('#attendanceStatusChips [data-chip-status]').forEach(chip=>{
+    chip.classList.toggle('chip-active', chip.dataset.chipStatus === _attendanceStatusFilter);
+  });
+  filterAttendanceList(document.getElementById('studentSearch')?.value || '');
+}
+
 function filterAttendanceList(q){
   q = q.toLowerCase();
   let visible = 0;
   document.querySelectorAll('[data-student-row]').forEach(row=>{
-    const match = row.dataset.name.includes(q) || row.dataset.reg.includes(q);
+    const textMatch = row.dataset.name.includes(q) || row.dataset.reg.includes(q);
+    const statusMatch = !_attendanceStatusFilter
+      || (_attendanceStatusFilter === 'unmarked' ? !row.dataset.status : row.dataset.status === _attendanceStatusFilter);
+    const match = textMatch && statusMatch;
     row.style.display = match ? 'flex' : 'none';
     if(match) visible++;
   });
@@ -5735,6 +5753,13 @@ function scopedRegisterPeople(){
 
 function renderRegister(opts){
   opts = opts || {};
+  // Reset on every full render (screen entry, or any action that
+  // re-renders this screen) -- the chip row itself is rebuilt unhighlighted
+  // each time, so a stale filter value surviving in memory while nothing
+  // on screen shows it selected would silently keep filtering with no
+  // visible explanation. Matches the search box, which already doesn't
+  // persist its typed text across a re-render either.
+  _registerFacultyFilter = null;
   const backTarget = opts.backTarget || 'dashboard';
   const isAdmin = State.role === 'administrator';
   const isRegistrar = State.role === 'registrar';
@@ -5749,9 +5774,9 @@ function renderRegister(opts){
   if(canManage && LIVE_BACKEND) setTimeout(loadPendingDeletionRequests, 0);
 
   const facultyChipsHtml = !isLecturer ? `
-    <div class="dept-chip-row">
+    <div class="dept-chip-row" id="registerFacultyChips">
       ${(isRegistrar ? FACULTY_COUNTS.filter(d=>d.key===fk) : FACULTY_COUNTS).map(d=>`
-      <div class="dept-chip ${palClass(d.key, FACULTIES.map(f=>f.key))}">
+      <div class="dept-chip selectable ${palClass(d.key, FACULTIES.map(f=>f.key))}" data-chip-faculty="${d.key}" onclick="toggleRegisterFacultyFilter('${d.key}')" title="Tap to filter the list below to ${d.label}">
         <div class="n">${d.count}</div>
         <div class="l">${d.label.replace('Faculty of ','')}</div>
       </div>`).join('')}
@@ -5884,7 +5909,7 @@ function registerPersonRow(p){
     ? `<button class="icon-btn" style="width:32px;height:32px;flex-shrink:0;background:var(--surface);border:1.5px solid var(--line);color:var(--theme-primary);border-radius:var(--radius-sm);" title="Edit profile" onclick="event.stopPropagation();${p.role==='student' ? `openEditStudentSheet('${p._studentId}')` : `openEditStaffSheet('${p.id}','${p.role}')`}">${ICONS.edit || ICONS.settings}</button>`
     : '';
   return `
-  <div class="student-card-row" data-register-row data-name="${p.name.toLowerCase()}" data-id="${p.id.toLowerCase()}" data-role="${p.role}" data-year="${p.year||''}" ${manage ? `onclick="openAccountDetail('${p.id}')" style="cursor:pointer;"` : ''}>
+  <div class="student-card-row" data-register-row data-name="${p.name.toLowerCase()}" data-id="${p.id.toLowerCase()}" data-role="${p.role}" data-year="${p.year||''}" data-faculty="${p.facultyKey||''}" ${manage ? `onclick="openAccountDetail('${p.id}')" style="cursor:pointer;"` : ''}>
     <div class="avatar">${initials(p.name)}</div>
     <div class="student-info">
       <div class="student-name">${p.name}</div>
@@ -5899,6 +5924,22 @@ function registerPersonRow(p){
   </div>`;
 }
 
+// Selected by tapping a faculty chip above the list (see
+// toggleRegisterFacultyFilter()) -- null means no faculty filter active.
+let _registerFacultyFilter = null;
+
+// Tap a faculty tile to narrow "People" down to just that faculty; tap the
+// same tile again to clear it. Reduces having to scroll a long combined
+// roster to find one faculty's people -- the chips already showed the
+// count, they just didn't do anything when tapped.
+function toggleRegisterFacultyFilter(key){
+  _registerFacultyFilter = (_registerFacultyFilter === key) ? null : key;
+  document.querySelectorAll('#registerFacultyChips [data-chip-faculty]').forEach(chip=>{
+    chip.classList.toggle('chip-active', chip.dataset.chipFaculty === _registerFacultyFilter);
+  });
+  filterRegister();
+}
+
 function filterRegister(){
   const q = (document.getElementById('registerSearch')?.value || '').toLowerCase();
   const role = document.getElementById('registerRoleFilter')?.value || '';
@@ -5908,7 +5949,8 @@ function filterRegister(){
     const textMatch = !q || row.dataset.name.includes(q) || row.dataset.id.includes(q);
     const roleMatch = !role || row.dataset.role === role;
     const yearMatch = !year || row.dataset.year === year;
-    const visible = textMatch && roleMatch && yearMatch;
+    const facultyMatch = !_registerFacultyFilter || row.dataset.faculty === _registerFacultyFilter;
+    const visible = textMatch && roleMatch && yearMatch && facultyMatch;
     row.style.display = visible ? 'flex' : 'none';
     if(visible) visibleCount++;
   });

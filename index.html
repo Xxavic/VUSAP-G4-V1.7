@@ -498,6 +498,18 @@ input,select,textarea{font-family:inherit;}
 .status-chip.absent{background:var(--absent-bg); color:var(--absent);}
 .status-chip.unmarked{background:var(--unmarked-bg); color:var(--unmarked-fg);}
 
+/* Selectable variant -- used only where a chip's onclick actually filters
+   something below it (Mark Attendance's status chips, Register's faculty
+   chips). Every other status-chip/dept-chip usage in the app is a plain
+   read-only summary and is untouched by this. */
+.status-chip.selectable, .dept-chip.selectable{
+  cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;
+}
+.status-chip.selectable:active, .dept-chip.selectable:active{ transform:scale(0.96); }
+.status-chip.selectable.chip-active, .dept-chip.selectable.chip-active{
+  box-shadow:0 0 0 2px currentColor inset;
+}
+
 /* mark-all row */
 .markall-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
 .markall-btn{
