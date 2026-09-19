@@ -309,7 +309,13 @@ async function authProvisionAccount({ universityId, name, email, role, tempPassw
     const { data, error } = await SUPABASE_CLIENT.functions.invoke('create-user', {
       body: { universityId, name, email, role, tempPassword, facultyKey, program, year, mode, gender, semester, isClassCoordinator, coordinatorForProgramme, coordinatorForYear },
     });
-    if (error) return { error: error.message || String(error) };
+    if (error) {
+      // functions.invoke reports only "Edge Function returned a non-2xx
+      // status code" — the real reason is in the response body.
+      let msg = error.message || String(error);
+      try { const j = await error.context?.json?.(); if (j?.error) msg = j.error; } catch (_e) {}
+      return { error: msg };
+    }
     if (data?.error) return { error: data.error };
     return { id: data.id, tempPassword };
   } catch (e) {
@@ -5106,6 +5112,30 @@ function submitEditStudent(e, studentId){
 function openEnrollSheet(){
   updateRegPreview();
   openSheet('enrollSheet');
+  syncRegNoCounterFromSupabase().then(updateRegPreview);
+}
+
+// regNoCounter starts at a hardcoded 522 on every page load, so after a
+// reload the next student was issued a number that already existed live —
+// the create-user call then failed with "already registered". Raise the
+// counter to one past the highest number actually in the database.
+async function syncRegNoCounterFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('users')
+      .select('university_id')
+      .like('university_id', 'VU-%-2601-%');
+    if(error){ logError('Syncing registration counter', error); return; }
+    let max = 0;
+    (rows || []).forEach(r => {
+      const m = /^VU-[A-Z0-9]+-2601-(\d{4})-/.exec(r.university_id || '');
+      if(m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    if(max + 1 > regNoCounter) regNoCounter = max + 1;
+  } catch(e){
+    logError('Syncing registration counter', e);
+  }
 }
 
 function updateRegPreview(){
@@ -5129,6 +5159,7 @@ async function handleEnroll(e){
   const isCoordinator = document.getElementById('enrollIsCoordinator')?.checked || false;
   if(!name || !email || !deptKey){ return false; }
 
+  await syncRegNoCounterFromSupabase();
   const prog = PROGRAMMES.find(p => p.key === deptKey);
   const reg = `VU-${prog.codePrefix}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
 
