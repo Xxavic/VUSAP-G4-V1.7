@@ -136,6 +136,9 @@ Deno.serve(async (req) => {
     if (profileErr) {
       // Don't leave a login with no profile behind it.
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
+      if (profileErr.code === "23505" && /email/.test(profileErr.message)) {
+        return jsonResponse({ error: "That email is already used by another account. Each person needs their own email." }, 409);
+      }
       return jsonResponse({ error: `Profile insert failed, auth account rolled back: ${profileErr.message}` }, 400);
     }
 
