@@ -8341,7 +8341,7 @@ async function confirmDeleteStudent(personId, requestId){
 
   if(res.request){
     pushNotification({
-      recipientRole: 'registrar', recipientId: res.request.requested_by_id, type: 'accountDeletionDecided',
+      recipientRole: 'registrar', recipientId: res.request.requested_by_supabase_id, type: 'accountDeletionDecided',
       title: 'Deletion approved',
       body: `${name} (${personId}) was deleted. You can now enroll them again.`,
       from: State.user.name, fromId: State.user.id,
@@ -8358,7 +8358,7 @@ async function decideDeletion(requestId, decision, personId){
   if(res.error){ showToast(res.error); return; }
   const name = res.request?.target_name || personId;
   pushNotification({
-    recipientRole: 'registrar', recipientId: res.request.requested_by_id, type: 'accountDeletionDecided',
+    recipientRole: 'registrar', recipientId: res.request.requested_by_supabase_id, type: 'accountDeletionDecided',
     title: 'Deletion request rejected',
     body: `The Administrator rejected deleting ${name} (${personId}).`,
     from: State.user.name, fromId: State.user.id,
