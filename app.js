@@ -248,14 +248,24 @@ async function authUpdatePassword(newPassword) {
       // password itself updates fine but must_change_password stays true
       // forever, so every future login re-triggers this same screen again,
       // no matter how many times the person actually sets a new password.
+      // Confirmed live bug (Sept 2026): a missing RLS UPDATE policy for a
+      // user editing their OWN row (only Admin/Registrar could update
+      // public.users at all) made this write silently no-op — no error,
+      // just 0 rows affected — which used to leave State.user's own
+      // in-memory flag stuck at true too, so the very next navigate() call
+      // re-triggered this same screen forever. migrate-users-self-service-
+      // update.sql adds the missing policy, but the in-memory flip below is
+      // now unconditional regardless — matching how submitConsent()
+      // already always flips State.user.consentAt — so a signed-in user
+      // can never get stuck on this screen again even if some future
+      // backend hiccup makes the live write fail.
       if (State.user && State.user.supabaseId) {
         const { error: profileError } = await SUPABASE_CLIENT
           .from('users')
           .update({ must_change_password: false })
           .eq('id', State.user.supabaseId);
-        if (!handleDatabaseError(profileError, 'Clearing must_change_password')) {
-          State.user.mustChangePassword = false;
-        }
+        handleDatabaseError(profileError, 'Clearing must_change_password');
+        State.user.mustChangePassword = false;
       }
       return { ok: true };
     } catch(e) {
