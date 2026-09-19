@@ -3600,6 +3600,28 @@ function setLoginMethod(method){
 }
 
 // ============================================================
+// PASSWORD VISIBILITY TOGGLE — shared by every "type a password
+// carefully" screen (reset, forced first-login change). CSS for
+// .password-wrap/.eye-btn already existed (index.html) but was never
+// wired up to an actual toggle until now.
+// ============================================================
+const EYE_ICON_SHOW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_ICON_HIDE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.7 21.7 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+// Flips one password field between masked and plain text, swapping the
+// eye icon on its own trigger button to match. Generic by design — any
+// future password field just needs the same password-wrap/eye-btn markup
+// and a call naming its own input id, nothing else to wire up.
+function togglePasswordVisibility(inputId, btn){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.innerHTML = showing ? EYE_ICON_SHOW : EYE_ICON_HIDE;
+  btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+}
+
+// ============================================================
 // FORCED PASSWORD CHANGE (first login on a temp password)
 // ============================================================
 
@@ -3622,11 +3644,17 @@ function renderForcedPasswordChange(){
         <form id="forcedPwForm" onsubmit="return submitForcedPasswordChange(event)">
           <div class="field" style="margin-bottom:14px;">
             <label>New Password</label>
-            <input class="input" type="password" id="newPw1" placeholder="At least 8 characters" minlength="8" required />
+            <div class="password-wrap">
+              <input class="input" type="password" id="newPw1" placeholder="At least 8 characters" minlength="8" required />
+              <button type="button" class="eye-btn" onclick="togglePasswordVisibility('newPw1', this)" aria-label="Show password">${EYE_ICON_SHOW}</button>
+            </div>
           </div>
           <div class="field">
             <label>Confirm New Password</label>
-            <input class="input" type="password" id="newPw2" placeholder="Re-enter password" minlength="8" required />
+            <div class="password-wrap">
+              <input class="input" type="password" id="newPw2" placeholder="Re-enter password" minlength="8" required />
+              <button type="button" class="eye-btn" onclick="togglePasswordVisibility('newPw2', this)" aria-label="Show password">${EYE_ICON_SHOW}</button>
+            </div>
           </div>
           <div style="margin-top:20px;">
             <button class="btn btn-primary" type="submit">Set Password & Continue</button>
@@ -3902,11 +3930,17 @@ async function renderResetPasswordForm(){
         <form id="resetPwForm" onsubmit="return submitResetPassword(event)">
           <div class="field" style="margin-bottom:14px;">
             <label>New Password</label>
-            <input class="input" type="password" id="resetPw1" placeholder="At least 8 characters" minlength="8" required />
+            <div class="password-wrap">
+              <input class="input" type="password" id="resetPw1" placeholder="At least 8 characters" minlength="8" required />
+              <button type="button" class="eye-btn" onclick="togglePasswordVisibility('resetPw1', this)" aria-label="Show password">${EYE_ICON_SHOW}</button>
+            </div>
           </div>
           <div class="field">
             <label>Confirm New Password</label>
-            <input class="input" type="password" id="resetPw2" placeholder="Re-enter password" minlength="8" required />
+            <div class="password-wrap">
+              <input class="input" type="password" id="resetPw2" placeholder="Re-enter password" minlength="8" required />
+              <button type="button" class="eye-btn" onclick="togglePasswordVisibility('resetPw2', this)" aria-label="Show password">${EYE_ICON_SHOW}</button>
+            </div>
           </div>
           <div style="margin-top:20px;">
             <button class="btn btn-primary" type="submit">Reset Password</button>
