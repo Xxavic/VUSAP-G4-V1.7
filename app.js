@@ -381,6 +381,7 @@ async function resumeSupabaseSession() {
       loadStudentsFromSupabase(); // the page-load call ran signed out and got no rows — see its call site at startup
       loadNotificationsFromSupabase();
       loadSentNotificationsFromSupabase();
+      loadCourseAttendanceCapsFromSupabase();
       // Same gate handleLogin() enforces on a fresh sign-in — a resumed
       // session (page reload, or an already-open tab) must not be able to
       // skip setting a real password just by not going through login again.
@@ -1480,6 +1481,81 @@ async function liveDeleteClass(code){
 }
 
 // ------------------------------------------------------------
+// COURSE ATTENDANCE MARKS CAPS (Sept 2026) -- "attendance is worth N marks
+// out of this course's total marks", set once per course by a Lecturer or
+// Registrar, feeding attendanceMarksForPct() (see the weighted-attendance
+// section above ATTENDANCE_POLICIES). Kept as its own small table rather
+// than a column on `classes`: plenty of courses only exist in this app's
+// own mock timetable and have never migrated to a live `classes` row, and
+// `classes`' own write-side RLS is Registrar/Administrator only, not
+// Lecturers. set_by_supabase_id/set_by_role are self-attested by the app,
+// the same trust model support_tickets.reporter_supabase_id already uses --
+// a Lecturer account could in principle set this for a course they don't
+// actually teach, since courses aren't yet reliably linked to a verified
+// teacher everywhere (the same tracked gap as LECTURERS' missing live
+// loader). Chris chose to ship it now rather than wait on that larger fix
+// (migrate-attendance-marks.sql has the full note).
+// ------------------------------------------------------------
+let COURSE_ATTENDANCE_CAPS = {}; // { [courseCode]: { cap, setByName, setByRole, updatedAt } }
+
+async function loadCourseAttendanceCapsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('course_attendance_caps')
+      .select('*');
+    if(error){ console.warn('Course attendance caps fetch failed:', error); return; }
+    const next = {};
+    (rows || []).forEach(r => {
+      next[r.course_code] = {
+        cap: r.attendance_marks_cap,
+        setByName: r.set_by_name || null,
+        setByRole: r.set_by_role || null,
+        updatedAt: r.updated_at || null,
+      };
+    });
+    COURSE_ATTENDANCE_CAPS = next;
+    refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadCourseAttendanceCapsFromSupabase error:', e);
+  }
+}
+
+// Awaited and errors surfaced to the caller -- same reasoning as
+// liveCreateClass()/liveUpdateClass() just above: a Lecturer/Registrar
+// setting a real, marks-affecting number should never be left thinking it
+// saved when it silently didn't.
+async function liveSetCourseAttendanceCap(courseCode, cap){
+  const facultyKey = (() => {
+    const course = COURSES.find(c => c.code === courseCode);
+    if(!course || !course.programmeKey) return null;
+    const prog = PROGRAMMES.find(p => p.key === course.programmeKey);
+    return prog ? prog.facultyKey : null;
+  })();
+  // Local-first, same as everywhere else in this app -- the screen reflects
+  // the change immediately, the live write happens alongside/after.
+  COURSE_ATTENDANCE_CAPS[courseCode] = {
+    cap, setByName: State.user?.name || null, setByRole: State.role || null, updatedAt: new Date().toISOString(),
+  };
+  if(!LIVE_BACKEND) return { ok: true };
+  try {
+    const { error } = await SUPABASE_CLIENT.from('course_attendance_caps').upsert({
+      course_code: courseCode,
+      attendance_marks_cap: cap,
+      faculty_key: facultyKey,
+      set_by_supabase_id: State.user?.supabaseId || null,
+      set_by_name: State.user?.name || null,
+      set_by_role: State.role || null,
+      updated_at: new Date().toISOString(),
+    });
+    if(error) return { error: error.message };
+    return { ok: true };
+  } catch(e){
+    return { error: e.message || 'Failed to save attendance marks cap' };
+  }
+}
+
+// ------------------------------------------------------------
 // ENROLLMENTS — live read (Gate 4, part 2). Replaces the mock
 // STUDENT_COURSES with the signed-in student's real `enrollments` ->
 // `classes` rows. Additive/fallback, same shape as Faculties/Programmes
@@ -1696,23 +1772,22 @@ async function loadStudentsFromSupabase(){
             attendanceStats[a.student_id] = { present: 0, total: 0, recentPresent: 0, recentTotal: 0, olderPresent: 0, olderTotal: 0 };
           }
           attendanceStats[a.student_id].total++;
-          if(a.status === 'present' || a.status === 'late'){
-            attendanceStats[a.student_id].present++;
-          }
-          
+          // Weighted credit (Sept 2026): present/late/absent no longer count
+          // as a binary "did this count or not" -- see
+          // attendanceCreditForStatus(). `present` here means "credit
+          // earned", summed as a float; the pct math below is unchanged
+          // (earned / total), it's just no longer only ever 0 or 1 per row.
+          attendanceStats[a.student_id].present += attendanceCreditForStatus(a.status);
+
           // Split into recent (last 30 days) vs older for trend calculation
           const now = new Date();
           const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
           if(a.marked_at >= thirtyDaysAgo){
             attendanceStats[a.student_id].recentTotal++;
-            if(a.status === 'present' || a.status === 'late'){
-              attendanceStats[a.student_id].recentPresent++;
-            }
+            attendanceStats[a.student_id].recentPresent += attendanceCreditForStatus(a.status);
           } else {
             attendanceStats[a.student_id].olderTotal++;
-            if(a.status === 'present' || a.status === 'late'){
-              attendanceStats[a.student_id].olderPresent++;
-            }
+            attendanceStats[a.student_id].olderPresent += attendanceCreditForStatus(a.status);
           }
         });
       }
@@ -2291,6 +2366,45 @@ const ATTENDANCE_POLICIES = {
   graceApplied: false,         // record-keeping flag for future use, mirrors the schema's attendance_policies table
 };
 
+// ------------------------------------------------------------
+// WEIGHTED ATTENDANCE -> MARKS (Sept 2026). Chris's own policy: Present
+// counts as full (100%) credit, Absent as none (0%), and Late as a partial
+// credit -- SYSTEM_SETTINGS.lateCreditPct, 75% by default, editable by an
+// Administrator in Attendance Policies and shared by every device (see the
+// comment on SYSTEM_SETTINGS.lateCreditPct for why it lives there and not
+// on ATTENDANCE_POLICIES). Replaces every place that used to treat
+// "present or late" as identically-counting toward attendance rate.
+// ------------------------------------------------------------
+function attendanceCreditForStatus(status){
+  if(status === 'present') return 1;
+  if(status === 'late') return (SYSTEM_SETTINGS.lateCreditPct ?? 100) / 100;
+  return 0; // absent, or any other/unrecognized status
+}
+
+// Weighted attendance percentage across a set of RECORDS-shaped rows (each
+// with a `.status`). Returns null (not a fabricated 0%) when there's
+// nothing to measure yet -- same "no data yet" convention used everywhere
+// else in this app (e.g. Lecturer Compliance).
+function weightedAttendancePct(records){
+  if(!records || records.length === 0) return null;
+  const earned = records.reduce((sum, r) => sum + attendanceCreditForStatus(r.status), 0);
+  return Math.round((earned / records.length) * 100);
+}
+
+function courseAttendanceMarksCap(courseCode){
+  const row = COURSE_ATTENDANCE_CAPS[courseCode];
+  return row ? row.cap : null;
+}
+
+// Converts a weighted percentage into marks against a course's own
+// attendance-marks cap (e.g. 82% of a 10-mark cap = 8.2). null propagates
+// through -- no cap set, or no attendance data yet, means nothing to show,
+// not a fabricated 0.
+function attendanceMarksForPct(pct, cap){
+  if(pct === null || pct === undefined || cap === null || cap === undefined) return null;
+  return Math.round((pct / 100) * cap * 10) / 10;
+}
+
 let LIVE_SESSION = {
   active: true,
   liveSessionId: null, // Supabase row id for this session, once written live (Gate 3 Realtime sync)
@@ -2429,6 +2543,14 @@ const SYSTEM_SETTINGS = {
   // simple (every week since this date counts, no holiday/break exclusions
   // for now).
   termStartDate: null, // 'YYYY-MM-DD' once set
+  // Weighted-attendance-to-marks feature (Sept 2026), per Chris's own policy
+  // decision: Present = 100% credit, Absent = 0% -- fixed by definition, not
+  // configurable -- and Late = this percentage, the one real knob. Lives
+  // here (not on the local-only ATTENDANCE_POLICIES object) specifically so
+  // every device agrees on it: a lecturer's browser and a student's browser
+  // silently using two different weights would make the resulting
+  // percentage/marks meaningless. See attendanceCreditForStatus() below.
+  lateCreditPct: 75,
 };
 
 // ============================================================
@@ -4207,6 +4329,7 @@ async function handleLogin(e){
   loadStudentsFromSupabase(); // startup call ran signed out (no rows) — reload now that there's a session
   loadNotificationsFromSupabase();
   loadSentNotificationsFromSupabase();
+  loadCourseAttendanceCapsFromSupabase();
   const mustChange = user.mustChangePassword ?? user.must_change_password ?? false;
   if(mustChange){
     renderForcedPasswordChange();
@@ -6074,10 +6197,8 @@ function renderStudentHome(){
           // (correctly live) Attendance Rate tile already uses, and the
           // same "—" for no data yet that renderMyAttendanceRecord()
           // already shows rather than a fabricated number.
-          const records = getMyAttendanceRecords();
-          if(!records.length) return '—';
-          const present = records.filter(r => r.status === 'present' || r.status === 'late').length;
-          return Math.round((present / records.length) * 100) + '%';
+          const pct = weightedAttendancePct(getMyAttendanceRecords());
+          return pct === null ? '—' : pct + '%';
         })()}</div>
       </div>
       <div class="stat-tile">
@@ -6258,6 +6379,28 @@ function renderMyAttendanceRecord(){
       <div class="status-chip present"><div class="n">${counts.present}</div><div class="l">Present</div></div>
       <div class="status-chip late"><div class="n">${counts.late}</div><div class="l">Late</div></div>
       <div class="status-chip absent"><div class="n">${counts.absent}</div><div class="l">Absent</div></div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="section-title">${ICONS.book} Attendance → Marks, By Course</div>
+      <div style="font-size:11px;color:var(--ink-faint);margin:-6px 0 10px;">Present counts full credit, Late ${SYSTEM_SETTINGS.lateCreditPct}%, Absent none. Marks shown are this course's attendance component — ask your lecturer to add it onto your other course marks.</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        ${STUDENT_COURSES.map(c => {
+          const courseRecs = records.filter(r => r.code === c.code);
+          const pct = weightedAttendancePct(courseRecs);
+          const cap = courseAttendanceMarksCap(c.code);
+          const marks = pct !== null ? attendanceMarksForPct(pct, cap) : null;
+          const color = pct===null ? 'var(--ink-faint)' : (pct>=ATTENDANCE_POLICIES.minAttendancePct ? 'var(--present)' : 'var(--absent)');
+          return `
+          <div>
+            <div class="section-head-row" style="margin-bottom:4px;">
+              <span style="font-size:13px;font-weight:700;">${c.code} — ${c.name}</span>
+              <span style="font-size:12.5px;font-weight:800;color:${color};">${pct===null?'—':pct+'%'}</span>
+            </div>
+            <div style="font-size:11px;color:var(--ink-faint);">${marks!==null ? `${marks} of ${cap} attendance marks` : (cap!==null ? 'No sessions recorded yet' : "Attendance marks cap not set yet by your lecturer")}</div>
+          </div>`;
+        }).join('') || `<div class="empty-state-sm">Not enrolled in any courses yet</div>`}
+      </div>
     </div>
 
     <div class="info-box" style="background:#eef2ff; border-color:#c7d2fe;">
@@ -7219,10 +7362,8 @@ function renderRegistrarDashboard(){
         <div class="top"><span class="label">Attendance Rate</span>
           <span class="stat-icon" style="background:#fce7f3; color:#be185d;">${ICONS.trend}</span></div>
         <div class="value">${(() => {
-          const recs = scopedRecords();
-          if(!recs.length) return '—';
-          const present = recs.filter(r=>r.status==='present'||r.status==='late').length;
-          return Math.round((present/recs.length)*100) + '%';
+          const pct = weightedAttendancePct(scopedRecords());
+          return pct === null ? '—' : pct + '%';
         })()}</div>
       </div>
       <div class="stat-tile">
@@ -7335,6 +7476,7 @@ function renderAttendanceRecordsBlock(opts){
   const byStudent = groupRecordsByStudent(records);
   const exportControl = opts.exportControl || `<button class="link-mini" onclick="showToast('Report exported')">${ICONS.download} Export</button>`;
   const beforeList = opts.beforeList || '';
+  const courseCode = opts.courseCode || null;
   return `
   <div class="content">
     <div class="status-chip-grid">
@@ -7361,7 +7503,7 @@ function renderAttendanceRecordsBlock(opts){
       </div>
       <div style="font-size:11px;color:var(--ink-faint);margin:-6px 0 10px;">Tap a student to see their full attendance breakdown</div>
       <div id="recordsList" style="display:flex; flex-direction:column; gap:10px;">
-        ${byStudent.size ? Array.from(byStudent.entries()).map(([reg,recs])=>studentRecordSummaryRow(reg,recs)).join('') : `<div class="empty-state-sm">No attendance records in your faculty yet</div>`}
+        ${byStudent.size ? Array.from(byStudent.entries()).map(([reg,recs])=>studentRecordSummaryRow(reg,recs,courseCode)).join('') : `<div class="empty-state-sm">No attendance records in your faculty yet</div>`}
       </div>
     </div>
   </div>
@@ -7590,7 +7732,7 @@ function groupRecordsByStudent(records){
 // a second, possibly-divergent percentage computed fresh from this thin
 // RECORDS sample — a deliberate judgment call to avoid two numbers claiming
 // to be "this student's attendance rate".
-function studentRecordSummaryRow(reg, recs){
+function studentRecordSummaryRow(reg, recs, courseCode){
   const student = STUDENTS.find(s => s.reg === reg);
   const name = student ? student.name : recs[0].name;
   const prog = student ? student.dept : recs[0].prog;
@@ -7600,6 +7742,14 @@ function studentRecordSummaryRow(reg, recs){
   const codes = [...new Set(recs.map(r=>r.code))];
   const statuses = [...new Set(recs.map(r=>r.status))];
   const dates = recs.map(r=>r.date);
+  // Attendance -> marks (Sept 2026): only meaningful when this row is
+  // already scoped to one course (courseCode set — see renderCourseRecords())
+  // and that course has a marks cap. `recs` here is already that course's
+  // own records, so the weighted % is this student's real in-course rate,
+  // not the all-courses STUDENTS.pct shown above.
+  const cap = courseCode ? courseAttendanceMarksCap(courseCode) : null;
+  const coursePct = courseCode && cap !== null ? weightedAttendancePct(recs) : null;
+  const marks = coursePct !== null ? attendanceMarksForPct(coursePct, cap) : null;
   return `
   <div class="student-card-row" data-record-summary-row data-search="${(name+' '+reg).toLowerCase()}" data-codes="${codes.join(' ')}" data-statuses="${statuses.join(' ')}" data-dates="${dates.join(' ')}" onclick="openStudentRecordDrilldown('${reg}')" style="cursor:pointer;">
     <div class="avatar">${initials(name)}</div>
@@ -7609,6 +7759,7 @@ function studentRecordSummaryRow(reg, recs){
       <div class="record-tags" style="margin-top:4px;">
         ${codes.slice(0,3).map(c=>`<span class="tag-mini">${c}</span>`).join('')}${codes.length>3 ? `<span class="tag-mini">+${codes.length-3}</span>` : ''}
       </div>
+      ${marks !== null ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;font-weight:600;">${coursePct}% in ${courseCode} → ${marks}/${cap} marks</div>` : ''}
     </div>
     ${hasPct ? `<div class="attendance-pct ${cls}">${pct}%<span class="lbl">attendance</span></div>` : ''}
     <div class="chev">${ICONS.chevR}</div>
@@ -7915,6 +8066,39 @@ function renderCourseRecords(){
       <button class="link-mini" onclick="exportReport('pdf','${code}')">${ICONS.fileText} PDF</button>
       <button class="link-mini" onclick="exportReport('excel','${code}')">${ICONS.fileSpreadsheet} CSV</button>
     </div>`;
+
+  // Attendance -> marks (Sept 2026). Every role reaching this screen is
+  // Lecturer/Registrar/Administrator (Students never navigate here — see
+  // openCourseRecords() call sites), so the cap-setting control is always
+  // shown, no extra role check needed.
+  const coursePct = weightedAttendancePct(records);
+  const capRow = COURSE_ATTENDANCE_CAPS[code] || null;
+  const cap = capRow ? capRow.cap : null;
+  const attendanceMarksCard = `
+  <div class="card card-pad" style="margin-top:14px;">
+    <div class="section-title">${ICONS.trend} Attendance → Marks</div>
+    <div style="display:flex; gap:20px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--ink-faint);">Weighted attendance (this course)</div>
+        <div style="font-size:22px;font-weight:800;">${coursePct===null?'—':coursePct+'%'}</div>
+      </div>
+      ${cap ? `
+      <div>
+        <div style="font-size:11px;color:var(--ink-faint);">Attendance marks cap</div>
+        <div style="font-size:22px;font-weight:800;">${cap}</div>
+      </div>` : ''}
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Attendance Marks Cap</label>
+      <div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px;">How many of ${code}'s total course marks attendance is worth. Each student's marks = their own weighted attendance % × this number — read it off here at the end of the semester and add it onto their other marks.</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input class="input" type="number" id="courseCapInput_${code}" value="${cap||''}" min="0.1" step="0.1" style="max-width:110px;" placeholder="e.g. 10" />
+        <button class="btn btn-primary" style="padding:10px 16px;" onclick="submitCourseAttendanceCap('${code}')">${ICONS.check} Save</button>
+      </div>
+      ${capRow ? `<div style="font-size:11px;color:var(--ink-faint);margin-top:6px;">Last set by ${capRow.setByName||'—'}${capRow.setByRole?' ('+capRow.setByRole+')':''}</div>` : ''}
+    </div>
+  </div>`;
+
   return `
   <div class="app-header">
     <div class="header-back">
@@ -7922,7 +8106,22 @@ function renderCourseRecords(){
       <div class="page-title" style="font-size:18px;">${code}${sample ? ' — ' + sample.course : ''}</div>
     </div>
   </div>
-  ${renderAttendanceRecordsBlock({ records, exportControl })}`;
+  ${renderAttendanceRecordsBlock({ records, exportControl, courseCode: code, beforeList: attendanceMarksCard })}`;
+}
+
+function submitCourseAttendanceCap(code){
+  const input = document.getElementById(`courseCapInput_${code}`);
+  const cap = parseFloat(input?.value);
+  if(!cap || cap <= 0){ showToast("Enter a marks cap greater than 0"); return; }
+  liveSetCourseAttendanceCap(code, cap).then(result => {
+    if(result && result.error){
+      showToast(result.error);
+      return;
+    }
+    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Attendance marks cap set', code, `${code}: attendance now worth ${cap} marks`);
+    showToast(`${code}: attendance marks cap set to ${cap}`);
+    navigate('courseRecords', { replace: true });
+  });
 }
 
 // ============================================================
@@ -9403,6 +9602,15 @@ function renderAttendancePolicies(){
           <span style="font-size:14px; font-weight:700; color:var(--ink-soft);">minutes</span>
         </div>
       </div>
+
+      <div class="field" style="margin-top:16px;">
+        <label>Late Check-in Credit</label>
+        <div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px;">How much a "late" check-in counts toward a student's cumulative attendance percentage. Present always counts as 100%, Absent always as 0% — this is the one adjustable weight in between. Applies to every device immediately.</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <input class="input" type="number" id="policyLateCredit" value="${SYSTEM_SETTINGS.lateCreditPct}" min="0" max="100" style="max-width:90px;" />
+          <span style="font-size:14px; font-weight:700; color:var(--ink-soft);">%</span>
+        </div>
+      </div>
     </div>
 
     <div class="card card-pad">
@@ -9436,17 +9644,24 @@ function saveAttendancePolicies(){
   const lateGrace = parseInt(document.getElementById('policyLateGrace')?.value || '10', 10);
   const qrRotate = parseInt(document.getElementById('policyQrRotate')?.value || '30', 10);
   const sessionWindow = parseInt(document.getElementById('policySessionWindow')?.value || '10', 10);
+  const lateCredit = parseInt(document.getElementById('policyLateCredit')?.value ?? String(SYSTEM_SETTINGS.lateCreditPct), 10);
 
   if(minPct < 1 || minPct > 100){ showToast("Minimum attendance must be 1–100%"); return; }
   if(lateGrace < 0 || lateGrace > 60){ showToast("Late grace must be 0–60 minutes"); return; }
   if(qrRotate < 10 || qrRotate > 300){ showToast("QR rotation must be 10–300 seconds"); return; }
   if(sessionWindow < 1 || sessionWindow > 60){ showToast("Session window must be 1–60 minutes"); return; }
+  if(lateCredit < 0 || lateCredit > 100){ showToast("Late check-in credit must be 0–100%"); return; }
 
   ATTENDANCE_POLICIES.minAttendancePct = minPct;
   ATTENDANCE_POLICIES.lateGraceMinutes = lateGrace;
   ATTENDANCE_POLICIES.qrRotateSeconds = qrRotate;
   ATTENDANCE_POLICIES.sessionWindowMinutes = sessionWindow;
-  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Policy updated', 'policies', `minPct=${minPct}%, grace=${lateGrace}min, qrRotate=${qrRotate}s, window=${sessionWindow}min`);
+  // Unlike the fields above (still local-only per browser -- a separate,
+  // pre-existing gap), lateCreditPct lives on SYSTEM_SETTINGS specifically
+  // so it's the same number on every device -- see its own comment there.
+  SYSTEM_SETTINGS.lateCreditPct = lateCredit;
+  saveSystemSettingsToSupabase();
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Policy updated', 'policies', `minPct=${minPct}%, grace=${lateGrace}min, qrRotate=${qrRotate}s, window=${sessionWindow}min, lateCredit=${lateCredit}%`);
 
   showToast("Attendance policies saved");
   // Stay on the screen — re-render in place so inputs reflect the saved values cleanly.
@@ -9700,6 +9915,7 @@ async function loadSystemSettingsFromSupabase(){
     SYSTEM_SETTINGS.maintenanceMode = data.maintenance_mode ?? SYSTEM_SETTINGS.maintenanceMode;
     SYSTEM_SETTINGS.logoDataUri = data.logo_data_uri ?? null;
     SYSTEM_SETTINGS.termStartDate = data.term_start_date ?? SYSTEM_SETTINGS.termStartDate;
+    SYSTEM_SETTINGS.lateCreditPct = data.late_credit_pct ?? SYSTEM_SETTINGS.lateCreditPct;
 
     // Unlike FACULTIES/PROGRAMMES etc., this data can already be on screen
     // by the time this resolves (the splash paints synchronously at boot,
@@ -9728,6 +9944,7 @@ async function saveSystemSettingsToSupabase(){
       maintenance_mode: SYSTEM_SETTINGS.maintenanceMode,
       logo_data_uri: SYSTEM_SETTINGS.logoDataUri,
       term_start_date: SYSTEM_SETTINGS.termStartDate,
+      late_credit_pct: SYSTEM_SETTINGS.lateCreditPct,
       updated_at: new Date().toISOString(),
     });
     if(error){ console.warn('saveSystemSettingsToSupabase failed:', error); return false; }
@@ -12290,6 +12507,7 @@ function navigate(screenId, opts){
   if(screenId === 'fraudCenter' || screenId === 'database') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
+  if(screenId === 'courseRecords' || screenId === 'myAttendance') loadCourseAttendanceCapsFromSupabase();
 
   if(!opts.fromPopstate){
     const state = { vusapScreen: screenId, vusapRole: State.role };
