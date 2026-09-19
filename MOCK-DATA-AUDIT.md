@@ -15,11 +15,9 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 
 ## Part 1 — People / accounts
 
-### STUDENTS (~521 fictional entries)
+### STUDENTS (~521 fictional entries) — **RESOLVED (Sept 2026).**
 - **What:** a large hardcoded seed array of fictional students with names, registration numbers, departments, years, and fabricated attendance percentages/trends.
-- **Live loader:** `loadStudentsFromSupabase()` exists and now tags live rows with `supabaseId` (added this week). But it only **replaces** a mock entry when a live row's registration number matches one — every mock entry that doesn't match a real student stays in the array forever. Nothing ever removes them.
-- **Where it leaks:** any screen that reads the global `STUDENTS` array without filtering by `supabaseId` still mixes in fictional students — this includes Lecturer session rosters, Registrar-side analytics, and the Administrator "Database" screen, which currently claims to show "live" data while actually showing ~521 fake students plus however many real ones exist. (The Class Coordinator roster was patched this week to filter on `supabaseId`; the other three surfaces were not.)
-- **Recommendation:** apply the same `LIVE_BACKEND ? filter(s => s.supabaseId) : STUDENTS` pattern everywhere `STUDENTS` is read for a real user-facing list, or better, purge non-matching mock entries once `loadStudentsFromSupabase()` runs with `LIVE_BACKEND` on, the same way the `STUDENT_COURSES` fix works now. The scoped per-screen fix is a stopgap; the merge function itself needs to stop being merge-never-purge.
+- **Fix:** `loadStudentsFromSupabase()` now purges every mock entry that didn't get matched/replaced by a live row, once genuinely live (non-empty `rows`). `STUDENTS` no longer contains any non-`supabaseId` entry in `LIVE_BACKEND` mode, so Lecturer session rosters, Registrar-side analytics, and the Administrator People/Database screen all stopped inheriting fictional students without needing their own per-screen filter. The Class Coordinator roster's existing `supabaseId` filter is now redundant but was left in place as cheap defense-in-depth. Commit `7258baa`.
 
 ### LECTURERS / REGISTRARS / ADMINISTRATORS (staff directories)
 - **What:** three hardcoded arrays of fictional staff members.
@@ -36,20 +34,21 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 
 ## Part 2 — Courses / schedule / records
 
-### SCHEDULE
+### SCHEDULE — still open, and more tangled than it first looked
 - **What:** hardcoded mock class schedule entries.
 - **Live loader:** merge-never-purge, same pattern as STUDENTS — and this one is explicitly called out as intentional in the code's own comments.
-- **Recommendation:** worth revisiting now that the "intentional" reasoning has caused two real bugs elsewhere; the assumption that merge-never-purge is safe should not be trusted anywhere else in the file either.
+- **Newly found while fixing STUDENTS (Sept 2026):** `COURSES` (below) is built at boot by `buildInitialCourseCatalog()` by reading every distinct course code straight out of the mock `SCHEDULE` array — so a course that only ever exists in a mock timetable slot is exactly how it ends up in the Course Catalog at all. That means SCHEDULE and COURSES can't be purged independently: applying the STUDENTS-style "drop everything not confirmed live" fix to COURSES alone, while SCHEDULE keeps its intentionally-mixed mock/live timetable forever, would make legitimately-still-mock courses vanish from the Catalog while their lectures kept showing up on the Timetable — a worse inconsistency than the current leak.
+- **Recommendation:** needs a decision before either one is touched: is the plan to eventually migrate the whole timetable to live `classes`/`timetable_slots` data (in which case both SCHEDULE and COURSES should purge together once that's done), or is a permanently-mixed timetable actually intended for courses that will never move to a live schedule (in which case COURSES needs its own "confirmed live" flag independent of SCHEDULE, not a full purge)? Not changed this round — flagging it rather than guessing which one you want.
 
 ### LECTURER_COURSES
 - **What:** 2 fake course entries.
 - **Live loader:** none — it's fully static, and it's used in a place that already has a correct, live-aware alternative (`getLecturerLectures()`) sitting right next to it, unused for this purpose.
 - **Recommendation:** straightforward — point the caller at `getLecturerLectures()` instead, and delete `LECTURER_COURSES`.
 
-### COURSES
-- **What:** mock course catalog (this is the one with the `CSC3101`/`CSC3103` codes that collided with the real "Dr. Patrick Mukasa" courses).
+### COURSES — still open, see the SCHEDULE note above
+- **What:** mock course catalog (this is the one with the `CSC3101`/`CSC3103` codes that collided with the real "Dr. Patrick Mukasa" courses). Built at boot from mock `SCHEDULE`'s own course codes (see above) — it isn't an independent mock array.
 - **Live loader:** only purges a mock entry when its code exactly collides with a live course's code — otherwise every non-colliding mock course stays forever.
-- **Recommendation:** same fix shape as STUDENTS — once genuinely live, purge everything not confirmed live rather than relying on incidental code collisions to clean up individual entries.
+- **Recommendation:** same fix shape as STUDENTS in isolation, but see the SCHEDULE note above — purging COURSES without a matching decision on SCHEDULE risks making things worse, not better. Needs the same decision made for both together.
 
 ### RECORDS (bulk attendance history)
 - **What:** no live loader exists at all for bulk historical attendance records.
@@ -59,10 +58,9 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **What:** hardcoded list, purely additive — nothing ever removes entries from it, live data can only be added on top.
 - **Recommendation:** same shape as the others; needs either a real replace-on-load or a purge condition, not addition-only.
 
-### ATTENDANCE_APPEALS / SUPPORT_TICKETS
+### ATTENDANCE_APPEALS / SUPPORT_TICKETS — **RESOLVED (Sept 2026).**
 - **What:** mock appeal/ticket entries.
-- **Live loader:** looks like a full replace on the surface, but has a `localOnly` filter that always re-includes every non-matching mock seed entry regardless — so it behaves like merge-never-purge under a different name.
-- **Recommendation:** remove the `localOnly` carve-out once live, or scope it explicitly to `LIVE_BACKEND === false`.
+- **Fix:** the `localOnly` re-inclusion filter used to key off "no `supabaseId` yet," which was meant to protect a just-submitted appeal/ticket from disappearing during the live-insert race, but couldn't tell that apart from a permanent mock seed entry (which also never has a `supabaseId`). Replaced with an explicit `pendingSync` flag, set true only at the moment of submission and cleared once the live insert resolves — a mock seed entry never has it set, so it's no longer resurrected on every load. Commit `7258baa`.
 
 ---
 
@@ -107,7 +105,7 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 Every item above falls into one of four buckets:
 
 1. **Same bug, already has a proven fix** (the "empty looks broken" pattern — STUDENT_COURSES already fixed this week; SUSPICION_LOG, AUDIT_LOG, and the NOTIFICATIONS seed still need it).
-2. **Merge-never-purge** (STUDENTS, SCHEDULE, COURSES, ATTENDANCE_APPEALS/SUPPORT_TICKETS) — needs the array to actually drop non-matching mock rows once live, not just overwrite matches.
+2. **Merge-never-purge** (STUDENTS — resolved; ATTENDANCE_APPEALS/SUPPORT_TICKETS — resolved; SCHEDULE and COURSES — still open, and turned out to be coupled to each other, see their entries above) — needs the array to actually drop non-matching mock rows once live, not just overwrite matches.
 3. **No live loader exists at all** (LECTURERS/REGISTRARS/ADMINISTRATORS, RECORDS, ANNOUNCEMENTS, LECTURER_COMPLIANCE) — these are missing features, not stale data; deleting the mock wouldn't fix anything without building the real thing first.
 4. **Dead or trivially fixable** (DEPT_COUNTS — delete; LECTURER_COURSES — repoint to existing correct function; the 87% tile — compute like Student Home already does).
 
