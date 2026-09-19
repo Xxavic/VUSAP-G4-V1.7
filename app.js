@@ -368,6 +368,7 @@ async function resumeSupabaseSession() {
       State.user = normalized;
       document.getElementById('app').setAttribute('data-role', normalized.role);
       loadEnrollmentsFromSupabase(); // Gate 4 — see handleLogin() for the same fire-and-forget call
+      loadStudentsFromSupabase(); // the page-load call ran signed out and got no rows — see its call site at startup
       loadNotificationsFromSupabase();
       loadSentNotificationsFromSupabase();
       // Same gate handleLogin() enforces on a fresh sign-in — a resumed
@@ -1776,6 +1777,10 @@ async function loadStudentsFromSupabase(){
         STUDENTS.push(liveStudent);
       }
     });
+    // This can resolve after the screen already rendered (it now also runs
+    // after sign-in and on entering Register) — redraw so new rows show.
+    // Skipped while a sheet is open: the redraw would wipe a half-filled form.
+    if(!openSheetId) refreshScreenContentOnly();
   } catch(e){
     console.warn('loadStudentsFromSupabase error, keeping mock STUDENTS:', e);
   }
@@ -4019,6 +4024,7 @@ async function handleLogin(e){
   // takes effect on the next render with no extra wiring, and it silently
   // no-ops for any non-student role or a mock-only login.
   loadEnrollmentsFromSupabase();
+  loadStudentsFromSupabase(); // startup call ran signed out (no rows) — reload now that there's a session
   loadNotificationsFromSupabase();
   loadSentNotificationsFromSupabase();
   const mustChange = user.mustChangePassword ?? user.must_change_password ?? false;
@@ -12052,7 +12058,7 @@ function navigate(screenId, opts){
   // back to Dashboard) would see "Start Live Session" instead of "Current
   // Session", since nothing re-checks reality on Dashboard entry.
   if(screenId === 'dashboard' && State.role === 'lecturer') checkLecturerActiveSession();
-  if(screenId === 'register') loadProvisionedAccountsFromSupabase();
+  if(screenId === 'register'){ loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); }
   if(screenId === 'sendNotification'){ updateComposeNotificationFields('allStudents'); updateNotifPreview(); }
   // Charts need their <canvas> elements in the DOM first, which only
   // happens after the innerHTML assignment above — safe to call synchronously
