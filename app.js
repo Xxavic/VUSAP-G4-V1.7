@@ -2652,6 +2652,11 @@ function describeNotificationRecipient(n){
       const match = list.find(p => (p.reg || p.id) === n.recipientId);
       if(match) return match.name;
     }
+    // A raw Supabase UUID (e.g. deletion decisions) isn't readable — name the role instead.
+    if(/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(n.recipientId)){
+      const single = { student:'Student', lecturer:'Lecturer', registrar:'Registrar', administrator:'Administrator' };
+      return single[n.recipientRole] || n.recipientRole;
+    }
     return n.recipientId;
   }
   const roleLabel = { student:'Students', lecturer:'Lecturers', registrar:'Registrars', all:'Everyone' };
