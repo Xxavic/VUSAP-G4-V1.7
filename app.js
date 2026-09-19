@@ -186,6 +186,17 @@ async function authSignOut() {
 async function authRequestPasswordReset(identifier) {
   if (LIVE_BACKEND) {
     try {
+      // Accounts log in with a synthetic <universityId>@vusap.internal address,
+      // so Supabase's own reset email (below) goes nowhere for them. The
+      // request-password-reset Edge Function finds the real email on the
+      // profile and sends the link there. If it isn't deployed / errors, fall
+      // through to the old direct call rather than losing the feature.
+      const { error: fnError } = await SUPABASE_CLIENT.functions.invoke('request-password-reset', {
+        body: { identifier, redirectTo: `${location.origin}${location.pathname}` },
+      });
+      if (!fnError) return { ok: true, live: true };
+      logError('request-password-reset function', fnError);
+
       const email = normalizeAuthIdentifier(identifier);
       const { error } = await SUPABASE_CLIENT.auth.resetPasswordForEmail(email, {
         redirectTo: `${location.origin}${location.pathname}`,
@@ -5380,6 +5391,9 @@ function renderRegister(opts){
 
   const title = isLecturer ? 'My Students' : 'Register';
 
+  // Fills #deletionRequestsCard once this HTML is in the DOM.
+  if(canManage && LIVE_BACKEND) setTimeout(loadPendingDeletionRequests, 0);
+
   const facultyChipsHtml = !isLecturer ? `
     <div class="dept-chip-row">
       ${(isRegistrar ? FACULTY_COUNTS.filter(d=>d.key===fk) : FACULTY_COUNTS).map(d=>`
@@ -5409,6 +5423,7 @@ function renderRegister(opts){
   <div class="content" style="padding-bottom:${canManage ? '90px' : '24px'};">
     ${isLecturer ? `<div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 14px;">Students enrolled in your courses — read only</div>` : ''}
     ${facultyChipsHtml}
+    ${canManage && LIVE_BACKEND ? `<div id="deletionRequestsCard"></div>` : ''}
     <div class="search-wrap">
       ${ICONS.search}
       <input class="input" placeholder="Search by name or ID..." oninput="filterRegister()" id="registerSearch" />
@@ -8085,6 +8100,12 @@ function openAccountDetail(personId){
       <button class="btn btn-ghost" style="color:var(--absent); border-color:#fecaca;" onclick="suspendAccount('${personId}')">${ICONS.close} Suspend Account</button>`;
   }
 
+  // Students with no records yet can be deleted and re-enrolled (Registrar
+  // requests, Administrator approves). Filled in async — eligibility is
+  // checked server-side by the delete-user Edge Function.
+  const deletionSlot = (LIVE_BACKEND && person.role === 'student' && person.hasAccount && !isSelf)
+    ? `<div id="deletionSection" style="margin-top:14px;"></div>` : '';
+
   body.innerHTML = `
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
       <div class="avatar" style="width:48px; height:48px; font-size:16px;">${initials(person.name)}</div>
@@ -8099,9 +8120,201 @@ function openAccountDetail(personId){
     </div>
     ${statusSection}
     ${actionSection}
+    ${deletionSlot}
   `;
 
   openSheet('accountDetailSheet');
+  if(deletionSlot) loadDeletionSection(personId);
+}
+
+// ---------- DELETE + RE-ENROLL A STUDENT WITH NO RECORDS ----------
+// Registrar requests (with a reason), Administrator approves or deletes
+// directly after a caution. All rules are enforced by the delete-user Edge
+// Function; this is only the UI. See that function's header for the flow.
+
+async function callDeleteUser(payload){
+  try {
+    const { data, error } = await SUPABASE_CLIENT.functions.invoke('delete-user', { body: payload });
+    if(error){
+      // functions.invoke hides the JSON error body on non-2xx — dig it out.
+      let msg = error.message || String(error);
+      try { const j = await error.context?.json?.(); if(j?.error) msg = j.error; } catch(_e) {}
+      return { error: msg };
+    }
+    if(data?.error) return { error: data.error };
+    return data;
+  } catch(e){
+    return { error: String(e) };
+  }
+}
+
+async function loadDeletionSection(personId){
+  const slot = document.getElementById('deletionSection');
+  if(!slot) return;
+  const isAdmin = State.role === 'administrator';
+  const st = await callDeleteUser({ action: 'status', universityId: personId });
+  const slotNow = document.getElementById('deletionSection');
+  if(!slotNow) return; // sheet closed / changed while loading
+  if(st.error){ slotNow.innerHTML = ''; logError('Deletion status', st.error); return; }
+
+  const box = (inner) => { slotNow.innerHTML = `<div class="info-box">${inner}</div>`; };
+
+  if(st.pending){
+    const p = st.pending;
+    if(isAdmin){
+      box(`
+        <div class="k">Deletion requested</div>
+        <div class="v" style="font-size:13px;">${escapeHtmlText(p.requested_by_name)} asked to delete this account.</div>
+        <div style="font-size:12px; color:var(--ink-soft); margin-top:6px;">Reason: ${escapeHtmlText(p.reason)}</div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button class="btn btn-ghost" style="flex:1;" onclick="decideDeletion(${p.id}, 'reject', '${personId}')">Reject</button>
+          <button class="btn btn-ghost" style="flex:1; color:var(--absent); border-color:#fecaca;" onclick="showDeletionCaution('${personId}', ${p.id})">Review &amp; delete</button>
+        </div>`);
+    } else {
+      box(`
+        <div class="k">Deletion requested</div>
+        <div class="v" style="font-size:13px;">Waiting for the Administrator's approval.</div>
+        <div style="font-size:12px; color:var(--ink-soft); margin-top:6px;">Reason: ${escapeHtmlText(p.reason)}</div>`);
+    }
+    return;
+  }
+
+  if(!st.eligible){
+    box(`
+      <div class="k">Delete &amp; re-enroll</div>
+      <div style="font-size:12px; color:var(--ink-soft); line-height:1.5;">Not available — this student already has ${st.blockers.join(', ')}. Suspend the account instead.</div>`);
+    return;
+  }
+
+  if(isAdmin){
+    box(`
+      <div class="k">Delete &amp; re-enroll</div>
+      <div style="font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:10px;">This student has no enrollments, attendance or tickets, so the account can be deleted and re-enrolled.</div>
+      <button class="btn btn-ghost" style="color:var(--absent); border-color:#fecaca;" onclick="showDeletionCaution('${personId}', null)">Delete Account…</button>`);
+  } else {
+    box(`
+      <div class="k">Delete &amp; re-enroll</div>
+      <div style="font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:10px;">This student has no records yet. If the account was created by mistake, ask the Administrator to approve deleting it so you can enroll them again.</div>
+      <textarea class="input" id="deletionReason" rows="2" placeholder="Reason (required) — e.g. wrong email, password lost"></textarea>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="submitDeletionRequest('${personId}')">Request Deletion</button>`);
+  }
+}
+
+// Pending deletion requests at the top of Register. RLS scopes the read: an
+// Administrator sees all, a Registrar only their own faculty's. Tapping a row
+// opens that student's account sheet, where the approve/reject controls live.
+async function loadPendingDeletionRequests(){
+  const card = document.getElementById('deletionRequestsCard');
+  if(!card) return;
+  const { data: rows, error } = await SUPABASE_CLIENT
+    .from('account_deletion_requests')
+    .select('id, target_university_id, target_name, reason, requested_by_name, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  const cardNow = document.getElementById('deletionRequestsCard');
+  if(!cardNow) return;
+  if(error){ logError('Loading deletion requests', error); cardNow.innerHTML = ''; return; }
+  if(!rows.length){ cardNow.innerHTML = ''; return; }
+
+  const isAdmin = State.role === 'administrator';
+  cardNow.innerHTML = `
+    <div class="card card-pad" style="margin-bottom:14px; border:1.5px solid #fecaca;">
+      <div class="section-head-row">
+        <div class="section-title" style="margin-bottom:0;">Pending deletion requests</div>
+        <span style="font-size:11px;color:#b91c1c;font-weight:700;">${rows.length}</span>
+      </div>
+      ${rows.map(r => `
+        <div style="padding:10px 0; border-top:1px solid var(--line, #eee); cursor:pointer;" onclick="openAccountDetail('${escapeHtmlText(r.target_university_id)}')">
+          <div style="font-weight:700; font-size:13px;">${escapeHtmlText(r.target_name)}</div>
+          <div style="font-size:11.5px; color:var(--ink-faint);">${escapeHtmlText(r.target_university_id)} · requested by ${escapeHtmlText(r.requested_by_name)}</div>
+          <div style="font-size:12px; color:var(--ink-soft); margin-top:3px;">${escapeHtmlText(r.reason)}</div>
+          <div style="font-size:11.5px; font-weight:700; color:var(--theme-primary); margin-top:4px;">${isAdmin ? 'Tap to review' : 'Awaiting Administrator'}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// Minimal escaper — reasons and names are user-typed and end up in innerHTML.
+function escapeHtmlText(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function submitDeletionRequest(personId){
+  const reason = (document.getElementById('deletionReason')?.value || '').trim();
+  if(!reason){ showToast('Please give a reason'); return; }
+  const res = await callDeleteUser({ action: 'request', universityId: personId, reason });
+  if(res.error){ showToast(res.error); return; }
+  const name = res.request.target_name;
+  pushNotification({
+    recipientRole: 'administrator', recipientId: null, type: 'accountDeletionRequested',
+    title: 'Account deletion requested',
+    body: `${State.user.name} asks to delete ${name} (${personId}), who has no records. Reason: ${reason}. Open Register to review.`,
+    from: State.user.name, fromId: State.user.id,
+  });
+  logAuditEvent(State.user?.id||'system', State.user?.name||'System', 'Account deletion requested', personId, `${name}: ${reason}`);
+  showToast('Request sent to the Administrator');
+  loadDeletionSection(personId);
+  loadPendingDeletionRequests();
+}
+
+// The caution the Administrator sees before anything is deleted.
+function showDeletionCaution(personId, requestId){
+  const slot = document.getElementById('deletionSection');
+  if(!slot) return;
+  slot.innerHTML = `
+    <div class="info-box" style="border:1.5px solid #fecaca; background:#fef2f2;">
+      <div class="k" style="color:#b91c1c;">Permanent — please confirm</div>
+      <div style="font-size:12.5px; color:var(--ink); line-height:1.55; margin:6px 0 12px;">
+        You're about to delete <b>${escapeHtmlText(personId)}</b>'s login and profile. This can't be undone.
+        Only do this if the account was created by mistake. It's re-checked for records first, and if the
+        student has any, nothing is deleted.
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="loadDeletionSection('${personId}')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1; background:#b91c1c;" onclick="confirmDeleteStudent('${personId}', ${requestId})">Delete permanently</button>
+      </div>
+    </div>`;
+}
+
+async function confirmDeleteStudent(personId, requestId){
+  const res = requestId
+    ? await callDeleteUser({ action: 'decide', requestId, decision: 'approve' })
+    : await callDeleteUser({ action: 'delete', universityId: personId });
+  if(res.error){ showToast(res.error); loadDeletionSection(personId); return; }
+
+  const name = USERS[personId]?.name || res.request?.target_name || personId;
+  // Drop the local copies so the deleted student disappears immediately.
+  delete USERS[personId];
+  const idx = STUDENTS.findIndex(s => s.reg === personId);
+  if(idx !== -1) STUDENTS.splice(idx, 1);
+  LIVE_PROVISIONED_IDS.delete(personId);
+
+  if(res.request){
+    pushNotification({
+      recipientRole: 'registrar', recipientId: res.request.requested_by_id, type: 'accountDeletionDecided',
+      title: 'Deletion approved',
+      body: `${name} (${personId}) was deleted. You can now enroll them again.`,
+      from: State.user.name, fromId: State.user.id,
+    });
+  }
+  logAuditEvent(State.user?.id||'system', State.user?.name||'System', 'Account deleted', personId, `${name} deleted (no records)`);
+  closeSheet('accountDetailSheet');
+  showToast(`${name} deleted`);
+  navigate('register', { replace: true });
+}
+
+async function decideDeletion(requestId, decision, personId){
+  const res = await callDeleteUser({ action: 'decide', requestId, decision });
+  if(res.error){ showToast(res.error); return; }
+  const name = res.request?.target_name || personId;
+  pushNotification({
+    recipientRole: 'registrar', recipientId: res.request.requested_by_id, type: 'accountDeletionDecided',
+    title: 'Deletion request rejected',
+    body: `The Administrator rejected deleting ${name} (${personId}).`,
+    from: State.user.name, fromId: State.user.id,
+  });
+  showToast('Request rejected');
+  loadDeletionSection(personId);
+  loadPendingDeletionRequests();
 }
 
 function suspendAccount(personId){
