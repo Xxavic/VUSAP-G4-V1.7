@@ -47,7 +47,21 @@ async function authSignIn(universityId, password) {
       // existing handling of the same ambiguity. Shared via
       // normalizeAuthIdentifier() so both places can't drift apart.
       const email = normalizeAuthIdentifier(universityId);
-      const { data, error } = await SUPABASE_CLIENT.auth.signInWithPassword({ email, password });
+      let { data, error } = await SUPABASE_CLIENT.auth.signInWithPassword({ email, password });
+
+      // A real email usually isn't the login itself (logins are
+      // <universityId>@vusap.internal), so a miss on an '@' identifier gets
+      // one more try through the email-login Edge Function, which matches
+      // the email against users.email server-side and returns a session.
+      if (error && universityId.includes('@')) {
+        const { data: viaEmail } = await SUPABASE_CLIENT.functions.invoke('email-login', {
+          body: { email: universityId.trim(), password },
+        });
+        if (viaEmail?.session) {
+          const { data: sess, error: setErr } = await SUPABASE_CLIENT.auth.setSession(viaEmail.session);
+          if (!setErr && sess?.user) { data = sess; error = null; }
+        }
+      }
       if (error) return { user: null, role: null, error: error.message };
 
       // Fetch the public profile row that carries role + display name.
