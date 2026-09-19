@@ -6,9 +6,7 @@
 
 ## Read this part first
 
-Two items need attention regardless of what you decide about the rest:
-
-1. **The public login screen exposes real-looking login credentials for all four roles, including Administrator, to anyone.** A "TEST ACCOUNTS" box on the live, unauthenticated login screen lets any visitor auto-fill and sign in with Student/Lecturer/Registrar/Administrator demo credentials with one click. Nothing gates it — no environment check, no build flag. This is live right now on the public site. This is the single most urgent finding in this audit and is unrelated to the broader mock-data cleanup question — it should be pulled regardless of what happens with the rest.
+1. ~~**The public login screen exposes real-looking login credentials for all four roles, including Administrator, to anyone.**~~ **RESOLVED (Sept 2026).** The "TEST ACCOUNTS" box and its `fillDemo()` helper have been removed from `app.js` entirely (commit `d357103`) — not just hidden, since the credential strings were also shipped in plaintext in the file itself, reachable without ever clicking the box. The five live account passwords (`VU-CSF-2401-0001-DAY`, `VU-CSF-2401-0002-DAY`, `VU-LEC-101`, `VU-REG-COMP-001`, `VU-ADM-001`) have also been rotated directly in Supabase, so the old values are dead even where they leaked (e.g. earlier git history). No further action needed on this item.
 2. **The core problem is a repeated pattern, not one bad file.** Ten-plus data structures across the app follow the same shape: a hardcoded mock array/object ships as the default, and the "load real data" function that's supposed to replace it either (a) only overwrites entries that share a matching key and leaves every non-matching mock entry in place forever, (b) deliberately falls back to mock whenever the live result is empty ("an empty list looks broken"), (c) has no live loader at all, or (d) is a bare hardcoded number with no data source. Because mock IDs/codes/names can coincidentally collide with real live ones (this already happened twice — Afayo's course codes, and the coordinator's programme/year), this isn't just "stale demo data sitting unused," it's a live mechanism for real accounts to inherit fictional notifications, classmates, courses, and stats.
 
 Already fixed this week (before this report): the 97% attendance-rate constant on Student Home, the stale mock course list bleeding notifications onto a newly-enrolled student, and the Class Coordinator's fake roster. Everything below is what's left.
@@ -31,8 +29,8 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 
 ### USERS (mock credential store)
 - **What:** hardcoded username/password pairs used to demo-login as each role without touching Supabase.
-- **Risk:** harmless by itself (it's just a local JS object), but it's the data source for the "TEST ACCOUNTS" box flagged at the top of this report — that's the actual exposure, not this array.
-- **Recommendation:** once the login-screen exposure (item 1 above) is fixed, decide whether to keep this array at all behind a `LIVE_BACKEND === false` (dev-only) gate, or delete it outright once you're confident you won't need offline/demo mode anymore.
+- **Risk:** low now that the login-screen exposure is fixed — these strings no longer match any live account's real password (rotated Sept 2026), so even if someone found them they'd only ever reach the offline/mock UI with fictional data, never a real account. Still sitting in plaintext in `app.js`, which is its own minor smell.
+- **Recommendation:** no urgency now, but still worth deciding: keep this array behind a `LIVE_BACKEND === false` (dev-only) gate, or delete it outright once you're confident you won't need offline/demo mode anymore.
 
 ---
 
