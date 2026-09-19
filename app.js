@@ -11255,9 +11255,9 @@ function handleSupportTicketSubmit(e){
   // Notify whoever should see this first: the reporter's own faculty
   // Registrar, or — for a Registrar's own report — every Administrator.
   if(ticketObj.tier === 'administrator'){
-    pushNotification({ recipientRole:'administrator', recipientId:null, type:'supportTicket', title:'New support ticket', body:`${State.user.name}: ${subject}`, from:State.user.name, fromId:State.user.id });
+    pushNotification({ recipientRole:'administrator', recipientId:null, type:'supportTicket', title:'New support ticket', body:`${State.user.name}: ${subject} — ${description}`, from:State.user.name, fromId:State.user.id });
   } else {
-    pushNotification({ recipientRole:'registrar', recipientId: registrarIdForFacultyKey(ticketObj.facultyKey), type:'supportTicket', title:'New support ticket', body:`${State.user.name} (${State.role}): ${subject}`, from:State.user.name, fromId:State.user.id });
+    pushNotification({ recipientRole:'registrar', recipientId: registrarIdForFacultyKey(ticketObj.facultyKey), type:'supportTicket', title:'New support ticket', body:`${State.user.name} (${State.role}): ${subject} — ${description}`, from:State.user.name, fromId:State.user.id });
   }
 
   closeSheet('newSupportTicketSheet');
