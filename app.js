@@ -190,7 +190,16 @@ async function authRequestPasswordReset(identifier) {
       const { error } = await SUPABASE_CLIENT.auth.resetPasswordForEmail(email, {
         redirectTo: `${location.origin}${location.pathname}`,
       });
-      // Always return success — same "don't reveal account existence" policy.
+      // Confirmed live bug (Sept 2026): `error` was captured but never
+      // checked or logged, so a real failure here (Supabase's default
+      // email sending is unconfigured/rate-limited, no custom SMTP set
+      // up, bad redirect URL, etc.) was silently swallowed — the UI
+      // always claimed "Reset instructions sent" with zero trace anywhere,
+      // even in the console. Still returning ok:true either way is
+      // deliberate (same "don't reveal account existence" policy every
+      // other auth flow here follows) — logging it just makes a real
+      // failure visible to whoever's debugging, instead of invisible.
+      if (error) logError('Live password reset', error);
       return { ok: true, live: true };
     } catch(e) {
       console.warn('Live password reset failed, falling back to mock:', e);
@@ -301,8 +310,17 @@ async function resumeSupabaseSession() {
     // Check if this is a password-reset redirect (hash contains type=recovery).
     const hash = window.location.hash;
     if (hash.includes('type=recovery') || hash.includes('type=signup')) {
-      // Let the reset flow handle it — renderApp() will show the login screen
-      // and the URL token will allow updateUser() to work.
+      // Confirmed live bug (Sept 2026): this used to just `return` here on
+      // the assumption that "renderApp() will show the login screen and the
+      // URL token will allow updateUser() to work" — but nothing ever
+      // called renderResetPasswordForm() for a fresh tab arriving via a
+      // real emailed recovery link, so the person landed on the ordinary
+      // login screen with no way to actually set a new password. Supabase
+      // has already authenticated them into a recovery session by this
+      // point (that's what getSession() above just returned), so go
+      // straight to the reset form instead of falling through to a normal
+      // login/boot.
+      await renderResetPasswordForm();
       return;
     }
 
@@ -3771,10 +3789,52 @@ function renderForgotPasswordSent(identifier, liveReset){
   document.getElementById('bottomNav').style.display = 'none';
 }
 
-function renderResetPasswordForm(){
-  if(!passwordResetTarget){ renderApp(); return; }
+// Confirmed live bug (Sept 2026): this hard-required the mock
+// passwordResetTarget pair and bailed to renderApp() otherwise — meaning
+// even after resumeSupabaseSession() is fixed to call this on a real
+// recovery redirect, it would still immediately bounce a live user back
+// to the login screen, since passwordResetTarget is only ever set by the
+// MOCK branch of authRequestPasswordReset(), never the live one. Now also
+// checks for a live Supabase recovery session and resolves the display
+// name/id from the live profile in that case.
+async function renderResetPasswordForm(){
+  let displayName = null;
+  let displayId = null;
+
+  if (LIVE_BACKEND) {
+    try {
+      const { data: { session } } = await SUPABASE_CLIENT.auth.getSession();
+      if (session) {
+        const { data: profile } = await SUPABASE_CLIENT
+          .from('users')
+          .select('name, university_id')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          displayName = profile.name;
+          displayId = profile.university_id || session.user.email;
+        }
+      }
+    } catch(e) {
+      console.warn('renderResetPasswordForm: live session/profile lookup failed:', e);
+    }
+  }
+
+  if (!displayName && passwordResetTarget) {
+    const [userId, user] = passwordResetTarget;
+    displayName = user.name;
+    displayId = userId;
+  }
+
+  if (!displayName) {
+    // Neither a live recovery session nor a mock target — most likely an
+    // expired/already-used reset link, or this screen reached directly.
+    if (LIVE_BACKEND) showToast("This reset link has expired or is invalid — request a new one");
+    renderApp();
+    return;
+  }
+
   pushAuthScreenState('resetForm');
-  const [userId, user] = passwordResetTarget;
   document.getElementById('screens').innerHTML = `<div class="screen active">
   <div class="login-screen">
     <div class="login-hero">
@@ -3786,8 +3846,8 @@ function renderResetPasswordForm(){
     </div>
     <div class="login-form-area">
       <div class="login-card">
-        <h1>Hi, ${firstName(user.name)}</h1>
-        <p class="sub">Set a new password for ${userId}.</p>
+        <h1>Hi, ${firstName(displayName)}</h1>
+        <p class="sub">Set a new password for ${displayId}.</p>
         <form id="resetPwForm" onsubmit="return submitResetPassword(event)">
           <div class="field" style="margin-bottom:14px;">
             <label>New Password</label>
