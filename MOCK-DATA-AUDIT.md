@@ -86,10 +86,10 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **Recommendation:** use this as the reference pattern for fixing the others; just needs to also fire the dependents' recompute.
 
 ### SUSPICION_LOG / AUDIT_LOG / NOTIFICATIONS (seed data)
-- **What:** three separate structures, all sharing the identical "empty looks broken" bug — the loader deliberately keeps the mock seed rows whenever the live result comes back empty, on the same flawed reasoning that caused the notifications-before-account-existed bug you already found.
-- ~~**Extra risk on AUDIT_LOG:** its mock rows also ship inside a real "backup" export~~ **AUDIT_LOG RESOLVED (Sept 2026).** Now clears to an honest empty log on a genuinely-empty live result instead of keeping the 5 fictional rows, and visiting Backups or Database Management now also refreshes it first — so `exportSnapshot()`'s real JSON backup can no longer ship fabricated audit history. Commit `b8b6b63`.
-- **Extra risk on NOTIFICATIONS:** the mock seed includes an entry with `recipientRole: 'all'`, meaning that one fake notification broadcasts to literally every real user of every role, not just a coincidentally-matching one. Still open.
-- **Recommendation:** SUSPICION_LOG and the NOTIFICATIONS seed still need the same fix pattern just proven twice now (STUDENT_COURSES, AUDIT_LOG) — purge on genuinely-empty live result instead of falling back to mock.
+~~- **What:** three separate structures, all sharing the identical "empty looks broken" bug — the loader deliberately keeps the mock seed rows whenever the live result comes back empty, on the same flawed reasoning that caused the notifications-before-account-existed bug you already found.~~ **ALL THREE RESOLVED (Sept 2026).**
+- **AUDIT_LOG:** now clears to an honest empty log on a genuinely-empty live result instead of keeping the 5 fictional rows, and visiting Backups or Database Management now also refreshes it first — so `exportSnapshot()`'s real JSON backup can no longer ship fabricated audit history. Commit `b8b6b63`.
+- **NOTIFICATIONS:** now clears to an honest empty inbox on a genuinely-empty live result, so the mock `recipientRole:'all'` seed row (which broadcast to literally every real user of every role) can no longer survive past the first real login. Commit `9190ce1`.
+- **SUSPICION_LOG:** same fix — clears to an empty fraud-flag list instead of leaving 3 named students (David Kiggundu, Fred Kibirige, Opio Emmanuel) permanently flagged for cheating in every fresh install. Visiting Database Management now also refreshes it first, matching the AUDIT_LOG fix, so its live count on that screen stays accurate. Commit `9190ce1`.
 
 ### ANNOUNCEMENTS
 - **What:** hardcoded announcements.
