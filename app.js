@@ -3584,18 +3584,6 @@ function renderLogin(){
           </div>
           <p class="demo-note">Student · Lecturer · Registrar · Administrator</p>
         </form>
-        <div class="demo-box">
-          <div class="t" style="cursor:pointer;user-select:none;" onclick="this.parentElement.classList.toggle('demo-open')">
-            TEST ACCOUNTS <span id="demoToggleHint" style="font-weight:400;text-transform:none;font-size:10px;color:var(--ink-faint);">(tap to reveal)</span>
-          </div>
-          <div class="demo-rows-hidden">
-            <div class="demo-row" onclick="fillDemo('VU-CSF-2401-0002-DAY','student2026')"><span>Student:</span> <b>...0002-DAY / student2026</b></div>
-            <div class="demo-row" onclick="fillDemo('VU-CSF-2401-0001-DAY','student2026')"><span>Student + Coord.:</span> <b>...0001-DAY / student2026</b></div>
-            <div class="demo-row" onclick="fillDemo('VU-LEC-101','lecturer2026')"><span>Lecturer:</span> <b>VU-LEC-101 / lecturer2026</b></div>
-            <div class="demo-row" onclick="fillDemo('VU-REG-COMP-001','reg2026')"><span>Registrar:</span> <b>...COMP-001 / reg2026</b></div>
-            <div class="demo-row" onclick="fillDemo('VU-ADM-001','admin2026')"><span>Administrator:</span> <b>VU-ADM-001 / admin2026</b></div>
-          </div>
-        </div>
       </div>
       <div class="login-footer">Version 1.0 · QRAST Attendance Portal &nbsp;·&nbsp; <span id="backendStatus" style="color:var(--ink-faint);">checking…</span></div>
     </div>
@@ -4017,11 +4005,6 @@ async function submitResetPassword(e){
   showToast("Password reset. You can now sign in.");
   renderApp();
   return false;
-}
-
-function fillDemo(id, pw){
-  document.getElementById('staffId').value = id;
-  document.getElementById('password').value = pw;
 }
 
 async function checkBackendStatus(){
