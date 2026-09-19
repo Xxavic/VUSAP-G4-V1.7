@@ -2162,11 +2162,14 @@ const PROGRAMME_ANALYTICS = [{"programme": "Computer Science", "facultyKey": "co
 
 const FACULTY_ANALYTICS = [{"faculty": "Faculty of Computing & Informatics", "facultyKey": "computing", "students": 113, "programmes": 3, "avgAttendance": 81}, {"faculty": "Faculty of Business & Management", "facultyKey": "business", "students": 111, "programmes": 3, "avgAttendance": 82}, {"faculty": "Faculty of Engineering", "facultyKey": "engineering", "students": 111, "programmes": 3, "avgAttendance": 82}, {"faculty": "Faculty of Science", "facultyKey": "science", "students": 111, "programmes": 3, "avgAttendance": 85}, {"faculty": "Faculty of Arts & Education", "facultyKey": "arts", "students": 74, "programmes": 2, "avgAttendance": 83}];
 
-const LECTURER_COMPLIANCE = [
-  { lecturer:"Dr. Patrick Mukasa", sessionsHeld:18, sessionsExpected:20, complianceRate:90 },
-  { lecturer:"Prof. Sarah Akwango", sessionsHeld:16, sessionsExpected:16, complianceRate:100 },
-  { lecturer:"Mr. Alex Otim", sessionsHeld:11, sessionsExpected:14, complianceRate:79 },
-];
+// Confirmed live bug (Sept 2026): this used to be 3 permanently-hardcoded
+// fictional lecturers/numbers with no live branch at all, embedded
+// straight into a real Registrar-facing PDF/CSV export
+// (exportComplianceReport()) -- anyone exporting it got fabricated
+// compliance numbers presented as real. Starts empty now; populated only
+// by loadLecturerComplianceFromSupabase(), which computes real numbers
+// from live data (see that function, just below scopedLecturerCompliance()).
+const LECTURER_COMPLIANCE = [];
 
 // Full staff/people records — used by the Administrator's unified People directory.
 // Students are pulled live from STUDENTS; these cover the other three roles.
@@ -2417,6 +2420,15 @@ const SYSTEM_SETTINGS = {
   supportEmail: 'support@vu.ac.ug',
   academicYear: '2025/2026',
   logoDataUri: null, // custom institute crest; null falls back to the default VU shield
+  // Anchor date for Lecturer Compliance's real "sessions expected"
+  // calculation (see loadLecturerComplianceFromSupabase()) -- null until an
+  // Administrator sets it in System Settings. Deliberately NOT defaulted to
+  // today's date or any guessed value: a wrong guess here would just be a
+  // more sophisticated version of the fabricated compliance numbers this
+  // replaces. Chris confirmed (Sept 2026): store it here, keep the model
+  // simple (every week since this date counts, no holiday/break exclusions
+  // for now).
+  termStartDate: null, // 'YYYY-MM-DD' once set
 };
 
 // ============================================================
@@ -3488,17 +3500,114 @@ function scopedProgrammeAnalytics(){
   return PROGRAMME_ANALYTICS.filter(p => p.facultyKey === fk);
 }
 
+// Resolves a lecturer's programme/dept for faculty-scoping purposes: the
+// LECTURERS directory first (matches the pre-existing behaviour), falling
+// back to a confirmed-live SCHEDULE slot taught by that name if they're not
+// in it. LECTURERS has no live loader of its own (a separate, already-
+// tracked gap -- see MOCK-DATA-AUDIT.md), so without this fallback a real,
+// live lecturer who's simply missing from that mock directory would drop
+// out of a real Registrar's scoped compliance view entirely.
+function lecturerDeptForCompliance(name){
+  const lec = LECTURERS.find(x => x.name === name);
+  if(lec && lec.dept) return lec.dept;
+  for(const day of SCHEDULE){
+    const match = day.lectures.find(l => l.lecturer === name && l._liveSlotId && l.dept);
+    if(match) return match.dept;
+  }
+  return null;
+}
+
 function scopedLecturerCompliance(){
   // LECTURER_COMPLIANCE doesn't carry a faculty key (lecturers can span courses);
-  // scope it by matching lecturer name against LECTURERS' dept (programme), then
-  // resolving that programme's faculty.
+  // scope it by resolving each lecturer's programme (see
+  // lecturerDeptForCompliance() above), then that programme's faculty.
   const fk = currentRegistrarFacultyKey();
   if(!fk) return LECTURER_COMPLIANCE;
   return LECTURER_COMPLIANCE.filter(l => {
-    const lec = LECTURERS.find(x => x.name === l.lecturer);
-    if(!lec || !lec.dept) return false;
-    return facultyKeyForProgrammeName(lec.dept) === fk;
+    const dept = lecturerDeptForCompliance(l.lecturer);
+    if(!dept) return false;
+    return facultyKeyForProgrammeName(dept) === fk;
   });
+}
+
+// How many weeks have elapsed since SYSTEM_SETTINGS.termStartDate, counting
+// the current week as week 1 (day 0-6 of the term = week 1, day 7-13 = week
+// 2, etc). Returns null if no term start date is set yet, 0 if the date is
+// in the future (term hasn't started), otherwise >= 1.
+function weeksSinceTermStart(){
+  if(!SYSTEM_SETTINGS.termStartDate) return null;
+  const start = new Date(SYSTEM_SETTINGS.termStartDate + 'T00:00:00');
+  if(isNaN(start.getTime())) return null;
+  const daysSince = Math.floor((Date.now() - start.getTime()) / 86400000);
+  if(daysSince < 0) return 0;
+  return Math.floor(daysSince / 7) + 1;
+}
+
+// ------------------------------------------------------------
+// LECTURER COMPLIANCE -- real computation from live data (Sept 2026).
+// Replaces 3 permanently-hardcoded fictional lecturers/numbers that used
+// to feed straight into a real Registrar-facing PDF/CSV export
+// (exportComplianceReport()). "Sessions expected" needs an academic-term
+// anchor that didn't exist anywhere in this app before -- Chris decided
+// (Sept 2026) that goes in System Settings as termStartDate, and that the
+// model stays simple for now: every week since that date counts toward
+// "expected", no holiday/break exclusions.
+//
+// "Sessions held" = real broadcast rows in the live `sessions` table,
+// grouped by teacher_id, since termStartDate.
+// "Sessions expected per week" = count of that lecturer's own
+// CONFIRMED-LIVE SCHEDULE slots (l._liveSlotId set) across the whole week
+// -- never a still-mock timetable entry nobody actually teaches.
+// complianceRate is null (not a fabricated 0%) when a lecturer has no
+// live-confirmed weekly slots to measure against yet -- rendered as "-".
+// ------------------------------------------------------------
+async function loadLecturerComplianceFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  if(!SYSTEM_SETTINGS.termStartDate){
+    // Nothing honest to compute without a term anchor -- stay empty rather
+    // than showing stale numbers from a previous load.
+    LECTURER_COMPLIANCE.length = 0;
+    return;
+  }
+  try {
+    const weeks = weeksSinceTermStart();
+
+    const { data: lecturerRows, error: lecErr } = await SUPABASE_CLIENT
+      .from('users').select('id, name').eq('role', 'lecturer');
+    if(lecErr || !lecturerRows){
+      console.warn('loadLecturerComplianceFromSupabase: lecturer fetch failed:', lecErr);
+      return;
+    }
+
+    const { data: sessionRows, error: sessErr } = await SUPABASE_CLIENT
+      .from('sessions').select('teacher_id').gte('date', SYSTEM_SETTINGS.termStartDate);
+    if(sessErr) console.warn('loadLecturerComplianceFromSupabase: sessions fetch failed:', sessErr);
+    const heldCountByTeacherId = {};
+    (sessionRows||[]).forEach(r => {
+      if(!r.teacher_id) return;
+      heldCountByTeacherId[r.teacher_id] = (heldCountByTeacherId[r.teacher_id]||0) + 1;
+    });
+
+    const weeklyByName = {};
+    SCHEDULE.forEach(day => day.lectures.forEach(l => {
+      if(!l._liveSlotId) return; // never count a still-mock timetable slot as "expected"
+      weeklyByName[l.lecturer] = (weeklyByName[l.lecturer]||0) + 1;
+    }));
+
+    const computed = lecturerRows.map(u => {
+      const weekly = weeklyByName[u.name] || 0;
+      const expected = (!weeks || weeks <= 0) ? 0 : weekly * weeks;
+      const held = heldCountByTeacherId[u.id] || 0;
+      const rate = expected > 0 ? Math.round(Math.min(100, (held / expected) * 100)) : null;
+      return { lecturer: u.name, sessionsHeld: held, sessionsExpected: expected, complianceRate: rate };
+    });
+
+    LECTURER_COMPLIANCE.length = 0;
+    LECTURER_COMPLIANCE.push(...computed);
+    refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadLecturerComplianceFromSupabase error:', e);
+  }
 }
 
 function showToast(msg, icon){
@@ -9590,6 +9699,7 @@ async function loadSystemSettingsFromSupabase(){
     SYSTEM_SETTINGS.allowSelfEnrollment = data.allow_self_enrollment ?? SYSTEM_SETTINGS.allowSelfEnrollment;
     SYSTEM_SETTINGS.maintenanceMode = data.maintenance_mode ?? SYSTEM_SETTINGS.maintenanceMode;
     SYSTEM_SETTINGS.logoDataUri = data.logo_data_uri ?? null;
+    SYSTEM_SETTINGS.termStartDate = data.term_start_date ?? SYSTEM_SETTINGS.termStartDate;
 
     // Unlike FACULTIES/PROGRAMMES etc., this data can already be on screen
     // by the time this resolves (the splash paints synchronously at boot,
@@ -9617,6 +9727,7 @@ async function saveSystemSettingsToSupabase(){
       allow_self_enrollment: SYSTEM_SETTINGS.allowSelfEnrollment,
       maintenance_mode: SYSTEM_SETTINGS.maintenanceMode,
       logo_data_uri: SYSTEM_SETTINGS.logoDataUri,
+      term_start_date: SYSTEM_SETTINGS.termStartDate,
       updated_at: new Date().toISOString(),
     });
     if(error){ console.warn('saveSystemSettingsToSupabase failed:', error); return false; }
@@ -9660,6 +9771,11 @@ function renderSystemSettings(){
       <div class="field" style="margin-top:14px;">
         <label>Academic Year</label>
         <input class="input" id="ssAcademicYear" value="${s.academicYear}" placeholder="e.g. 2025/2026" />
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Term Start Date</label>
+        <input class="input" type="date" id="ssTermStartDate" value="${s.termStartDate||''}" />
+        <div style="font-size:11px; color:var(--ink-faint); margin-top:5px; line-height:1.5;">Anchors the Registrar's Lecturer Compliance report — "sessions expected" counts every week from this date. Update it at the start of each new term.</div>
       </div>
     </div>
 
@@ -9744,6 +9860,7 @@ async function saveSystemSettings(){
   SYSTEM_SETTINGS.portalName = document.getElementById('ssPortalName')?.value.trim() || SYSTEM_SETTINGS.portalName;
   SYSTEM_SETTINGS.supportEmail = document.getElementById('ssSupportEmail')?.value.trim() || SYSTEM_SETTINGS.supportEmail;
   SYSTEM_SETTINGS.academicYear = document.getElementById('ssAcademicYear')?.value.trim() || SYSTEM_SETTINGS.academicYear;
+  SYSTEM_SETTINGS.termStartDate = document.getElementById('ssTermStartDate')?.value.trim() || null;
   SYSTEM_SETTINGS.autoLogoutMinutes = autoLogout;
   SYSTEM_SETTINGS.requireEmailVerification = document.getElementById('ssEmailVerif')?.checked ?? SYSTEM_SETTINGS.requireEmailVerification;
   SYSTEM_SETTINGS.allowSelfEnrollment = document.getElementById('ssSelfEnroll')?.checked ?? SYSTEM_SETTINGS.allowSelfEnrollment;
@@ -11775,19 +11892,27 @@ function renderCompliance(){
 
     <div class="card card-pad">
       <div class="section-title">${ICONS.scaleIcon} Session Delivery Rate</div>
+      ${!SYSTEM_SETTINGS.termStartDate ? `
+      <div class="empty-state-sm">Term Start Date isn't set yet — ask your Administrator to set it in System Settings so compliance can be calculated.</div>
+      ` : `
       <div style="display:flex; flex-direction:column; gap:12px;">
-        ${scopedLecturerCompliance().map(l=>`
+        ${scopedLecturerCompliance().map(l=>{
+          const hasRate = l.complianceRate !== null && l.complianceRate !== undefined;
+          const color = !hasRate ? 'var(--ink-faint)' : (l.complianceRate>=90?'var(--present)':l.complianceRate>=80?'var(--late)':'var(--absent)');
+          return `
         <div>
           <div class="section-head-row" style="margin-bottom:6px;">
             <span style="font-size:13px; font-weight:700;">${l.lecturer}</span>
-            <span style="font-size:12.5px; font-weight:800; color:${l.complianceRate>=90?'var(--present)':l.complianceRate>=80?'var(--late)':'var(--absent)'};">${l.complianceRate}%</span>
+            <span style="font-size:12.5px; font-weight:800; color:${color};">${hasRate ? l.complianceRate+'%' : '—'}</span>
           </div>
           <div style="background:var(--unmarked-bg); border-radius:var(--radius-pill); height:8px; overflow:hidden;">
-            <div style="background:${l.complianceRate>=90?'var(--present)':l.complianceRate>=80?'var(--late)':'var(--absent)'}; height:100%; width:${l.complianceRate}%;"></div>
+            <div style="background:${color}; height:100%; width:${hasRate ? l.complianceRate : 0}%;"></div>
           </div>
-          <div style="font-size:11px; color:var(--ink-faint); margin-top:4px;">${l.sessionsHeld} of ${l.sessionsExpected} sessions held</div>
-        </div>`).join('') || `<div class="empty-state-sm">No lecturer data in your faculty</div>`}
+          <div style="font-size:11px; color:var(--ink-faint); margin-top:4px;">${hasRate ? `${l.sessionsHeld} of ${l.sessionsExpected} sessions held` : 'No live-scheduled sessions yet to measure against'}</div>
+        </div>`;
+        }).join('') || `<div class="empty-state-sm">No lecturer data in your faculty</div>`}
       </div>
+      `}
     </div>
 
     <div class="card card-pad">
@@ -11826,7 +11951,7 @@ function exportComplianceReport(format){
       `"${l.lecturer}"`,
       l.sessionsHeld,
       l.sessionsExpected,
-      l.complianceRate,
+      l.complianceRate ?? 'N/A',
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -11858,12 +11983,16 @@ function exportComplianceReport(format){
     <table>
       <thead><tr><th>Lecturer</th><th>Sessions Held</th><th>Sessions Expected</th><th>Compliance Rate</th></tr></thead>
       <tbody>
-        ${data.map(l=>`<tr>
+        ${data.map(l=>{
+          const hasRate = l.complianceRate !== null && l.complianceRate !== undefined;
+          const cls = !hasRate ? '' : (l.complianceRate>=90?'good':l.complianceRate>=80?'warn':'bad');
+          return `<tr>
           <td>${l.lecturer}</td>
           <td>${l.sessionsHeld}</td>
           <td>${l.sessionsExpected}</td>
-          <td class="${l.complianceRate>=90?'good':l.complianceRate>=80?'warn':'bad'}">${l.complianceRate}%</td>
-        </tr>`).join('')}
+          <td class="${cls}">${hasRate ? l.complianceRate+'%' : 'N/A'}</td>
+        </tr>`;
+        }).join('')}
       </tbody>
     </table>
     <script>window.onload=()=>window.print();<\/script>
@@ -12157,6 +12286,7 @@ function navigate(screenId, opts){
   if(screenId === 'notifications') loadNotificationsFromSupabase();
   if(screenId === 'sentNotifications') loadSentNotificationsFromSupabase();
   if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
+  if(screenId === 'compliance') loadLecturerComplianceFromSupabase();
   if(screenId === 'fraudCenter') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
