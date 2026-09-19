@@ -1809,9 +1809,22 @@ async function loadEnrollmentsFromSupabase(){
       return;
     }
     if(!rows || rows.length === 0){
-      // Table reachable but this student has no live enrollment rows yet
-      // (expected until enrollments are actually seeded per-student) —
-      // keep the mock course list rather than showing an empty schedule.
+      // Confirmed live bug (Sept 2026): this used to deliberately keep
+      // the MOCK demo course list on the reasoning that an empty schedule
+      // looked broken. But this function already returned at the top
+      // unless LIVE_BACKEND is on AND this is a real signed-in account
+      // (State.user.supabaseId) — by the time execution reaches here
+      // there is no legitimate demo/offline case left to protect, only a
+      // genuine live student who genuinely has zero enrollments yet.
+      // Keeping the mock list made her appear falsely enrolled in
+      // CSC3101...CSC3105 — course codes that collide with REAL live
+      // courses — which leaked real students'/lecturers' course-scoped
+      // notifications (e.g. Class Coordinator QR access broadcasts sent
+      // before her account even existed) onto her account, on top of a
+      // fake "Courses Enrolled" count and a fake schedule. Clear it
+      // instead, matching how getMyAttendanceRecords() already shows an
+      // honest "no records yet" rather than fabricated data.
+      STUDENT_COURSES.length = 0;
       return;
     }
 
@@ -2103,9 +2116,7 @@ const STUDENT_COURSES = [
   { code:"CSC3103", name:"Software Engineering", lecturer:"Dr. Patrick Mukasa", color:"#0f766e" },
   { code:"CSC3104", name:"Computer Networks", lecturer:"Prof. Sarah Akwango", color:"#d97706" },
   { code:"CSC3105", name:"Operating Systems", lecturer:"Mr. Ivan Tumwesigye", color:"#dc2626" },
-];
-
-const STUDENT_ATTENDANCE_SUMMARY = { rate: 97, present: 28, late: 2, absent: 1, totalSessions: 31 };
+]
 
 // Courses assigned to the demo lecturer (Dr. Patrick Mukasa)
 const LECTURER_COURSES = [
@@ -5932,7 +5943,22 @@ function renderStudentHome(){
       <div class="stat-tile" style="cursor:pointer;" onclick="navigate('myAttendance')" title="View my full attendance record">
         <div class="top"><span class="label">Attendance Rate</span>
           <span class="stat-icon" style="background:#ccfbf1; color:#0f766e;">${ICONS.trend}</span></div>
-        <div class="value">${STUDENT_ATTENDANCE_SUMMARY.rate}%</div>
+        <div class="value">${(() => {
+          // Confirmed live bug (Sept 2026): this used to always read
+          // STUDENT_ATTENDANCE_SUMMARY, a single hardcoded mock constant
+          // (97%) shown to every student regardless of their own real
+          // history — a brand-new account with zero sessions attended
+          // showed the same 97% as everyone else. Compute it from this
+          // student's own getMyAttendanceRecords() instead, same
+          // present-or-late-over-total math the Registrar dashboard's
+          // (correctly live) Attendance Rate tile already uses, and the
+          // same "—" for no data yet that renderMyAttendanceRecord()
+          // already shows rather than a fabricated number.
+          const records = getMyAttendanceRecords();
+          if(!records.length) return '—';
+          const present = records.filter(r => r.status === 'present' || r.status === 'late').length;
+          return Math.round((present / records.length) * 100) + '%';
+        })()}</div>
       </div>
       <div class="stat-tile">
         <div class="top"><span class="label">Courses Enrolled</span>
