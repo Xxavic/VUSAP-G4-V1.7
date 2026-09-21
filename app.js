@@ -3168,7 +3168,7 @@ function nextStaffId(prefix, directoryArray){
 // Management "Create Account" form. Students are NOT handled here — they
 // already have a dedicated flow (Student Register -> Enroll Student) that
 // also creates the academic STUDENTS record a login alone can't capture.
-function createStaffAccount(role, name, email, deptOrFaculty){
+async function createStaffAccount(role, name, email, deptOrFaculty){
   if(!name || !name.trim()) return { error: 'Enter a full name' };
   let id, extra = {}, directoryArray, directoryEntry;
 
@@ -3190,7 +3190,26 @@ function createStaffAccount(role, name, email, deptOrFaculty){
     return { error: 'Unsupported role' };
   }
 
-  const tempPassword = createAccount({ id, name: name.trim(), email: email || vuEmail(name), role, extra });
+  // Sept 2026: provision the real Supabase Auth login FIRST, same
+  // reasoning as handleEnroll()'s authProvisionAccount() call for
+  // students -- never let the People directory show a Lecturer/Registrar/
+  // Administrator as created when the real login behind it silently failed.
+  // tempPassword is generated up front (not inside createAccount() below)
+  // so the live account and the local USERS mirror end up with the exact
+  // same password, matching handleEnroll()'s own comment on this. Staff
+  // accounts have no faculty scoping yet (deptOrFaculty above is free text
+  // like "Computer Science", not a FACULTIES key), so facultyKey is left
+  // null -- same as the mock layer already did for all three roles.
+  const tempPassword = generateTempPassword();
+  const live = await authProvisionAccount({
+    universityId: id, name: name.trim(), email: email || vuEmail(name), role, tempPassword,
+    facultyKey: null,
+  });
+  if(live && live.error){
+    return { error: live.error };
+  }
+
+  createAccount({ id, name: name.trim(), email: email || vuEmail(name), role, extra, tempPassword });
   directoryArray.push(directoryEntry);
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Account created', id, `${name.trim()} (${role})`);
   return { id, tempPassword };
@@ -8973,7 +8992,7 @@ function openCreateAccountSheet(){
   openSheet('createAccountSheet');
 }
 
-function submitCreateAccount(e){
+async function submitCreateAccount(e){
   e.preventDefault();
   const role = document.getElementById('createAccountRole')?.value;
   const name = document.getElementById('createAccountName')?.value.trim();
@@ -8989,7 +9008,7 @@ function submitCreateAccount(e){
     return false;
   }
 
-  const result = createStaffAccount(role, name, email, dept);
+  const result = await createStaffAccount(role, name, email, dept);
   if(result.error){
     showToast(result.error);
     return false;
