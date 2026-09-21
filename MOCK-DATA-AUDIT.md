@@ -88,14 +88,13 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **NOTIFICATIONS:** now clears to an honest empty inbox on a genuinely-empty live result, so the mock `recipientRole:'all'` seed row (which broadcast to literally every real user of every role) can no longer survive past the first real login. Commit `9190ce1`.
 - **SUSPICION_LOG:** same fix — clears to an empty fraud-flag list instead of leaving 3 named students (David Kiggundu, Fred Kibirige, Opio Emmanuel) permanently flagged for cheating in every fresh install. Visiting Database Management now also refreshes it first, matching the AUDIT_LOG fix, so its live count on that screen stays accurate. Commit `9190ce1`.
 
-### ANNOUNCEMENTS
+### ANNOUNCEMENTS — **RESOLVED (Sept 2026).**
 - **What:** hardcoded announcements.
-- **Problem:** no live wiring in either direction — nothing loads live announcements in, and nothing about the mock ones is scoped to demo mode. It's non-functional as a real feature right now.
-- **Recommendation:** either build real live wiring for announcements, or clearly mark this as demo-only until it is.
+- **Fix:** live read/write wiring added, matching the loadSupportTicketsFromSupabase()/loadAppealsFromSupabase() shape. submitAnnouncement() now writes to a new `announcements` table via liveWriteAnnouncement() (fire-and-forget, with a pendingSync flag so a just-submitted post isn't mistaken for a permanent mock seed), and loadAnnouncementsFromSupabase() loads live rows on entering announcements/home/dashboard, merging in any still-pending local post and dropping mock seeds once live data exists. Requires the `announcements` table + RLS from `migrate-announcements.sql` (delivered separately, not yet run) — INSERT is restricted to Lecturer/Registrar, matching the UI's own `canPost` rule; Administrator cannot post in the UI today and this migration doesn't change that. Commit `e6982d7`.
 
-### Lecturer dashboard "87%"
+### Lecturer dashboard "87%" — **RESOLVED (Sept 2026).**
 - **What:** a single bare hardcoded percentage on the Lecturer dashboard's Attendance Rate tile, with no computation and no data source at all — confirmed via a full-file grep to be the only literal of its kind left anywhere in the app.
-- **Recommendation:** same fix as the Student Home 97% tile from this week — compute it from the lecturer's real attendance data using the same present-or-late-over-total pattern already used correctly on the Registrar dashboard.
+- **Fix:** now computed from the lecturer's own RECORDS via weightedAttendancePct(), scoped to the course codes returned by getLecturerLectures() — same present-or-late-over-total pattern already used correctly on the Registrar dashboard. Commit `2021a4d`.
 
 ---
 
