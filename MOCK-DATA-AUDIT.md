@@ -66,10 +66,9 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 
 ## Part 3 — Analytics / logs / notifications / structural data
 
-### PROGRAMME_ANALYTICS / FACULTY_ANALYTICS / FACULTY_COUNTS
+### PROGRAMME_ANALYTICS / FACULTY_ANALYTICS / FACULTY_COUNTS — **RESOLVED (Sept 2026).**
 - **What:** aggregate stats objects.
-- **Problem:** these only get recomputed when an Administrator performs a CRUD action in the admin UI — never on app boot or when live data loads. So they go stale/mismatched the moment any data changes outside that one specific admin flow, and stay wrong indefinitely.
-- **Recommendation:** needs to be recomputed whenever the underlying live data it depends on loads, not just on a narrow set of admin actions.
+- **Fix:** `recomputeFacultyProgrammeDerivedData()` is now also called at the end of `loadFacultiesAndProgrammesFromSupabase()` and `loadStudentsFromSupabase()` (previously it only ran from the Administrator's own Faculty/Programme CRUD actions). Whichever of the two live loads resolves last ends up authoritative, matching the same eventual-consistency tolerance this file already relies on everywhere else. Commit `3e224f5`.
 
 ### LECTURER_COMPLIANCE
 ~~- **What:** a hardcoded compliance dataset.~~ **RESOLVED (Sept 2026).** Now computed from real live data: sessions held comes from the live `sessions` table (grouped by teacher_id), sessions expected comes from confirmed-live SCHEDULE slots × weeks elapsed since a new Administrator-set `termStartDate` (System Settings screen, migration `migrate-term-start-date.sql` — Chris still needs to run this and set a date for the report to show real numbers instead of "Term Start Date isn't set yet"). A lecturer with no live-confirmed weekly slots shows "—"/N/A rather than a fabricated rate, in both the on-screen report and its CSV/PDF export. Commit `eb4a6e3`.
