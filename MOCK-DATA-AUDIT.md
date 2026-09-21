@@ -19,11 +19,10 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **What:** a large hardcoded seed array of fictional students with names, registration numbers, departments, years, and fabricated attendance percentages/trends.
 - **Fix:** `loadStudentsFromSupabase()` now purges every mock entry that didn't get matched/replaced by a live row, once genuinely live (non-empty `rows`). `STUDENTS` no longer contains any non-`supabaseId` entry in `LIVE_BACKEND` mode, so Lecturer session rosters, Registrar-side analytics, and the Administrator People/Database screen all stopped inheriting fictional students without needing their own per-screen filter. The Class Coordinator roster's existing `supabaseId` filter is now redundant but was left in place as cheap defense-in-depth. Commit `7258baa`.
 
-### LECTURERS / REGISTRARS / ADMINISTRATORS (staff directories)
+### LECTURERS / REGISTRARS / ADMINISTRATORS (staff directories) — **partially resolved (Sept 2026).**
 - **What:** three hardcoded arrays of fictional staff members.
-- **Live loader:** none exist. There is no live-loading function for any of these three roles at all.
-- **Bigger problem found along the way:** `createStaffAccount()` — the function meant to provision a new Lecturer/Registrar/Administrator account — does not actually create a live account for any of these three roles. It only ever writes to the local mock arrays. This means, right now, creating staff accounts through the app's own UI does not work against the live backend at all.
-- **Recommendation:** this isn't really a "clean up mock data" item, it's a missing feature. Building live loaders for these three arrays and fixing `createStaffAccount()` to actually provision live accounts is its own piece of work, separate from the cleanup you asked about.
+- **Fixed:** the bigger problem here — `createStaffAccount()` not actually provisioning a live account for any of the three roles — is fixed. It now calls the same `authProvisionAccount()` / `create-user` Edge Function path `handleEnroll()` already used for students, so creating a Lecturer/Registrar/Administrator through the app's own UI now creates a real Supabase Auth login, not just a local mock entry. Commit `62dd414`.
+- **Still open:** the three directory arrays (`LECTURERS`/`REGISTRARS`/`ADMINISTRATORS`) still have no live loader — they only grow (via the fix above, and via the original mock seed), never load or purge against `public.users`. So a Lecturer/Registrar/Administrator created directly in Supabase (not through this app's Create Account form) still won't show up in these directories, and the mock seed staff never disappear. Lower priority than the fix above since account creation itself now works correctly.
 
 ### USERS (mock credential store)
 - **What:** hardcoded username/password pairs used to demo-login as each role without touching Supabase.
@@ -40,23 +39,24 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **Coupling found while fixing STUDENTS (Sept 2026):** `COURSES` (below) is built at boot by `buildInitialCourseCatalog()` by reading every distinct course code straight out of the mock `SCHEDULE` array — so a course that only ever exists in a mock timetable slot is exactly how it ends up in the Course Catalog at all. SCHEDULE and COURSES can't be purged independently: applying the STUDENTS-style "drop everything not confirmed live" fix to COURSES alone, while SCHEDULE keeps its intentionally-mixed mock/live timetable forever, would make legitimately-still-mock courses vanish from the Catalog while their lectures kept showing up on the Timetable — a worse inconsistency than the current leak.
 - **Decision:** Chris chose to leave the timetable permanently mixed for now, rather than migrate it fully live. No code changed. If this is ever revisited, COURSES would need its own independent "confirmed live" flag (rather than a full purge) so it can stop leaking incidental-collision-only cleanup without depending on SCHEDULE also going fully live.
 
-### LECTURER_COURSES
-- **What:** 2 fake course entries.
-- **Live loader:** none — it's fully static, and it's used in a place that already has a correct, live-aware alternative (`getLecturerLectures()`) sitting right next to it, unused for this purpose.
-- **Recommendation:** straightforward — point the caller at `getLecturerLectures()` instead, and delete `LECTURER_COURSES`.
+### LECTURER_COURSES — **RESOLVED (Sept 2026).**
+- **What:** 2 fake course entries, hardcoded to "Dr. Patrick Mukasa" and shown to whichever Lecturer happened to be logged in — a real bug, not just dead-looking data.
+- **Fix:** deleted outright. Its three call sites (Lecturer dashboard's "Assigned Courses" tile, the Post Announcement course `<select>`, and one comment reference) now all read from `getLecturerLectures()`, which was already correct and live-aware. Commit `2021a4d`.
 
 ### COURSES — still open (same decision as SCHEDULE above: staying mixed for now)
 - **What:** mock course catalog (this is the one with the `CSC3101`/`CSC3103` codes that collided with the real "Dr. Patrick Mukasa" courses). Built at boot from mock `SCHEDULE`'s own course codes (see above) — it isn't an independent mock array.
 - **Live loader:** only purges a mock entry when its code exactly collides with a live course's code — otherwise every non-colliding mock course stays forever.
 - **Recommendation:** same fix shape as STUDENTS in isolation, but see the SCHEDULE note above — purging COURSES without a matching decision on SCHEDULE risks making things worse, not better. Needs the same decision made for both together.
 
-### RECORDS (bulk attendance history)
+### RECORDS (bulk attendance history) — investigated (Sept 2026), still open
 - **What:** no live loader exists at all for bulk historical attendance records.
-- **Recommendation:** this is a genuine missing feature, not stale mock data to delete. Needs to be built if bulk historical records are supposed to reflect real data anywhere in the app.
+- **Why it's bigger than it looks:** a RECORDS-shaped row (`{date, reg, name, prog, code, course, venue, status}`) needs a 3-level join to reconstruct live — `attendance -> sessions(date) -> classes(code, name, programme_id -> programmes.name)`, plus `attendance.student_id -> users.university_id` for `reg`. Worse, `venue` has no live source at all under the current schema (an existing code comment near `loadClassesFromSupabase()` confirms `classes` has no `room` column by design — "room is a timetable_slots-level concept"). RECORDS also already receives ongoing local-only writes today (via `RECORDS.unshift()`/`RECORDS[idx]=...` at several call sites, triggered by real check-ins/corrections/overrides), keyed by `(code, date, reg)` with no `supabaseId` tracking at all — a live loader would need to merge against that existing convention, not introduce a fresh one on top of it.
+- **Recommendation:** this is a genuine missing feature, not stale mock data to delete, and a bigger one than the one-liner above suggested. Needs its own scoped piece of work — probably starting with a decision on where `venue` should live (a new column, or accept it stays manual/mock) — rather than being folded into a quick cleanup pass.
 
-### RECENT_SUBMISSIONS
-- **What:** hardcoded list, purely additive — nothing ever removes entries from it, live data can only be added on top.
-- **Recommendation:** same shape as the others; needs either a real replace-on-load or a purge condition, not addition-only.
+### RECENT_SUBMISSIONS — investigated (Sept 2026), still open
+- **What:** hardcoded list (5 fictional rows), purely additive — nothing ever removes entries from it, live data can only be added on top.
+- **Why it's tied to RECORDS above:** it's populated from the exact same correction/check-in call site that pushes into `RECORDS`, and conceptually it's just a "most recent slice" of the same attendance history — not an independently-fixable array. It has the same root blocker as RECORDS (no live query currently reconstructs this shape), so a real fix here should happen alongside RECORDS, not before it — patching this in isolation (e.g. copying the NOTIFICATIONS/SUSPICION_LOG "clear on genuinely-empty live result" fix) wouldn't have anywhere to load live rows FROM yet.
+- **Recommendation:** address together with RECORDS once that's scoped, not separately.
 
 ### ATTENDANCE_APPEALS / SUPPORT_TICKETS — **RESOLVED (Sept 2026).**
 - **What:** mock appeal/ticket entries.
@@ -73,14 +73,13 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 ### LECTURER_COMPLIANCE
 ~~- **What:** a hardcoded compliance dataset.~~ **RESOLVED (Sept 2026).** Now computed from real live data: sessions held comes from the live `sessions` table (grouped by teacher_id), sessions expected comes from confirmed-live SCHEDULE slots × weeks elapsed since a new Administrator-set `termStartDate` (System Settings screen, migration `migrate-term-start-date.sql` — Chris still needs to run this and set a date for the report to show real numbers instead of "Term Start Date isn't set yet"). A lecturer with no live-confirmed weekly slots shows "—"/N/A rather than a fabricated rate, in both the on-screen report and its CSV/PDF export. Commit `eb4a6e3`.
 
-### DEPT_COUNTS
+### DEPT_COUNTS — **RESOLVED (Sept 2026).**
 - **What:** confirmed entirely dead code — not referenced anywhere live.
-- **Recommendation:** delete outright, no live loader needed.
+- **Fix:** deleted outright. Commit `2021a4d`.
 
-### FACULTIES / PROGRAMMES
+### FACULTIES / PROGRAMMES — **RESOLVED (Sept 2026).**
 - **What:** the one structure in the whole audit whose live loader is done correctly — full replace on load, no leftover mock entries.
-- **Remaining gap:** loading it doesn't trigger a recompute of the things that depend on it (like the analytics objects above), so downstream numbers can still be wrong even though this data itself is fine.
-- **Recommendation:** use this as the reference pattern for fixing the others; just needs to also fire the dependents' recompute.
+- **Fix:** the one remaining gap here (loading it didn't trigger a recompute of what depends on it) is the same fix already described under PROGRAMME_ANALYTICS / FACULTY_ANALYTICS / FACULTY_COUNTS above — `recomputeFacultyProgrammeDerivedData()` now runs after this loads too. Commit `3e224f5`.
 
 ### SUSPICION_LOG / AUDIT_LOG / NOTIFICATIONS (seed data)
 ~~- **What:** three separate structures, all sharing the identical "empty looks broken" bug — the loader deliberately keeps the mock seed rows whenever the live result comes back empty, on the same flawed reasoning that caused the notifications-before-account-existed bug you already found.~~ **ALL THREE RESOLVED (Sept 2026).**
