@@ -49,7 +49,26 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
+    // Require a signed-in caller. The anon key is public (it ships in app.js),
+    // so without this check anyone on the internet could send arbitrary email,
+    // from your sender address, to every Administrator/Registrar.
+    const callerJwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+    if (!callerJwt) {
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { recipientRole, recipientId, title, body } = await req.json();
+
+    // Only the roles that expect email (see header comment), and bounded
+    // content so this can't be used as a bulk-mail relay.
+    if (!["registrar", "administrator"].includes(recipientRole)) {
+      return new Response(JSON.stringify({ skipped: true, reason: "recipientRole does not receive email" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const safeTitle = String(title || "").slice(0, 200);
+    const safeBody = String(body || "").slice(0, 4000);
+    if (!safeTitle || !safeBody) {
+      return new Response(JSON.stringify({ error: "title and body are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const FROM = Deno.env.get("NOTIFY_FROM_EMAIL") || "QRAST <onboarding@resend.dev>";
@@ -69,6 +88,12 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Who is actually calling? Re-derive from the caller's own token.
+    const { data: callerAuth, error: callerAuthErr } = await supabase.auth.getUser(callerJwt);
+    if (callerAuthErr || !callerAuth?.user) {
+      return new Response(JSON.stringify({ error: "Invalid or expired session" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     let query = supabase.from("users").select("email").eq("role", recipientRole);
     if (recipientId) query = query.eq("id", recipientId); // null recipientId = every user with this role, matching pushNotification()'s own convention
@@ -99,8 +124,8 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: FROM,
             to: r.email,
-            subject: title,
-            text: body,
+            subject: safeTitle,
+            text: safeBody,
           }),
         });
         const ok = res.ok;
@@ -108,7 +133,7 @@ Deno.serve(async (req) => {
         if(!ok){
           try { detail = await res.json(); } catch(_e) { detail = await res.text(); }
         }
-        return { email: r.email, ok, status: res.status, error: ok ? undefined : detail };
+        return { ok, status: res.status, error: ok ? undefined : detail };
       }),
     );
 

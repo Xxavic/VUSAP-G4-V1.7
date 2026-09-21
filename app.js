@@ -1283,7 +1283,7 @@ async function updateLiveRoster(){
     }
     el.innerHTML = data.map(r => `
       <div class="live-roster-row">
-        <div class="avatar">${initials(r.student_name || '?')}</div>
+        <div class="avatar">${escapeHtmlText(initials(r.student_name || '?'))}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13.5px;font-weight:700;">${r.student_name || 'Unknown student'}</div>
           <div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">${new Date(r.marked_at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
@@ -3932,7 +3932,7 @@ function renderForcedPasswordChange(){
     </div>
     <div class="login-form-area">
       <div class="login-card">
-        <h1>Welcome, ${firstName(u.name)}</h1>
+        <h1>Welcome, ${escapeHtmlText(firstName(u.name))}</h1>
         <p class="sub">You're signing in with a temporary password. Choose a password only you know before continuing.</p>
         <form id="forcedPwForm" onsubmit="return submitForcedPasswordChange(event)">
           <div class="field" style="margin-bottom:14px;">
@@ -4015,7 +4015,7 @@ function renderConsentScreen(){
     </div>
     <div class="login-form-area">
       <div class="login-card">
-        <h1>Before you continue, ${firstName(u.name)}</h1>
+        <h1>Before you continue, ${escapeHtmlText(firstName(u.name))}</h1>
         <p class="sub">QRAST verifies your attendance using your device and session data. Please review before continuing.</p>
         <ul style="margin:0 0 18px; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink-soft);">
           <li>Attendance is verified using a rotating check-in code and an anonymized device identifier — not your camera, microphone, or location.</li>
@@ -4218,7 +4218,7 @@ async function renderResetPasswordForm(){
     </div>
     <div class="login-form-area">
       <div class="login-card">
-        <h1>Hi, ${firstName(displayName)}</h1>
+        <h1>Hi, ${escapeHtmlText(firstName(displayName))}</h1>
         <p class="sub">Set a new password for ${displayId}.</p>
         <form id="resetPwForm" onsubmit="return submitResetPassword(event)">
           <div class="field" style="margin-bottom:14px;">
@@ -4425,20 +4425,20 @@ function renderStaffProfile(){
   </div>
   <div class="content">
     <div class="profile-card">
-      <div class="profile-avatar-lg">${initials(u.name)}</div>
-      <div class="profile-name">${u.name}</div>
+      <div class="profile-avatar-lg">${escapeHtmlText(initials(u.name))}</div>
+      <div class="profile-name">${escapeHtmlText(u.name)}</div>
       <div class="profile-reg">${u.staffId || ''}</div>
     </div>
 
     <div class="card card-pad">
       <div class="section-title">${meta.icon} Account Information</div>
       <div class="info-list">
-        <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${u.name}</span></div>
+        <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${escapeHtmlText(u.name)}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.pin} Staff ID</span><span class="v">${u.staffId || '—'}</span></div>
         <div class="info-list-row"><span class="k">${meta.icon} Role</span><span class="v">${meta.label}</span></div>
         ${u.dept ? `<div class="info-list-row"><span class="k">${ICONS.building} Department</span><span class="v">${u.dept}</span></div>` : ''}
         ${u.facultyKey ? `<div class="info-list-row"><span class="k">${ICONS.building} Faculty</span><span class="v">${facultyName(u.facultyKey)}</span></div>` : ''}
-        <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${vuEmail(u.name)}</span></div>
+        <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${escapeHtmlText(vuEmail(u.name))}</span></div>
       </div>
     </div>
 
@@ -4489,11 +4489,11 @@ function renderLecturerDashboard(){
       </div>
       <div class="header-actions">
         <button class="icon-btn notif-bell-btn" onclick="navigate('notifications')" style="position:relative;">${ICONS.bell}${unreadNotifCount()>0 ? `<span class='notif-badge'>${unreadNotifCount()}</span>` : ''}</button>
-        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(State.user.name)}</button>
+        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${escapeHtmlText(initials(State.user.name))}</button>
       </div>
     </div>
     <div class="header-greet">
-      <h2>Good evening, ${firstName(State.user.name)}</h2>
+      <h2>Good evening, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Manage your course sessions and attendance.</p>
       <div class="greeting-tags">
         <span class="tag-pill">${State.user.id || 'VU-LEC-101'}</span>
@@ -4615,7 +4615,7 @@ function lectureListMarkup(lectures, sessionActive, opts){
       <div class="lecture-row" style="${isDisabled ? 'opacity:.45;' : 'cursor:pointer;'}" ${clickAttr}>
         <div>
           <div class="lecture-code">${l.code}</div>
-          <div class="lecture-name">${l.name}</div>
+          <div class="lecture-name">${escapeHtmlText(l.name)}</div>
           <div class="lecture-meta">${ICONS.clock}${l.time} · ${l.room}</div>
         </div>
         <span class="badge ${isLiveOne ? 'today' : 'pending'}">${isLiveOne ? 'Live' : 'Pending'}</span>
@@ -4884,10 +4884,10 @@ function studentAttendanceRow(s, entry){
   if(locked){
     const label = entry.status[0].toUpperCase() + entry.status.slice(1);
     return `
-    <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}" data-status="${entry.status[0]}">
-      <div class="avatar">${initials(s.name)}</div>
+    <div class="student-row" data-student-row data-name="${escapeHtmlText(s.name.toLowerCase())}" data-reg="${escapeHtmlText(s.reg.toLowerCase())}" data-status="${entry.status[0]}">
+      <div class="avatar">${escapeHtmlText(initials(s.name))}</div>
       <div class="student-info">
-        <div class="student-name">${s.name}</div>
+        <div class="student-name">${escapeHtmlText(s.name)}</div>
         <div class="student-meta">${s.reg} · ${ICONS.lock.replace(/width="\d+" height="\d+"/,'width="10" height="10"').replace(/<svg /,'<svg style="vertical-align:-1px;margin-right:2px;" ')}Scanned</div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
@@ -4898,10 +4898,10 @@ function studentAttendanceRow(s, entry){
   }
 
   return `
-  <div class="student-row" data-student-row data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}" data-status="${v||''}">
-    <div class="avatar">${initials(s.name)}</div>
+  <div class="student-row" data-student-row data-name="${escapeHtmlText(s.name.toLowerCase())}" data-reg="${escapeHtmlText(s.reg.toLowerCase())}" data-status="${v||''}">
+    <div class="avatar">${escapeHtmlText(initials(s.name))}</div>
     <div class="student-info">
-      <div class="student-name">${s.name}</div>
+      <div class="student-name">${escapeHtmlText(s.name)}</div>
       <div class="student-meta">${s.reg}${entry && entry.status==='absent' ? ' · No scan on record' : ''}</div>
     </div>
     <div class="pla-toggle">
@@ -5215,10 +5215,10 @@ function scheduleDayGroup(d, showDept, editable, originalDay = null){
     </div>
     <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
       ${d.lectures.map((l,i)=>`
-      <div class="lecture-row" data-lecture-row data-dept="${l.dept}" data-search="${(l.code+' '+l.name+' '+l.lecturer+' '+l.room).toLowerCase()}">
+      <div class="lecture-row" data-lecture-row data-dept="${l.dept}" data-search="${escapeHtmlText((l.code+' '+l.name+' '+l.lecturer+' '+l.room).toLowerCase())}">
         <div>
           <div class="lecture-code">${l.code} <span class="badge dept ${l.dept.includes('Business')?'biz':l.dept.includes('Engineering')?'eng':''}" style="margin-left:4px;">${l.dept.split(' ')[0]}</span>${l.mode ? `<span class="badge dept" style="margin-left:4px;background:#f1f5f9;color:#64748b;">${l.mode==='day'?'Day':'Evening'}</span>` : ''}</div>
-          <div class="lecture-name">${l.name}</div>
+          <div class="lecture-name">${escapeHtmlText(l.name)}</div>
           <div class="lecture-meta">${ICONS.user} ${l.lecturer}</div>
           <div class="lecture-meta">${ICONS.pin} ${l.room}</div>
         </div>
@@ -5294,8 +5294,8 @@ function renderEnrollFormBody(){
         <label>Faculty / Programme <span class="req">*</span></label>
         <select class="select" id="enrollDept" onchange="updateRegPreview()">
           ${(State.role === 'registrar' ? FACULTIES.filter(f=>f.key===currentRegistrarFacultyKey()) : FACULTIES).map(fac => `
-          <optgroup label="${fac.name}">
-            ${PROGRAMMES.filter(p=>p.facultyKey===fac.key).map(p=>`<option value="${p.key}">${p.name}</option>`).join('')}
+          <optgroup label="${escapeHtmlText(fac.name)}">
+            ${PROGRAMMES.filter(p=>p.facultyKey===fac.key).map(p=>`<option value="${p.key}">${escapeHtmlText(p.name)}</option>`).join('')}
           </optgroup>`).join('')}
         </select>
       </div>
@@ -5346,10 +5346,10 @@ function studentRegisterRow(s){
   const cls = hasPct ? (s.pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good' : 'bad') : '';
   const deptBadgeCls = palClass(s.deptKey, PROGRAMMES.map(p=>p.key));
   return `
-  <div class="student-card-row" data-student-card data-name="${s.name.toLowerCase()}" data-reg="${s.reg.toLowerCase()}" data-dept="${s.dept}" data-faculty="${s.facultyKey}" data-year="${s.year}">
-    <div class="avatar">${initials(s.name)}</div>
+  <div class="student-card-row" data-student-card data-name="${escapeHtmlText(s.name.toLowerCase())}" data-reg="${escapeHtmlText(s.reg.toLowerCase())}" data-dept="${s.dept}" data-faculty="${s.facultyKey}" data-year="${s.year}">
+    <div class="avatar">${escapeHtmlText(initials(s.name))}</div>
     <div class="student-info">
-      <div class="student-name">${s.name}</div>
+      <div class="student-name">${escapeHtmlText(s.name)}</div>
       <div class="student-meta">${s.reg} · ${s.year || '—'} · ${s.gender || '—'} · ${s.semester || '—'}</div>
       <span class="badge dept ${deptBadgeCls}" style="margin-top:4px;display:inline-block;">${s.dept}</span>
     </div>
@@ -5389,7 +5389,7 @@ function renderEditStudentFormBody(s){
     <form id="editStudentForm" onsubmit="return submitEditStudent(event, '${s.id}')" style="display:flex;flex-direction:column;gap:14px;">
       <div class="field">
         <label>Full Name <span class="req">*</span></label>
-        <input class="input" id="editStudentName" value="${s.name}" required />
+        <input class="input" id="editStudentName" value="${escapeHtmlText(s.name)}" required />
       </div>
       <div class="field">
         <label>Email Address</label>
@@ -5399,8 +5399,8 @@ function renderEditStudentFormBody(s){
         <label>Faculty / Programme</label>
         <select class="select" id="editStudentDept">
           ${FACULTIES.map(fac => `
-          <optgroup label="${fac.name}">
-            ${PROGRAMMES.filter(p=>p.facultyKey===fac.key).map(p=>`<option value="${p.key}" ${s.deptKey===p.key?'selected':''}>${p.name}</option>`).join('')}
+          <optgroup label="${escapeHtmlText(fac.name)}">
+            ${PROGRAMMES.filter(p=>p.facultyKey===fac.key).map(p=>`<option value="${p.key}" ${s.deptKey===p.key?'selected':''}>${escapeHtmlText(p.name)}</option>`).join('')}
           </optgroup>`).join('')}
         </select>
       </div>
@@ -5956,10 +5956,10 @@ function registerPersonRow(p){
     ? `<button class="icon-btn" style="width:32px;height:32px;flex-shrink:0;background:var(--surface);border:1.5px solid var(--line);color:var(--theme-primary);border-radius:var(--radius-sm);" title="Edit profile" onclick="event.stopPropagation();${p.role==='student' ? `openEditStudentSheet('${p._studentId}')` : `openEditStaffSheet('${p.id}','${p.role}')`}">${ICONS.edit || ICONS.settings}</button>`
     : '';
   return `
-  <div class="student-card-row" data-register-row data-name="${p.name.toLowerCase()}" data-id="${p.id.toLowerCase()}" data-role="${p.role}" data-year="${p.year||''}" data-faculty="${p.facultyKey||''}" ${manage ? `onclick="openAccountDetail('${p.id}')" style="cursor:pointer;"` : ''}>
-    <div class="avatar">${initials(p.name)}</div>
+  <div class="student-card-row" data-register-row data-name="${escapeHtmlText(p.name.toLowerCase())}" data-id="${p.id.toLowerCase()}" data-role="${p.role}" data-year="${p.year||''}" data-faculty="${p.facultyKey||''}" ${manage ? `onclick="openAccountDetail('${p.id}')" style="cursor:pointer;"` : ''}>
+    <div class="avatar">${escapeHtmlText(initials(p.name))}</div>
     <div class="student-info">
-      <div class="student-name">${p.name}</div>
+      <div class="student-name">${escapeHtmlText(p.name)}</div>
       <div class="student-meta">${metaLine}</div>
       <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
         <span class="badge dept" style="background:${meta.bg};color:${meta.color};">${meta.label}</span>
@@ -6028,7 +6028,7 @@ function renderEditStaffFormBody(p, role){
     <form id="editStaffForm" onsubmit="return submitEditStaff(event, '${p.id}', '${role}')" style="display:flex;flex-direction:column;gap:14px;">
       <div class="field">
         <label>Full Name <span class="req">*</span></label>
-        <input class="input" id="editStaffName" value="${p.name}" required />
+        <input class="input" id="editStaffName" value="${escapeHtmlText(p.name)}" required />
       </div>
       <div class="field">
         <label>Email Address</label>
@@ -6223,11 +6223,11 @@ function renderStudentHome(){
       </div>
       <div class="header-actions">
         <button class="icon-btn notif-bell-btn" onclick="navigate('notifications')" style="position:relative;">${ICONS.bell}${unreadNotifCount()>0 ? `<span class='notif-badge'>${unreadNotifCount()}</span>` : ''}</button>
-        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(u.name)}</button>
+        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${escapeHtmlText(initials(u.name))}</button>
       </div>
     </div>
     <div class="header-greet">
-      <h2>${timeGreeting()}, ${firstName(u.name)} 👋</h2>
+      <h2>${timeGreeting()}, ${escapeHtmlText(firstName(u.name))} 👋</h2>
       <p>${todayLong()}</p>
       <div class="greeting-tags">
         <span class="tag-pill">${u.dept}</span>
@@ -6305,7 +6305,7 @@ function renderStudentHome(){
         <div class="lecture-row" style="margin-bottom:8px;">
           <div>
             <div class="lecture-code">${l.code}</div>
-            <div class="lecture-name">${l.name}</div>
+            <div class="lecture-name">${escapeHtmlText(l.name)}</div>
             <div class="lecture-meta">${ICONS.clock}${l.time} · ${l.room}</div>
           </div>
           ${l.code===LIVE_SESSION.courseCode && l.mode===LIVE_SESSION.mode && isLiveSessionActive() ? '<span class="badge today">Live</span>' : ''}
@@ -6318,7 +6318,7 @@ function renderStudentHome(){
         <div class="course-pill-row">
           <span class="course-dot" style="background:${c.color};"></span>
           <div class="ctext">
-            <div class="ccode">${c.code} — ${c.name}</div>
+            <div class="ccode">${c.code} — ${escapeHtmlText(c.name)}</div>
             <div class="cname">${c.lecturer}</div>
           </div>
         </div>`).join('')}
@@ -6483,7 +6483,7 @@ function renderMyAttendanceRecord(){
           return `
           <div>
             <div class="section-head-row" style="margin-bottom:4px;">
-              <span style="font-size:13px;font-weight:700;">${c.code} — ${c.name}</span>
+              <span style="font-size:13px;font-weight:700;">${c.code} — ${escapeHtmlText(c.name)}</span>
               <span style="font-size:12.5px;font-weight:800;color:${color};">${pct===null?'—':pct+'%'}</span>
             </div>
             <div style="font-size:11px;color:var(--ink-faint);">${marks!==null ? `${marks} of ${cap} attendance marks` : (cap!==null ? 'No sessions recorded yet' : "Attendance marks cap not set yet by your lecturer")}</div>
@@ -6605,8 +6605,8 @@ function renderStudentProfile(){
   </div>
   <div class="content">
     <div class="profile-card">
-      <div class="profile-avatar-lg">${initials(u.name)}</div>
-      <div class="profile-name">${u.name}</div>
+      <div class="profile-avatar-lg">${escapeHtmlText(initials(u.name))}</div>
+      <div class="profile-name">${escapeHtmlText(u.name)}</div>
       <div class="profile-reg">${u.reg}</div>
       ${u.is_class_coordinator ? `<span class="tag-pill" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;">${ICONS.shield.replace(/<svg /,'<svg style="width:12px;height:12px;" ')} Class Coordinator</span>` : ''}
     </div>
@@ -6614,11 +6614,11 @@ function renderStudentProfile(){
     <div class="card card-pad">
       <div class="section-title">${ICONS.graduation} Academic Information</div>
       <div class="info-list">
-        <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${u.name}</span></div>
+        <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${escapeHtmlText(u.name)}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.pin} Registration No.</span><span class="v">${u.reg}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.book} Programme</span><span class="v">${u.dept}</span></div>
         <div class="info-list-row"><span class="k">${ICONS.calendar} Year of Study</span><span class="v">${u.year || '—'}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${vuEmail(u.name)}</span></div>
+        <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${escapeHtmlText(vuEmail(u.name))}</span></div>
       </div>
     </div>
 
@@ -7423,11 +7423,11 @@ function renderRegistrarDashboard(){
       </div>
       <div class="header-actions">
         <button class="icon-btn notif-bell-btn" onclick="navigate('notifications')" style="position:relative;">${ICONS.bell}${unreadNotifCount()>0 ? `<span class='notif-badge'>${unreadNotifCount()}</span>` : ''}</button>
-        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(State.user.name)}</button>
+        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${escapeHtmlText(initials(State.user.name))}</button>
       </div>
     </div>
     <div class="header-greet">
-      <h2>Good evening, ${firstName(State.user.name)}</h2>
+      <h2>Good evening, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Registrar's Attendance Management Dashboard</p>
       <div class="greeting-tags">
         <span class="tag-pill">${State.user.staffId || ''}</span>
@@ -7479,7 +7479,7 @@ function renderRegistrarDashboard(){
       ${scopedRecentSubmissions().map(r=>`
       <div class="lecture-row" style="margin-bottom:8px;">
         <div>
-          <div class="lecture-code" style="font-size:13px;">${r.name}</div>
+          <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(r.name)}</div>
           <div class="lecture-meta" style="margin-top:3px;">${r.code} · ${r.date}</div>
         </div>
         <span class="status-pill ${r.status}">${r.status[0].toUpperCase()+r.status.slice(1)}</span>
@@ -7840,8 +7840,8 @@ function studentRecordSummaryRow(reg, recs, courseCode){
   const coursePct = courseCode && cap !== null ? weightedAttendancePct(recs) : null;
   const marks = coursePct !== null ? attendanceMarksForPct(coursePct, cap) : null;
   return `
-  <div class="student-card-row" data-record-summary-row data-search="${(name+' '+reg).toLowerCase()}" data-codes="${codes.join(' ')}" data-statuses="${statuses.join(' ')}" data-dates="${dates.join(' ')}" onclick="openStudentRecordDrilldown('${reg}')" style="cursor:pointer;">
-    <div class="avatar">${initials(name)}</div>
+  <div class="student-card-row" data-record-summary-row data-search="${escapeHtmlText((name+' '+reg).toLowerCase())}" data-codes="${codes.join(' ')}" data-statuses="${statuses.join(' ')}" data-dates="${dates.join(' ')}" onclick="openStudentRecordDrilldown('${reg}')" style="cursor:pointer;">
+    <div class="avatar">${escapeHtmlText(initials(name))}</div>
     <div class="student-info">
       <div class="student-name">${name}</div>
       <div class="student-meta">${reg} · ${prog || '—'}</div>
@@ -7944,7 +7944,7 @@ function renderStudentRecordDrilldown(reg, recordsOverride){
 
   return `
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${initials(name)}</div>
+      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${escapeHtmlText(initials(name))}</div>
       <div>
         <div style="font-weight:800; font-size:15px;">${name}</div>
         <div style="font-size:12px; color:var(--ink-faint); margin-top:2px;">${reg} · ${prog || '—'}</div>
@@ -8044,7 +8044,7 @@ function catalogEntryRow(opts){
   return `
   <div class="lecture-row" onclick="${opts.onclick}" style="cursor:pointer;">
     <div style="flex:1; min-width:0;">
-      <div class="lecture-code" style="font-size:13px;">${opts.title}</div>
+      <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(opts.title)}</div>
       <div class="lecture-meta" style="margin-top:4px;">${opts.subtitle}</div>
     </div>
     <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:8px;">
@@ -8240,9 +8240,9 @@ function renderFraudCenter(){
       <div class="suspicion-card">
         <div class="sic">${ICONS.flag.replace(/<svg /,'<svg style="width:17px;height:17px;" ')}</div>
         <div style="flex:1;">
-          <div class="sname">${s.student}</div>
-          <div class="sreason">${s.reason}</div>
-          <div class="smeta">${s.course} · ${s.date} · ${s.deviceId}</div>
+          <div class="sname">${escapeHtmlText(s.student)}</div>
+          <div class="sreason">${escapeHtmlText(s.reason)}</div>
+          <div class="smeta">${s.course} · ${s.date} · ${escapeHtmlText(s.deviceId)}</div>
         </div>
         <span class="severity-pill ${s.severity}">${s.severity}</span>
       </div>`).join('') || `<div class="empty-state-sm">No fraud flags in your faculty</div>`}
@@ -8311,7 +8311,7 @@ function renderReports(){
           </tr></thead>
           <tbody id="reportPreviewBody">
             ${records.slice(0,5).map(r=>`<tr style="border-bottom:1px solid var(--line);">
-              <td style="padding:6px 8px; font-weight:600;">${r.name}</td>
+              <td style="padding:6px 8px; font-weight:600;">${escapeHtmlText(r.name)}</td>
               <td style="padding:6px 8px;">${r.prog}</td>
               <td style="padding:6px 8px;">${r.code}</td>
               <td style="padding:6px 8px;"><span class="status-pill ${r.status}">${r.status}</span></td>
@@ -8387,7 +8387,7 @@ function exportReport(format, courseCode){
       <thead><tr><th>Name</th><th>Reg. No.</th><th>Programme</th><th>Course</th><th>Status</th><th>Date</th></tr></thead>
       <tbody>
         ${filtered.map(r=>`<tr>
-          <td>${r.name}</td>
+          <td>${escapeHtmlText(r.name)}</td>
           <td>${r.reg||''}</td>
           <td>${r.prog||''}</td>
           <td>${r.code} — ${r.course}</td>
@@ -8417,7 +8417,7 @@ function updateReportPreview(){
   if(info) info.textContent = `${filtered.length} records — showing first 5`;
   if(body){
     body.innerHTML = filtered.slice(0,5).map(r=>`<tr style="border-bottom:1px solid var(--line);">
-      <td style="padding:6px 8px; font-weight:600;">${r.name}</td>
+      <td style="padding:6px 8px; font-weight:600;">${escapeHtmlText(r.name)}</td>
       <td style="padding:6px 8px;">${r.prog}</td>
       <td style="padding:6px 8px;">${r.code}</td>
       <td style="padding:6px 8px;"><span class="status-pill ${r.status}">${r.status}</span></td>
@@ -8456,11 +8456,11 @@ function renderAdministratorDashboard(){
       </div>
       <div class="header-actions">
         <button class="icon-btn notif-bell-btn" onclick="navigate('notifications')" style="position:relative;">${ICONS.bell}${unreadNotifCount()>0 ? `<span class='notif-badge'>${unreadNotifCount()}</span>` : ''}</button>
-        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${initials(State.user.name)}</button>
+        <button class="avatar-chip" onclick="navigate('profile')" title="Profile">${escapeHtmlText(initials(State.user.name))}</button>
       </div>
     </div>
     <div class="header-greet">
-      <h2>Good evening, ${firstName(State.user.name)}</h2>
+      <h2>Good evening, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Full system access — users, roles, and platform configuration.</p>
       <div class="greeting-tags">
         <span class="tag-pill">${State.user.staffId || ''}</span>
@@ -8642,9 +8642,9 @@ function openAccountDetail(personId){
 
   body.innerHTML = `
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${initials(person.name)}</div>
+      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${escapeHtmlText(initials(person.name))}</div>
       <div>
-        <div style="font-weight:800; font-size:15px;">${person.name}</div>
+        <div style="font-weight:800; font-size:15px;">${escapeHtmlText(person.name)}</div>
         <div style="font-size:12px; color:var(--ink-faint); margin-top:2px;">${personId}</div>
       </div>
     </div>
@@ -9071,8 +9071,8 @@ function facultyRegistrarRow(fac){
   return `
   <div class="lecture-row" style="flex-direction:column; align-items:stretch; gap:10px; ${vacant ? 'border-color:var(--late);' : ''}">
     <div>
-      <div class="lecture-code" style="font-size:13px;">${fac.name}</div>
-      <div class="lecture-meta" style="margin-top:5px; ${vacant ? 'color:var(--late); font-weight:700;' : ''}">${regUser ? `${regUser.name} · ${regId}` : 'Vacant — no Registrar assigned'}</div>
+      <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(fac.name)}</div>
+      <div class="lecture-meta" style="margin-top:5px; ${vacant ? 'color:var(--late); font-weight:700;' : ''}">${regUser ? `${escapeHtmlText(regUser.name)} · ${regId}` : 'Vacant — no Registrar assigned'}</div>
     </div>
     <button class="btn ${vacant ? 'btn-primary' : 'btn-ghost'}" style="padding:9px 14px; font-size:12px;" onclick="openReassignSheet('${fac.key}')">${(vacant ? ICONS.plus : ICONS.refresh).replace(/<svg /,'<svg style="width:13px;height:13px;" ')} ${vacant ? 'Assign Registrar' : 'Reassign'}</button>
   </div>`;
@@ -9095,17 +9095,17 @@ function openReassignSheet(facultyKey){
     body.innerHTML = `
       <div class="info-box" style="margin-bottom:14px;">
         <div class="k">Currently assigned</div>
-        <div class="v" style="font-size:14px;">${currentUser ? `${currentUser.name} (${currentId})` : 'Nobody — this faculty is vacant'}</div>
+        <div class="v" style="font-size:14px;">${currentUser ? `${escapeHtmlText(currentUser.name)} (${currentId})` : 'Nobody — this faculty is vacant'}</div>
       </div>
       <div class="field">
         <label>Choose a Registrar for this faculty</label>
         <select class="select" id="reassignPicker">
           <option value="">Select a Registrar...</option>
           ${seatless.length ? `<optgroup label="Awaiting a faculty">
-            ${seatless.map(([id, u]) => `<option value="${id}">${u.name} (${id}) — unassigned</option>`).join('')}
+            ${seatless.map(([id, u]) => `<option value="${id}">${escapeHtmlText(u.name)} (${id}) — unassigned</option>`).join('')}
           </optgroup>` : ''}
           ${assigned.length ? `<optgroup label="Move from another faculty">
-            ${assigned.map(([id, u]) => `<option value="${id}">${u.name} (${id}) — currently ${facultyName(u.facultyKey).replace('Faculty of ','')}</option>`).join('')}
+            ${assigned.map(([id, u]) => `<option value="${id}">${escapeHtmlText(u.name)} (${id}) — currently ${facultyName(u.facultyKey).replace('Faculty of ','')}</option>`).join('')}
           </optgroup>` : ''}
         </select>
       </div>
@@ -9208,7 +9208,7 @@ function facultyCard(fac){
   <div class="card card-pad" data-faculty-card="${fac.key}">
     <div class="section-head-row">
       <div style="flex:1; min-width:0;">
-        <div class="lecture-code" style="font-size:14px;">${fac.name}</div>
+        <div class="lecture-code" style="font-size:14px;">${escapeHtmlText(fac.name)}</div>
         <div class="lecture-meta" style="margin-top:4px;">${progs.length} programme${progs.length!==1?'s':''} · ${studentCount} student${studentCount!==1?'s':''}</div>
       </div>
       <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -9230,7 +9230,7 @@ function programmeRow(p){
   return `
   <div class="lecture-row" style="padding:10px 12px;">
     <div style="flex:1; min-width:0;">
-      <div style="font-size:12.5px; font-weight:700;">${p.name}</div>
+      <div style="font-size:12.5px; font-weight:700;">${escapeHtmlText(p.name)}</div>
       <div class="lecture-meta" style="margin-top:3px;">${p.codePrefix} · ${studentCount} student${studentCount!==1?'s':''}</div>
     </div>
     <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -9306,7 +9306,7 @@ function openProgrammeFormSheet(programmeKey, defaultFacultyKey){
       <div class="field" style="margin-bottom:14px;">
         <label>Faculty <span class="req">*</span></label>
         <select class="select" id="programmeFacultySelect">
-          ${FACULTIES.map(f => `<option value="${f.key}" ${f.key===defaultFacultyKey?'selected':''}>${f.name}</option>`).join('')}
+          ${FACULTIES.map(f => `<option value="${f.key}" ${f.key===defaultFacultyKey?'selected':''}>${escapeHtmlText(f.name)}</option>`).join('')}
         </select>
       </div>` : `
       <div class="info-box" style="margin-bottom:14px;">
@@ -9389,7 +9389,7 @@ function renderCourseCatalog(){
     <div class="field">
       <select class="select" id="courseProgrammeFilter" onchange="filterCourseCatalog()">
         <option value="">All Programmes</option>
-        ${programmeOptions.map(p => `<option value="${p.key}">${p.name}</option>`).join('')}
+        ${programmeOptions.map(p => `<option value="${p.key}">${escapeHtmlText(p.name)}</option>`).join('')}
       </select>
     </div>
 
@@ -9421,9 +9421,9 @@ function renderCourseCatalog(){
 
 function courseRow(c){
   return `
-  <div class="lecture-row" data-course-card data-code="${c.code.toLowerCase()}" data-name="${c.name.toLowerCase()}" data-programme="${c.programmeKey||''}">
+  <div class="lecture-row" data-course-card data-code="${c.code.toLowerCase()}" data-name="${escapeHtmlText(c.name.toLowerCase())}" data-programme="${c.programmeKey||''}">
     <div style="flex:1; min-width:0;">
-      <div class="lecture-code" style="font-size:13px;">${c.code} — ${c.name}</div>
+      <div class="lecture-code" style="font-size:13px;">${c.code} — ${escapeHtmlText(c.name)}</div>
       <div class="lecture-meta" style="margin-top:4px;">${c.programme || 'No programme'}${c.lecturer ? ' · ' + c.lecturer : ''}${c.mode ? ' · ' + (c.mode==='day'?'Day':'Evening') : ''}</div>
     </div>
     <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -9466,7 +9466,7 @@ async function courseLecturerFieldHtml(course, fk){
     return `
       <select class="select" id="courseLecturerInput">
         <option value="">No lecturer assigned</option>
-        ${scoped.map(l => `<option value="${l.id}" data-name="${l.name}" ${course && course.lecturer===l.name ? 'selected':''}>${l.name}</option>`).join('')}
+        ${scoped.map(l => `<option value="${l.id}" data-name="${escapeHtmlText(l.name)}" ${course && course.lecturer===l.name ? 'selected':''}>${escapeHtmlText(l.name)}</option>`).join('')}
       </select>`;
   } catch(e){
     console.warn('Course form: lecturer list fetch failed, falling back to free text:', e);
@@ -9497,7 +9497,7 @@ async function openCourseFormSheet(code){
         <label>Programme</label>
         <select class="select" id="courseProgrammeInput">
           <option value="">No programme</option>
-          ${(fk ? PROGRAMMES.filter(p=>p.facultyKey===fk) : PROGRAMMES).map(p => `<option value="${p.key}" ${course && course.programmeKey===p.key ? 'selected':''}>${p.name}</option>`).join('')}
+          ${(fk ? PROGRAMMES.filter(p=>p.facultyKey===fk) : PROGRAMMES).map(p => `<option value="${p.key}" ${course && course.programmeKey===p.key ? 'selected':''}>${escapeHtmlText(p.name)}</option>`).join('')}
         </select>
       </div>
       <div class="field" style="margin-bottom:14px;">
@@ -9895,8 +9895,8 @@ function notifTemplateCard(key, t){
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
       <div style="flex:1;">
         <div style="font-weight:800;font-size:13px;">${t.label}</div>
-        <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px;">${t.description}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;font-style:italic;">"${t.subject}"</div>
+        <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px;">${escapeHtmlText(t.description)}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;font-style:italic;">"${escapeHtmlText(t.subject)}"</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
         <label class="toggle-wrap" style="margin:0;">
@@ -9924,11 +9924,11 @@ function openNotifEditSheet(key){
     body.innerHTML = `
       <div class="field" style="margin-bottom:14px;">
         <label>Subject</label>
-        <input class="input" id="notifSubject" value="${t.subject.replace(/"/g,'&quot;')}" />
+        <input class="input" id="notifSubject" value="${escapeHtmlText(t.subject)}" />
       </div>
       <div class="field">
         <label>Body</label>
-        <textarea class="input" id="notifBody" rows="8" style="height:auto;resize:vertical;">${t.body}</textarea>
+        <textarea class="input" id="notifBody" rows="8" style="height:auto;resize:vertical;">${escapeHtmlText(t.body)}</textarea>
       </div>
       <div class="info-box" style="margin-top:12px;">
         <div class="k">Available tokens for this template</div>
@@ -10325,12 +10325,12 @@ function renderNotifications(){
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 ${unread ? `<span style="width:7px;height:7px;border-radius:50%;background:var(--theme-primary);flex-shrink:0;"></span>` : ''}
-                <div style="font-size:13px;font-weight:${unread?'800':'500'};">${n.title}</div>
+                <div style="font-size:13px;font-weight:${unread?'800':'500'};">${escapeHtmlText(n.title)}</div>
                 ${n.type === 'announcement' ? `<span class="tag-mini" style="background:#fef3c7;color:#b45309;">Announcement</span>` : ''}
                 ${n.courseCode ? `<span class="tag-mini">${n.courseCode}</span>` : ''}
               </div>
               <div class="notif-preview" id="notif-preview-${n.id}" style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${unread?'600':'400'};">${preview}</div>
-              <div class="notif-full" id="notif-full-${n.id}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${n.body}</div>
+              <div class="notif-full" id="notif-full-${n.id}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${escapeHtmlText(n.body)}</div>
               <div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;">${n.from ? `From ${n.from} · ` : ''}${formatNotifTimestamp(n)}</div>
             </div>
             <div id="notif-chevron-${n.id}" style="color:var(--ink-faint);flex-shrink:0;margin-top:2px;transition:transform .15s;">${ICONS.chevR}</div>
@@ -10584,7 +10584,7 @@ function renderDatabaseManagement(){
       ${tables.map(t => `
         <div class="lecture-row" style="padding:10px 0;">
           <div style="flex:1;">
-            <div style="font-size:12.5px;font-weight:700;font-family:monospace;">${t.name}</div>
+            <div style="font-size:12.5px;font-weight:700;font-family:monospace;">${escapeHtmlText(t.name)}</div>
             <div class="lecture-meta">${t.label}</div>
           </div>
           <span style="font-size:14px;font-weight:800;color:var(--theme-primary);">${t.count.toLocaleString()}</span>
@@ -10715,7 +10715,7 @@ function renderClassReport(){
       <div class="field">
         <label>Course</label>
         <select class="select" id="reportCourseSelect">
-          ${STUDENT_COURSES.map(c=>`<option value="${c.code}">${c.code} — ${c.name}</option>`).join('')}
+          ${STUDENT_COURSES.map(c=>`<option value="${c.code}">${c.code} — ${escapeHtmlText(c.name)}</option>`).join('')}
         </select>
       </div>
       <div class="field">
@@ -10801,10 +10801,10 @@ function renderAnnouncements(){
     ${ANNOUNCEMENTS.map(a=>`
     <div class="card card-pad">
       <div class="section-head-row" style="margin-bottom:6px;">
-        <div style="font-size:13.5px; font-weight:700;">${a.title}</div>
+        <div style="font-size:13.5px; font-weight:700;">${escapeHtmlText(a.title)}</div>
         <div style="font-size:10.5px; color:var(--ink-faint);">${a.date}</div>
       </div>
-      <div style="font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-bottom:8px;">${a.body}</div>
+      <div style="font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-bottom:8px;">${escapeHtmlText(a.body)}</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         <span class="tag-mini">${a.from}</span>
         ${a.course ? `<span class="tag-mini">${a.course}</span>` : ''}
@@ -10868,14 +10868,24 @@ function submitAnnouncement(e){
   if(!title || !body){ showToast("Fill in title and message"); return false; }
 
   const newId = ANNOUNCEMENTS.length ? Math.max(...ANNOUNCEMENTS.map(a=>a.id)) + 1 : 1;
-  ANNOUNCEMENTS.unshift({
+  const announcementObj = {
     id: newId,
+    supabaseId: null, // filled in once the live insert below resolves
+    // Sept 2026: marks this as "submitted this session, live insert may
+    // still be racing" -- same fix as ATTENDANCE_APPEALS/SUPPORT_TICKETS,
+    // see loadAnnouncementsFromSupabase() for why this can't just be "no
+    // supabaseId yet" (a permanent mock seed announcement never has one
+    // either).
+    pendingSync: true,
     from: State.user?.name || 'Unknown',
+    fromRole: State.role || null,
     course: course || null,
     title,
     body,
     date: new Date().toISOString().slice(0,10),
-  });
+  };
+  ANNOUNCEMENTS.unshift(announcementObj);
+  liveWriteAnnouncement(announcementObj); // fire-and-forget — local unshift above already succeeded either way
 
   // Push a notification to students — scoped to the selected course if one
   // was chosen, otherwise all students (previous behavior). The course
@@ -10895,6 +10905,88 @@ function submitAnnouncement(e){
   showToast("Announcement posted");
   navigate('announcements', { replace: true });
   return false;
+}
+
+// ------------------------------------------------------------
+// ANNOUNCEMENTS — live read/write (Sept 2026). Until now ANNOUNCEMENTS was
+// entirely local-only, with no table backing it at all -- a Lecturer or
+// Registrar's post lived only in that one browser tab's memory and vanished
+// on reload, and no student on a different device ever saw it (the
+// pushNotification() above is a separate, already-live mechanism that
+// doesn't persist the announcement itself). Same additive/fallback shape as
+// loadSupportTicketsFromSupabase()/loadAppealsFromSupabase() elsewhere in
+// this file, including the pendingSync fix for the same reason: a hardcoded
+// mock seed announcement must not be resurrected forever just because it
+// also lacks a supabaseId. Targets a new `announcements` table (migration
+// delivered separately, per Chris's own rule for new-table SQL).
+// ------------------------------------------------------------
+
+async function liveWriteAnnouncement(announcementObj){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data, error } = await SUPABASE_CLIENT
+      .from('announcements')
+      .insert({
+        from_supabase_id: State.user?.supabaseId || null,
+        from_name: announcementObj.from,
+        from_role: announcementObj.fromRole,
+        course: announcementObj.course,
+        title: announcementObj.title,
+        body: announcementObj.body,
+      })
+      .select()
+      .single();
+    if(error){ console.warn('liveWriteAnnouncement failed:', error); return; }
+    if(data){ announcementObj.supabaseId = data.id; announcementObj.pendingSync = false; }
+  } catch(e){
+    console.warn('liveWriteAnnouncement error:', e);
+  }
+}
+
+async function loadAnnouncementsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if(error){ console.warn('Announcements fetch failed, keeping mock ANNOUNCEMENTS:', error); return; }
+    if(!rows || rows.length === 0) return; // no live rows yet — keep mock so the list isn't empty
+
+    const fetched = rows.map(r => ({
+      id: r.id,
+      supabaseId: r.id,
+      from: r.from_name,
+      fromRole: r.from_role,
+      course: r.course,
+      title: r.title,
+      body: r.body,
+      date: (r.created_at || '').slice(0, 10),
+    }));
+
+    // Same merge as loadSupportTicketsFromSupabase()/loadAppealsFromSupabase()
+    // elsewhere in this file: keep any local-only announcement (pendingSync
+    // still true, so its live insert may not have committed yet) that isn't
+    // already present in the fetch, drop everything else (including every
+    // hardcoded mock seed announcement, which never has pendingSync set).
+    const isDuplicate = (local, live) => local.from === live.from && local.title === live.title && local.body === live.body;
+    const localOnly = ANNOUNCEMENTS.filter(local => local.pendingSync && !fetched.some(live => isDuplicate(local, live)));
+
+    // Renumber ids on the merged list, same reason as appeals/tickets: mock
+    // seed ids and Postgres's own identity ids both start at 1 and collide.
+    // Nothing in this file looks an announcement up by id today, but this
+    // keeps the invariant true here too rather than leaving a latent trap.
+    const merged = [...localOnly, ...fetched];
+    merged.forEach((a, i) => { a.id = i + 1; });
+
+    ANNOUNCEMENTS.length = 0;
+    ANNOUNCEMENTS.push(...merged);
+    refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadAnnouncementsFromSupabase error, keeping mock ANNOUNCEMENTS:', e);
+  }
 }
 
 // ============================================================
@@ -11028,9 +11120,9 @@ function selectNotifRecipientType(value){
 // carries the lowercased haystack that filterNotifPickList() matches against.
 function notifCourseRowHtml(c, selectedCode){
   return `
-  <div class="notif-pick-row${c.code === selectedCode ? ' selected' : ''}" data-value="${c.code}" data-search="${(c.code + ' ' + c.name).toLowerCase()}" onclick="selectNotifCourse('${c.code}')">
+  <div class="notif-pick-row${c.code === selectedCode ? ' selected' : ''}" data-value="${c.code}" data-search="${escapeHtmlText((c.code + ' ' + c.name).toLowerCase())}" onclick="selectNotifCourse('${c.code}')">
     <div class="avatar" style="background:#ccfbf1;color:#0f766e;">${ICONS.layers.replace(/<svg /,'<svg style="width:16px;height:16px;" ')}</div>
-    <div class="student-info"><div class="student-name">${c.code}</div><div class="student-meta">${c.name}</div></div>
+    <div class="student-info"><div class="student-name">${c.code}</div><div class="student-meta">${escapeHtmlText(c.name)}</div></div>
     <div class="notif-pick-check">${ICONS.check}</div>
   </div>`;
 }
@@ -11040,8 +11132,8 @@ function notifPersonRowHtml(p, source, selectedId){
   const searchText = [p.name, p.reg, p.dept, p.email].filter(Boolean).join(' ').toLowerCase();
   return `
   <div class="notif-pick-row${String(id) === String(selectedId) ? ' selected' : ''}" data-value="${id}" data-search="${searchText}" onclick="selectNotifPerson('${id}')">
-    <div class="avatar">${initials(p.name)}</div>
-    <div class="student-info"><div class="student-name">${p.name}</div><div class="student-meta">${sub}</div></div>
+    <div class="avatar">${escapeHtmlText(initials(p.name))}</div>
+    <div class="student-info"><div class="student-name">${escapeHtmlText(p.name)}</div><div class="student-meta">${sub}</div></div>
     <div class="notif-pick-check">${ICONS.check}</div>
   </div>`;
 }
@@ -11194,9 +11286,9 @@ function renderSentNotifications(){
               <div style="color:var(--theme-primary);display:flex;">${ICONS.bell.replace(/<svg /,'<svg style="width:16px;height:16px;" ')}</div>
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:800;">${n.title}</div>
+              <div style="font-size:13px;font-weight:800;">${escapeHtmlText(n.title)}</div>
               <div class="notif-preview" id="notif-preview-sent-${n.id}" style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>
-              <div class="notif-full" id="notif-full-sent-${n.id}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${n.body}</div>
+              <div class="notif-full" id="notif-full-sent-${n.id}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${escapeHtmlText(n.body)}</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
                 <span class="tag-mini">${describeNotificationRecipient(n)}</span>
                 <span class="tag-mini">${formatNotifTimestamp(n)}</span>
@@ -11237,11 +11329,11 @@ function renderAppeals(){
         <div class="record-card">
           <div class="record-main">
             <div class="record-top">
-              <div class="record-name">${ap.student}</div>
+              <div class="record-name">${escapeHtmlText(ap.student)}</div>
               <div class="record-date">${ap.session}</div>
             </div>
             <div class="record-sub">${ap.course}</div>
-            <div style="font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.4;">${ap.reason}</div>
+            <div style="font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.4;">${escapeHtmlText(ap.reason)}</div>
           </div>
           <span class="status-pill ${ap.status==='resolved'?'present':'late'}">${ap.status}</span>
         </div>
@@ -11265,7 +11357,7 @@ function renderAppeals(){
       <div class="field">
         <label>Course <span class="req">*</span></label>
         <select class="select" id="appealCourse">
-          ${STUDENT_COURSES.map(c=>`<option value="${c.code}">${c.code} — ${c.name}</option>`).join('')}
+          ${STUDENT_COURSES.map(c=>`<option value="${c.code}">${c.code} — ${escapeHtmlText(c.name)}</option>`).join('')}
         </select>
       </div>
       <div class="field">
@@ -11475,12 +11567,12 @@ function renderSupportTickets(){
         <div class="record-card">
           <div class="record-main">
             <div class="record-top">
-              <div class="record-name">${t.subject}</div>
+              <div class="record-name">${escapeHtmlText(t.subject)}</div>
               <div class="record-date">${(t.createdAt||'').slice(0,10)}</div>
             </div>
-            <div class="record-sub">${t.category}${isReviewer ? ` · ${t.reporterName} (${t.reporterRole})` : ''}</div>
-            <div style="font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.4;">${t.description}</div>
-            ${t.status==='resolved' && t.resolutionNote ? `<div style="font-size:12px; color:var(--present); margin-top:6px; line-height:1.4;"><strong>Resolved:</strong> ${t.resolutionNote}</div>` : ''}
+            <div class="record-sub">${escapeHtmlText(t.category)}${isReviewer ? ` · ${escapeHtmlText(t.reporterName)} (${escapeHtmlText(t.reporterRole)})` : ''}</div>
+            <div style="font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.4;">${escapeHtmlText(t.description)}</div>
+            ${t.status==='resolved' && t.resolutionNote ? `<div style="font-size:12px; color:var(--present); margin-top:6px; line-height:1.4;"><strong>Resolved:</strong> ${escapeHtmlText(t.resolutionNote)}</div>` : ''}
             ${t.tier==='developer' ? `<div class="status-pill late" style="margin-top:6px; display:inline-block;">Escalated to developer</div>` : ''}
           </div>
           <span class="status-pill ${t.status==='resolved' ? 'present' : 'late'}">${t.status}</span>
@@ -11796,14 +11888,14 @@ function renderNewSessionFormBody(existing){
         <label>Course <span class="req">*</span></label>
         <select class="select" id="sessionCourse" onchange="onSessionCourseChange()">
           <option value="">Select a course...</option>
-          ${courseOptions.map(c => `<option value="${c.code}" ${lecture && lecture.code===c.code ? 'selected':''}>${c.code} — ${c.name}</option>`).join('')}
+          ${courseOptions.map(c => `<option value="${c.code}" ${lecture && lecture.code===c.code ? 'selected':''}>${c.code} — ${escapeHtmlText(c.name)}</option>`).join('')}
         </select>
       </div>
       <div class="field">
         <label>Lecturer <span class="req">*</span></label>
         <select class="select" id="sessionLecturer">
           <option value="">Select a lecturer...</option>
-          ${LECTURERS.map(l => `<option value="${l.name}" ${lecture && lecture.lecturer===l.name ? 'selected':''}>${l.name}</option>`).join('')}
+          ${LECTURERS.map(l => `<option value="${escapeHtmlText(l.name)}" ${lecture && lecture.lecturer===l.name ? 'selected':''}>${escapeHtmlText(l.name)}</option>`).join('')}
         </select>
       </div>
       <div class="field">
@@ -12246,7 +12338,7 @@ function renderCompliance(){
       <div class="section-title">${ICONS.chart} Programme Analytics</div>
       ${facultiesToShow.map(fac => `
       <div style="margin-bottom:14px;">
-        <div style="font-size:11px; font-weight:800; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:8px;">${fac.name}</div>
+        <div style="font-size:11px; font-weight:800; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:8px;">${escapeHtmlText(fac.name)}</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
           ${PROGRAMME_ANALYTICS.filter(p=>p.facultyKey===fac.key).map(p=>`
           <div class="lecture-row">
@@ -12617,6 +12709,7 @@ function navigate(screenId, opts){
   if(screenId === 'fraudCenter' || screenId === 'database') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
+  if(screenId === 'announcements' || screenId === 'home' || screenId === 'dashboard') loadAnnouncementsFromSupabase();
   if(screenId === 'courseRecords' || screenId === 'myAttendance') loadCourseAttendanceCapsFromSupabase();
 
   if(!opts.fromPopstate){

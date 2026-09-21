@@ -89,9 +89,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "universityId, name, role, and tempPassword are required" }, 400);
     }
 
+    if (!["student", "lecturer", "registrar", "administrator"].includes(role)) {
+      return jsonResponse({ error: "Unknown role" }, 400);
+    }
+    if (String(tempPassword).length < 8) {
+      return jsonResponse({ error: "tempPassword must be at least 8 characters" }, 400);
+    }
+
     // A registrar can only create student/lecturer accounts, and only
     // within their own faculty — mirrors can_write_faculty()'s intent
-    // (administrator: unrestricted; registrar: own faculty only).
+    // (administrator: unrestricted; registrar: own faculty only). An omitted
+    // facultyKey is pinned to the registrar's own faculty rather than left
+    // null, which would create an account outside every registrar's scope.
+    let effectiveFacultyKey = facultyKey || null;
     if (callerProfile.role === "registrar") {
       if (!["student", "lecturer"].includes(role)) {
         return jsonResponse({ error: "Registrars can only create Student or Lecturer accounts" }, 403);
@@ -99,6 +109,7 @@ Deno.serve(async (req) => {
       if (facultyKey && facultyKey !== callerProfile.faculty_key) {
         return jsonResponse({ error: "You can only create accounts in your own faculty" }, 403);
       }
+      effectiveFacultyKey = callerProfile.faculty_key;
     }
 
     const authEmail = universityIdToAuthEmail(universityId);
@@ -120,7 +131,7 @@ Deno.serve(async (req) => {
       name,
       role,
       email: email || authEmail,
-      faculty_key: facultyKey || null,
+      faculty_key: effectiveFacultyKey,
       program: program || null,
       year: year || null,
       mode: mode || null,

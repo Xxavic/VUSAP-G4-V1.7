@@ -1,0 +1,46 @@
+# Publishes ONLY the files the app needs to GitHub Pages, so the .sql
+# migrations, .md notes, design/ preview and supabase/ function source are
+# never served from the live site.
+#
+# One-time setup: repo Settings > Pages > Source = "GitHub Actions".
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist
+          cp index.html app.js sw.js manifest.json qrcode.min.js jsQR.min.js chart.min.js supabase.min.js dist/
+          cp -r icons dist/
+          touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

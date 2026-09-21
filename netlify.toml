@@ -1,0 +1,31 @@
+# Netlify config for QRAST.
+# Only the files the app needs are copied into dist/ and published, so the
+# .sql migrations, .md notes, design/ preview and supabase/ function source
+# are never served from the live site.
+
+[build]
+  command = "mkdir -p dist && cp index.html app.js sw.js manifest.json qrcode.min.js jsQR.min.js chart.min.js supabase.min.js dist/ && cp -r icons dist/"
+  publish = "dist"
+
+# Security headers for every response. (The CSP <meta> tag in index.html
+# can't set frame-ancestors; this header can.)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=()"
+    Content-Security-Policy = "frame-ancestors 'none'"
+
+# The service worker and page shell must always revalidate, or installed
+# PWAs can get stuck on stale code after a deploy.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"

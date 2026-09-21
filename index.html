@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://eumhlccvaembpqxcuaqf.supabase.co wss://eumhlccvaembpqxcuaqf.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>QRAST</title>
 <meta name="theme-color" content="#6c3ef5" />
@@ -1105,8 +1106,8 @@ input,select,textarea{font-family:inherit;}
 <body>
 <div id="splashScreen">
   <div class="splash-logo-wrap"></div>
-  <div class="splash-brand">QRAST</div>
-  <div class="splash-uni">VICTORIA UNIVERSITY</div>
+  <div class="splash-brand"></div>
+  <div class="splash-uni"></div>
 </div>
 <div id="app" data-role="student">
   <div class="statusbar"></div>
@@ -1128,7 +1129,7 @@ input,select,textarea{font-family:inherit;}
 <div class="sheet-overlay" id="sheetOverlay"></div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.min.js"></script>
 <script src="qrcode.min.js"></script>
 <script src="jsQR.min.js"></script>
 <script src="chart.min.js"></script>

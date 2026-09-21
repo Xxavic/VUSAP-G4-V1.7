@@ -1,7 +1,7 @@
 // QRAST — Service Worker
 // Provides offline-first caching so the app behaves like a native installed app.
 
-const CACHE_NAME = 'qrast-v14';
+const CACHE_NAME = 'qrast-v16';
 const CORE_ASSETS = [
   './index.html',
   './manifest.json',
@@ -9,6 +9,7 @@ const CORE_ASSETS = [
   './qrcode.min.js',
   './jsQR.min.js',
   './chart.min.js',
+  './supabase.min.js',
 ];
 
 self.addEventListener('install', (event) => {
