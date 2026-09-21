@@ -5446,7 +5446,31 @@ function renderEditStudentFormBody(s){
     </form>`;
 }
 
-function submitEditStudent(e, studentId){
+// Writes a profile edit to public.users. Returns null when there is no live
+// backend (caller keeps the local-only behaviour), { ok:true } on success, or
+// { error } on failure. .select() is what makes a silent RLS no-op visible:
+// an UPDATE that matches no permitted row returns success with zero rows, so
+// an empty result is treated as "not saved" rather than trusted.
+async function liveUpdateUserProfile(universityId, fields){
+  if(!LIVE_BACKEND) return null;
+  try {
+    const { data, error } = await SUPABASE_CLIENT
+      .from('users')
+      .update(fields)
+      .eq('university_id', universityId)
+      .select('id');
+    if(error){
+      const dup = error.code === '23505' && /email/.test(error.message || '');
+      return { error: dup ? 'That email is already used by another account.' : (error.message || 'Could not save changes') };
+    }
+    if(!data || !data.length) return { error: 'Not saved — you may not have permission to edit this account.' };
+    return { ok: true };
+  } catch(err){
+    return { error: String(err.message || err) };
+  }
+}
+
+async function submitEditStudent(e, studentId){
   e.preventDefault();
   const s = STUDENTS.find(x => String(x.id) === String(studentId));
   if(!s) return false;
@@ -5455,6 +5479,23 @@ function submitEditStudent(e, studentId){
   const email = document.getElementById('editStudentEmail')?.value.trim();
   const progKey = document.getElementById('editStudentDept')?.value;
   const prog = PROGRAMMES.find(p => p.key === progKey);
+
+  // Save to the database FIRST (only for accounts that exist live), so the
+  // screen never claims "updated" for a change that didn't persist — the
+  // in-memory STUDENTS/USERS copies alone are lost on the next login.
+  if(LIVE_BACKEND && isProvisionedAccount(s.reg)){
+    const fields = {
+      name,
+      email: email || vuEmail(name),
+      year: document.getElementById('editStudentYear').value || null,
+      mode: document.getElementById('editStudentMode').value,
+      gender: document.getElementById('editStudentGender').value,
+      semester: document.getElementById('editStudentSemester').value,
+    };
+    if(prog){ fields.program = prog.name; fields.faculty_key = prog.facultyKey; }
+    const live = await liveUpdateUserProfile(s.reg, fields);
+    if(live && live.error){ showToast(live.error); return false; }
+  }
 
   s.name = name;
   s.email = email || vuEmail(name);
@@ -6056,7 +6097,7 @@ function renderEditStaffFormBody(p, role){
     </form>`;
 }
 
-function submitEditStaff(e, personId, role){
+async function submitEditStaff(e, personId, role){
   e.preventDefault();
   let directoryArray;
   if(role === 'lecturer') directoryArray = LECTURERS;
@@ -6070,6 +6111,17 @@ function submitEditStaff(e, personId, role){
   const email = document.getElementById('editStaffEmail')?.value.trim();
   const dept = document.getElementById('editStaffDept')?.value.trim();
   const oldName = entry.name;
+
+  // Persist first — see submitEditStudent() for why the local copies alone
+  // aren't enough.
+  if(LIVE_BACKEND && isProvisionedAccount(personId)){
+    const live = await liveUpdateUserProfile(personId, {
+      name,
+      email: email || vuEmail(name),
+      program: dept || null,
+    });
+    if(live && live.error){ showToast(live.error); return false; }
+  }
 
   if(role === 'lecturer'){
     // Reconcile the checkbox state against COURSES.lecturer using the OLD
