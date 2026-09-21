@@ -45,11 +45,48 @@ create policy "announcements_select_authenticated"
 -- change, it needs its own explicit decision -- not a side effect of this
 -- migration.
 --
--- This policy relies on a `role` claim/column identifying each user's
--- role server-side. If your project does not already have an equivalent
--- check elsewhere (e.g. a `users` table joined on auth.uid()), adjust the
--- `from_role in (...)` condition below to match how role is actually
--- determined server-side for your schema before running this.
+-- The caller's role is looked up in public.users by auth.uid() -- NEVER taken
+-- from the row being inserted. from_role / from_name / from_supabase_id are
+-- values the browser sends, so a policy that trusted from_role would let any
+-- signed-in Student post as a Lecturer. Two layers, both server-side:
+--   1. A BEFORE INSERT trigger overwrites from_supabase_id, from_role and
+--      from_name from the caller's real profile, so the sender shown to
+--      everyone can't be forged (whatever the client sent is ignored).
+--   2. The policy independently re-checks the real role, and bounds the
+--      text so this can't be used to store arbitrarily large payloads.
+-- Calls with no end-user session (auth.uid() is null: the SQL editor, or an
+-- Edge Function using the service role) are left untouched by the trigger.
+create or replace function public.stamp_announcement_sender()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  caller record;
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+
+  select id, name, role into caller from public.users where id = auth.uid();
+  if not found then
+    raise exception 'No profile for this account';
+  end if;
+
+  new.from_supabase_id := caller.id;
+  new.from_role := caller.role;
+  new.from_name := caller.name;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_stamp_announcement_sender on public.announcements;
+create trigger trg_stamp_announcement_sender
+  before insert on public.announcements
+  for each row
+  execute function public.stamp_announcement_sender();
+
 drop policy if exists "announcements_insert_lecturer_registrar" on public.announcements;
 create policy "announcements_insert_lecturer_registrar"
   on public.announcements
@@ -57,7 +94,13 @@ create policy "announcements_insert_lecturer_registrar"
   to authenticated
   with check (
     from_supabase_id = auth.uid()
-    and from_role in ('lecturer', 'registrar')
+    and exists (
+      select 1 from public.users u
+      where u.id = auth.uid()
+        and u.role in ('lecturer', 'registrar')
+    )
+    and length(title) between 1 and 200
+    and length(body) between 1 and 4000
   );
 
 -- No UPDATE/DELETE policy is created: announcements are currently
