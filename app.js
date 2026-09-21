@@ -1358,6 +1358,21 @@ async function loadFacultiesAndProgrammesFromSupabase(){
       const prog = PROGRAMMES.find(p => p.name === c.programme);
       if(prog) c.programmeKey = prog.key;
     });
+
+    // Sept 2026: FACULTY_COUNTS/PROGRAMME_ANALYTICS/FACULTY_ANALYTICS were
+    // pre-computed once from the mock FACULTIES/PROGRAMMES/STUDENTS and only
+    // ever rebuilt again by recomputeFacultyProgrammeDerivedData() -- which,
+    // until now, was called only from the Administrator's own Faculty/
+    // Programme CRUD actions below, never here. That meant the moment live
+    // FACULTIES/PROGRAMMES data replaced the mock structure above, every
+    // analytics screen kept showing numbers computed from the old mock
+    // structure until an admin happened to edit a faculty or programme.
+    // Rebuild them now so they reflect what was just loaded. (Also called
+    // from loadStudentsFromSupabase(), since these numbers depend on
+    // STUDENTS too -- whichever of the two loads resolves last ends up
+    // authoritative, same eventual-consistency tolerance this file already
+    // relies on everywhere else.)
+    recomputeFacultyProgrammeDerivedData();
   } catch(e){
     console.warn('loadFacultiesAndProgrammesFromSupabase error, keeping mock data:', e);
   }
@@ -1883,6 +1898,12 @@ async function loadStudentsFromSupabase(){
     for(let i = STUDENTS.length - 1; i >= 0; i--){
       if(!STUDENTS[i].supabaseId) STUDENTS.splice(i, 1);
     }
+
+    // Sept 2026: FACULTY_COUNTS/PROGRAMME_ANALYTICS/FACULTY_ANALYTICS count
+    // and average over STUDENTS too, so a live STUDENTS reload needs to
+    // trigger the same rebuild loadFacultiesAndProgrammesFromSupabase() now
+    // does -- see its own comment for the full story.
+    recomputeFacultyProgrammeDerivedData();
 
     // This can resolve after the screen already rendered (it now also runs
     // after sign-in and on entering Register) — redraw so new rows show.
