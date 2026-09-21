@@ -2063,7 +2063,8 @@ const PROGRAMME_TO_FACULTY = {"cs": "Faculty of Computing & Informatics", "it": 
 
 const FACULTY_COUNTS = [{"key": "computing", "label": "Faculty of Computing & Informatics", "count": 113}, {"key": "business", "label": "Faculty of Business & Management", "count": 111}, {"key": "engineering", "label": "Faculty of Engineering", "count": 111}, {"key": "science", "label": "Faculty of Science", "count": 111}, {"key": "arts", "label": "Faculty of Arts & Education", "count": 74}];
 
-const DEPT_COUNTS = [{"key": "cs", "label": "Computer Science", "facultyKey": "computing", "facultyLabel": "Faculty of Computing & Informatics", "count": 38}, {"key": "it", "label": "Information Technology", "facultyKey": "computing", "facultyLabel": "Faculty of Computing & Informatics", "count": 38}, {"key": "swe", "label": "Software Engineering", "facultyKey": "computing", "facultyLabel": "Faculty of Computing & Informatics", "count": 37}, {"key": "biz", "label": "Business Administration", "facultyKey": "business", "facultyLabel": "Faculty of Business & Management", "count": 37}, {"key": "acc", "label": "Accounting & Finance", "facultyKey": "business", "facultyLabel": "Faculty of Business & Management", "count": 37}, {"key": "mkt", "label": "Marketing", "facultyKey": "business", "facultyLabel": "Faculty of Business & Management", "count": 37}, {"key": "civ", "label": "Civil Engineering", "facultyKey": "engineering", "facultyLabel": "Faculty of Engineering", "count": 37}, {"key": "eee", "label": "Electrical Engineering", "facultyKey": "engineering", "facultyLabel": "Faculty of Engineering", "count": 37}, {"key": "mech", "label": "Mechanical Engineering", "facultyKey": "engineering", "facultyLabel": "Faculty of Engineering", "count": 37}, {"key": "bio", "label": "Biology", "facultyKey": "science", "facultyLabel": "Faculty of Science", "count": 37}, {"key": "chem", "label": "Chemistry", "facultyKey": "science", "facultyLabel": "Faculty of Science", "count": 37}, {"key": "math", "label": "Mathematics & Statistics", "facultyKey": "science", "facultyLabel": "Faculty of Science", "count": 37}, {"key": "edu", "label": "Education", "facultyKey": "arts", "facultyLabel": "Faculty of Arts & Education", "count": 37}, {"key": "mc", "label": "Mass Communication", "facultyKey": "arts", "facultyLabel": "Faculty of Arts & Education", "count": 37}];
+// Sept 2026: DEPT_COUNTS deleted -- per MOCK-DATA-AUDIT.md, it had zero
+// references anywhere else in the file (confirmed via grep before removal).
 
 // 520+ generated students across all programmes (legacy demo students reserved
 // at their original registration numbers — see datagen/generate.py)
@@ -2091,9 +2092,9 @@ const SCHEDULE = [
     // Sept 2026 handoff, Part 1: the demo Lecturer account (Dr. Patrick
     // Mukasa) previously had only one lecture on the "today" mock day, so
     // the multi-course session-selection flow had nothing to actually pick
-    // between. Added a second one of his own assigned courses (see
-    // LECTURER_COURSES) later the same day so the picker/greyed-list flow
-    // is real to test, not just theoretical.
+    // between. Added a second one of his own assigned courses later the
+    // same day so the picker/greyed-list flow is real to test, not just
+    // theoretical.
     { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00", mode:"day" },
     { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening" },
   ]},
@@ -2215,11 +2216,13 @@ const STUDENT_COURSES = [
   { code:"CSC3105", name:"Operating Systems", lecturer:"Mr. Ivan Tumwesigye", color:"#dc2626" },
 ]
 
-// Courses assigned to the demo lecturer (Dr. Patrick Mukasa)
-const LECTURER_COURSES = [
-  { code:"CSC3101", name:"Data Structures & Algorithms", enrolled:32, attendanceRate:91 },
-  { code:"CSC3103", name:"Software Engineering", enrolled:28, attendanceRate:87 },
-];
+// Sept 2026: LECTURER_COURSES deleted -- per MOCK-DATA-AUDIT.md, it was 2
+// hardcoded fake courses (always Dr. Patrick Mukasa's, regardless of who was
+// actually logged in), used in two places that both had a correct,
+// live-aware alternative sitting unused right next to them:
+// getLecturerLectures() (derives the real list from this lecturer's own
+// SCHEDULE slots) for the dashboard's course count, and a courseCode-deduped
+// version of the same for the announcement-course picker.
 
 // Class Coordinator scope: students in the coordinator's assigned programme/year
 function getCoordinatorClassStudents(){
@@ -2540,9 +2543,9 @@ const SYSTEM_SETTINGS = {
   allowSelfEnrollment: false,   // whether students can self-enroll without a Registrar
   requireEmailVerification: true,
   systemName: 'QRAST',
-  institutionName: 'Victoria University',
-  portalName: 'Victoria University Smart Attendance Portal', // shown under the system name on the login screen — different for every institution running this software
-  supportEmail: 'support@vu.ac.ug',
+  institutionName: 'Ugandan Academy',
+  portalName: 'QR-code Realtime Attendance Scanning Technology', // shown under the system name on the login screen — different for every institution running this software
+  supportEmail: 'ajunachris01@gmail.com',
   academicYear: '2025/2026',
   logoDataUri: null, // custom institute crest; null falls back to the default VU shield
   // Anchor date for Lecturer Compliance's real "sessions expected"
@@ -4482,12 +4485,24 @@ function renderLecturerDashboard(){
       <div class="stat-tile">
         <div class="top"><span class="label">Assigned Courses</span>
           <span class="stat-icon" style="background:#dbeafe; color:#1d4ed8;">${ICONS.book}</span></div>
-        <div class="value">${LECTURER_COURSES.length}</div>
+        <div class="value">${new Set(getLecturerLectures().map(l => l.courseCode)).size}</div>
       </div>
       <div class="stat-tile">
         <div class="top"><span class="label">Attendance Rate</span>
           <span class="stat-icon" style="background:#dcfce7; color:#16a34a;">${ICONS.trend}</span></div>
-        <div class="value">87%</div>
+        <div class="value">${(() => {
+          // Sept 2026: was a hardcoded 87% shown to every lecturer regardless
+          // of their own real sessions -- see MOCK-DATA-AUDIT.md's "Lecturer
+          // dashboard 87%" item. Computed the same way Student Home's and the
+          // Registrar dashboard's (correctly live) Attendance Rate tiles
+          // already are: weightedAttendancePct() over this lecturer's own
+          // recorded sessions (RECORDS for the courses they teach, per
+          // getLecturerLectures()), '—' rather than a fabricated number when
+          // there's nothing recorded yet.
+          const myCourseCodes = new Set(getLecturerLectures().map(l => l.courseCode));
+          const pct = weightedAttendancePct(RECORDS.filter(r => myCourseCodes.has(r.code)));
+          return pct === null ? '—' : pct + '%';
+        })()}</div>
       </div>
       <div class="stat-tile">
         <div class="top"><span class="label">Today's Classes</span>
@@ -5643,9 +5658,9 @@ function resetSheetContentIfNeeded(sheetId){
 //                  screen was already read-only for them).
 //
 // The mock data has no per-student course-enrollment table, so "a Lecturer's
-// own students" is approximated the same way LECTURER_COURSES/scopedLecturer-
-// Compliance already approximate lecturer/course relationships elsewhere in
-// this file: courses this lecturer is assigned to (COURSES.lecturer === their
+// own students" is approximated the same way getLecturerLectures()/
+// scopedLecturerCompliance already approximate lecturer/course relationships
+// elsewhere in this file: courses this lecturer is assigned to (COURSES.lecturer === their
 // name) -> those courses' programmes -> students in those programmes. This is
 // a judgment call, not a real enrollment join — flagged in the handoff summary.
 // ============================================================
@@ -9974,6 +9989,8 @@ async function loadSystemSettingsFromSupabase(){
     // by the time this resolves (the splash paints synchronously at boot,
     // and login is often still showing) — refresh both explicitly instead
     // of waiting for whatever the user navigates to next.
+    saveBrandingCache();
+    splashBrandingReady = true;
     applySplashBranding();
     if(!State.role) renderApp();
   } catch(e){
@@ -10001,6 +10018,7 @@ async function saveSystemSettingsToSupabase(){
       updated_at: new Date().toISOString(),
     });
     if(error){ console.warn('saveSystemSettingsToSupabase failed:', error); return false; }
+    saveBrandingCache();
     return true;
   } catch(e){
     console.warn('saveSystemSettingsToSupabase error:', e);
@@ -10801,7 +10819,7 @@ function renderAnnouncements(){
         <label>Course (optional)</label>
         <select class="select" id="announcementCourse">
           <option value="">All my courses</option>
-          ${LECTURER_COURSES.map(c=>`<option value="${c.code}">${c.code} — ${c.name}</option>`).join('')}
+          ${[...new Map(getLecturerLectures().map(l => [l.courseCode, l])).values()].map(c=>`<option value="${c.courseCode}">${c.courseCode} — ${c.courseName}</option>`).join('')}
         </select>
       </div>` : `
       <div class="field">
@@ -12771,7 +12789,40 @@ function boot(){
 // rebranded institution's logo/name actually show up rather than only
 // taking effect on the next reload. No-ops harmlessly if the splash has
 // already been dismissed/removed.
+//
+// Branding is deliberately NOT painted until it's known to be the real thing
+// (cached from a previous load, fetched from Supabase, or -- if neither
+// arrives in time -- the in-code defaults). Painting the defaults first is
+// what made the old institution name flash for a split second before the
+// configured one replaced it.
+const BRANDING_CACHE_KEY = 'vusap_branding_cache';
+let splashBrandingReady = false;
+
+function loadBrandingCache(){
+  try {
+    const c = JSON.parse(localStorage.getItem(BRANDING_CACHE_KEY) || 'null');
+    if(!c) return false;
+    if(c.systemName) SYSTEM_SETTINGS.systemName = c.systemName;
+    if(c.institutionName) SYSTEM_SETTINGS.institutionName = c.institutionName;
+    if(c.portalName) SYSTEM_SETTINGS.portalName = c.portalName;
+    SYSTEM_SETTINGS.logoDataUri = c.logoDataUri ?? null;
+    return true;
+  } catch(e){ return false; }
+}
+
+function saveBrandingCache(){
+  try {
+    localStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify({
+      systemName: SYSTEM_SETTINGS.systemName,
+      institutionName: SYSTEM_SETTINGS.institutionName,
+      portalName: SYSTEM_SETTINGS.portalName,
+      logoDataUri: SYSTEM_SETTINGS.logoDataUri,
+    }));
+  } catch(e){ /* storage full/blocked -- cache is only an optimisation */ }
+}
+
 function applySplashBranding(){
+  if(!splashBrandingReady) return;
   const splashLogoWrap = document.querySelector('#splashScreen .splash-logo-wrap');
   if(splashLogoWrap) splashLogoWrap.innerHTML = currentLogoMark();
   const splashBrand = document.querySelector('#splashScreen .splash-brand');
@@ -12793,7 +12844,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // already ready almost immediately regardless (renderApp() runs
   // synchronously before any session-resume network call resolves), so
   // there's nothing meaningful to actually wait on here.
+  // Cached branding from the last load paints immediately; on a first-ever
+  // visit nothing is shown until Supabase answers, with defaults as a
+  // fallback if it hasn't by 1.2s (well inside the 1.8s splash window).
+  splashBrandingReady = loadBrandingCache();
   applySplashBranding();
+  if(!splashBrandingReady){
+    setTimeout(() => {
+      if(splashBrandingReady) return;
+      splashBrandingReady = true;
+      applySplashBranding();
+    }, 1200);
+  }
   setTimeout(() => {
     const splash = document.getElementById('splashScreen');
     if(!splash) return;
