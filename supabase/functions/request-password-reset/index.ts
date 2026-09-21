@@ -35,6 +35,24 @@ const corsHeaders = {
 const ok = () =>
   new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+// Database-backed rate limit (see migrate-rate-limits.sql). Returns true while
+// the caller is within the limit. Fails OPEN if the limiter itself errors (for
+// example the migration hasn't been run yet) so a limiter fault can never lock
+// everyone out of password resets — it only logs.
+async function withinLimit(admin: ReturnType<typeof createClient>, key: string, max: number, windowSeconds: number) {
+  const { data, error } = await admin.rpc("rate_limit_hit", { p_key: key, p_max: max, p_window_seconds: windowSeconds });
+  if (error) {
+    console.warn("request-password-reset: rate limiter unavailable, allowing:", error.message);
+    return true;
+  }
+  return data !== false;
+}
+
+function clientIp(req: Request) {
+  const fwd = req.headers.get("x-forwarded-for") || "";
+  return fwd.split(",")[0].trim() || null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -44,6 +62,13 @@ Deno.serve(async (req) => {
     if (!id) return ok();
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // At most 3 reset emails per person per 15 min, and 10 requests per IP per
+    // 15 min. Over the limit still answers {ok:true} so the response can't be
+    // used to tell whether an account exists or whether a limit was hit.
+    if (!(await withinLimit(admin, `pwreset:${id.toLowerCase()}`, 3, 900))) return ok();
+    const ip = clientIp(req);
+    if (ip && !(await withinLimit(admin, `pwreset-ip:${ip}`, 10, 900))) return ok();
 
     const column = id.includes("@") ? "email" : "university_id";
     const { data: profile } = await admin

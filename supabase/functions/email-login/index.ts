@@ -29,21 +29,24 @@ const json = (body: unknown, status = 200) =>
 
 const FAIL = { error: "Invalid login credentials" };
 
-// Best-effort brute-force throttle: 5 failed attempts per email per 15 min.
-// Edge instances are ephemeral, so this only slows a single-instance attacker;
-// pair it with Supabase Auth's rate limits / CAPTCHA (Dashboard > Auth).
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILS = 5;
-const failures = new Map<string, number[]>();
-function tooManyFailures(key: string) {
-  const now = Date.now();
-  const recent = (failures.get(key) || []).filter((t) => now - t < WINDOW_MS);
-  failures.set(key, recent);
-  return recent.length >= MAX_FAILS;
+// Database-backed brute-force limit (see migrate-rate-limits.sql): 5 attempts
+// per email per 15 min without a success, and 30 per IP per 15 min. A
+// successful login clears that email's counter. Fails OPEN if the limiter
+// itself errors (e.g. migration not run yet) so a limiter fault can't lock
+// everyone out — it only logs.
+const WINDOW_SECONDS = 15 * 60;
+async function withinLimit(admin: ReturnType<typeof createClient>, key: string, max: number) {
+  const { data, error } = await admin.rpc("rate_limit_hit", { p_key: key, p_max: max, p_window_seconds: WINDOW_SECONDS });
+  if (error) {
+    console.warn("email-login: rate limiter unavailable, allowing:", error.message);
+    return true;
+  }
+  return data !== false;
 }
-function recordFailure(key: string) {
-  failures.set(key, [...(failures.get(key) || []), Date.now()]);
-  if (failures.size > 5000) failures.clear();
+
+function clientIp(req: Request) {
+  const fwd = req.headers.get("x-forwarded-for") || "";
+  return fwd.split(",")[0].trim() || null;
 }
 
 Deno.serve(async (req) => {
@@ -53,18 +56,21 @@ Deno.serve(async (req) => {
     const { email, password } = await req.json();
     const addr = String(email || "").trim();
     if (!addr || !addr.includes("@") || !password) return json(FAIL);
-    const throttleKey = addr.toLowerCase();
-    if (tooManyFailures(throttleKey)) return json(FAIL, 429);
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    const throttleKey = `login:${addr.toLowerCase()}`;
+    if (!(await withinLimit(admin, throttleKey, 5))) return json(FAIL, 429);
+    const ip = clientIp(req);
+    if (ip && !(await withinLimit(admin, `login-ip:${ip}`, 30))) return json(FAIL, 429);
 
     const { data: profiles } = await admin
       .from("users")
       .select("id")
       .ilike("email", addr.replace(/[\\%_]/g, "\\$&"))
       .limit(5);
-    if (!profiles?.length) { recordFailure(throttleKey); return json(FAIL); }
+    if (!profiles?.length) return json(FAIL);
 
     for (const p of profiles) {
       const { data: authUser } = await admin.auth.admin.getUserById(p.id);
@@ -77,10 +83,10 @@ Deno.serve(async (req) => {
       });
       const { data, error } = await attempt.auth.signInWithPassword({ email: loginEmail, password });
       if (!error && data?.session) {
+        await admin.rpc("rate_limit_reset", { p_key: throttleKey });
         return json({ session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token } });
       }
     }
-    recordFailure(throttleKey);
     return json(FAIL);
   } catch (e) {
     console.error("email-login error:", e);
