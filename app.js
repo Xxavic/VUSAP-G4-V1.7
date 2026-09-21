@@ -1955,6 +1955,9 @@ async function loadStudentsFromSupabase(){
         semester: row.semester || null,
         mode: row.mode || null,
         email: row.email || '',
+        isClassCoordinator: !!row.is_class_coordinator,
+        coordinatorForProgramme: row.coordinator_for_programme || null,
+        coordinatorForYear: row.coordinator_for_year || null,
         // Confirmed-live marker (same field normalizeProfile() uses for
         // the signed-in user) — STUDENTS otherwise has no way to tell a
         // real live row apart from a permanent mock seed entry, since
@@ -5439,9 +5442,9 @@ function renderEnrollFormBody(){
       <div class="field">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
           <input type="checkbox" id="enrollIsCoordinator" style="width:16px;height:16px;flex-shrink:0;" />
-          Class Coordinator for this Programme &amp; Year
+          Class Coordinator for this Programme, Year &amp; Mode
         </label>
-        <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Uniquely identifies this student as the Class Coordinator for their programme and year — only one student per class can hold it, so assigning it here replaces whoever currently does.</div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Makes this student a Class Coordinator for their programme, year and study mode. A class can have at most 2 coordinators.</div>
       </div>
       <div class="btn-row" style="margin-top:6px;">
         <button type="button" class="btn btn-ghost" onclick="closeSheet('enrollSheet')">Cancel</button>
@@ -5481,7 +5484,52 @@ function openEditStudentSheet(studentId){
   if(!s){ showToast('Student not found'); return; }
   const body = document.getElementById('editStudentBody');
   if(body) body.innerHTML = renderEditStudentFormBody(s);
+  updateEditCoordinatorHint();
   openSheet('editStudentSheet');
+}
+
+// Class Coordinators: at most 2 per programme + year + study mode. The
+// database enforces this too (migrate-coordinator-limit.sql) - this client
+// check gives a clear message before the save and drives the edit sheet.
+const MAX_COORDINATORS_PER_CLASS = 2;
+
+function coordinatorModeLabel(mode){ return mode === 'day' ? 'Day' : mode === 'evening' ? 'Evening' : '-'; }
+
+// Students currently holding the coordinator role for one class, optionally
+// excluding one student (the one being edited).
+function coordinatorsForClass(progName, year, mode, excludeReg){
+  return STUDENTS.filter(x =>
+    x.isClassCoordinator && x.reg !== excludeReg &&
+    x.coordinatorForProgramme === progName && x.coordinatorForYear === year && x.mode === mode);
+}
+
+function classFullMessage(progName, year, mode){
+  return `${progName} · ${year} · ${coordinatorModeLabel(mode)} already has ${MAX_COORDINATORS_PER_CLASS} Class Coordinators. Remove one first (edit that student and untick Class Coordinator).`;
+}
+
+// Keeps the Class Coordinator checkbox and its hint in step with the
+// programme / year / mode currently picked in the edit sheet.
+function updateEditCoordinatorHint(){
+  const cb = document.getElementById('editStudentIsCoordinator');
+  const hint = document.getElementById('editCoordHint');
+  if(!cb || !hint) return;
+  const prog = PROGRAMMES.find(p => p.key === document.getElementById('editStudentDept')?.value);
+  const year = document.getElementById('editStudentYear')?.value;
+  const mode = document.getElementById('editStudentMode')?.value;
+  if(!prog || !year || !mode){
+    cb.checked = false; cb.disabled = true;
+    hint.textContent = 'Set a programme, year and study mode to assign a Class Coordinator.';
+    return;
+  }
+  const reg = cb.dataset.reg;
+  const me = STUDENTS.find(x => x.reg === reg);
+  const heldHere = !!(me && me.isClassCoordinator && me.coordinatorForProgramme === prog.name && me.coordinatorForYear === year && me.mode === mode);
+  const others = coordinatorsForClass(prog.name, year, mode, reg);
+  const full = others.length >= MAX_COORDINATORS_PER_CLASS && !heldHere;
+  if(full) cb.checked = false;
+  cb.disabled = full;
+  const who = others.length ? ' (' + others.map(o => o.name).join(', ') + ')' : '';
+  hint.textContent = `${prog.name} · ${year} · ${coordinatorModeLabel(mode)}: ${others.length} of ${MAX_COORDINATORS_PER_CLASS} coordinator slots held by other students${who}.` + (full ? ' This class is full - remove one first.' : '');
 }
 
 // Sept 2026 handoff, Part 1: expanded from Gender/Semester-only to cover
@@ -5506,7 +5554,7 @@ function renderEditStudentFormBody(s){
       </div>
       <div class="field">
         <label>Faculty / Programme</label>
-        <select class="select" id="editStudentDept">
+        <select class="select" id="editStudentDept" onchange="updateEditCoordinatorHint()">
           ${FACULTIES.map(fac => `
           <optgroup label="${escapeHtmlText(fac.name)}">
             ${PROGRAMMES.filter(p=>p.facultyKey===fac.key).map(p=>`<option value="${escapeHtmlText(p.key)}" ${s.deptKey===p.key?'selected':''}>${escapeHtmlText(p.name)}</option>`).join('')}
@@ -5516,7 +5564,7 @@ function renderEditStudentFormBody(s){
       <div class="field-row">
         <div class="field">
           <label>Year of Study</label>
-          <select class="select" id="editStudentYear">
+          <select class="select" id="editStudentYear" onchange="updateEditCoordinatorHint()">
             <option value="" ${!s.year?'selected':''}>— Not set —</option>
             <option ${s.year==='Year 1'?'selected':''}>Year 1</option>
             <option ${s.year==='Year 2'?'selected':''}>Year 2</option>
@@ -5525,7 +5573,7 @@ function renderEditStudentFormBody(s){
         </div>
         <div class="field">
           <label>Study Mode</label>
-          <select class="select" id="editStudentMode">
+          <select class="select" id="editStudentMode" onchange="updateEditCoordinatorHint()">
             <option value="day" ${s.mode==='day'?'selected':''}>Day</option>
             <option value="evening" ${s.mode==='evening'?'selected':''}>Evening</option>
           </select>
@@ -5546,6 +5594,13 @@ function renderEditStudentFormBody(s){
             <option value="Semester 2" ${s.semester==='Semester 2'?'selected':''}>Semester 2</option>
           </select>
         </div>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="editStudentIsCoordinator" data-reg="${escapeHtmlText(s.reg)}" ${s.isClassCoordinator ? 'checked' : ''} style="width:16px;height:16px;flex-shrink:0;" />
+          Class Coordinator for this Programme, Year &amp; Mode
+        </label>
+        <div id="editCoordHint" style="font-size:11px;color:var(--ink-faint);margin-top:4px;line-height:1.5;"></div>
       </div>
       <div style="font-size:11px;color:var(--ink-faint);line-height:1.5;">Registration number stays ${escapeHtmlText(s.reg)} even if programme changes.</div>
       <div class="btn-row" style="margin-top:6px;">
@@ -5588,6 +5643,18 @@ async function submitEditStudent(e, studentId){
   const email = document.getElementById('editStudentEmail')?.value.trim();
   const progKey = document.getElementById('editStudentDept')?.value;
   const prog = PROGRAMMES.find(p => p.key === progKey);
+  const newYear = document.getElementById('editStudentYear').value || null;
+  const newMode = document.getElementById('editStudentMode').value;
+  const wantsCoordinator = document.getElementById('editStudentIsCoordinator')?.checked || false;
+  const wasCoordinator = !!s.isClassCoordinator;
+  if(wantsCoordinator){
+    if(!prog || !newYear || !newMode){ showToast('A Class Coordinator needs a programme, year and study mode'); return false; }
+    const heldHere = s.isClassCoordinator && s.coordinatorForProgramme === prog.name && s.coordinatorForYear === newYear && s.mode === newMode;
+    if(!heldHere && coordinatorsForClass(prog.name, newYear, newMode, s.reg).length >= MAX_COORDINATORS_PER_CLASS){
+      showToast(classFullMessage(prog.name, newYear, newMode));
+      return false;
+    }
+  }
 
   // Save to the database FIRST (only for accounts that exist live), so the
   // screen never claims "updated" for a change that didn't persist — the
@@ -5596,10 +5663,13 @@ async function submitEditStudent(e, studentId){
     const fields = {
       name,
       email: email || vuEmail(name),
-      year: document.getElementById('editStudentYear').value || null,
-      mode: document.getElementById('editStudentMode').value,
+      year: newYear,
+      mode: newMode,
       gender: document.getElementById('editStudentGender').value,
       semester: document.getElementById('editStudentSemester').value,
+      is_class_coordinator: wantsCoordinator,
+      coordinator_for_programme: wantsCoordinator ? prog.name : null,
+      coordinator_for_year: wantsCoordinator ? newYear : null,
     };
     if(prog){ fields.program = prog.name; fields.faculty_key = prog.facultyKey; }
     const live = await liveUpdateUserProfile(s.reg, fields);
@@ -5609,10 +5679,13 @@ async function submitEditStudent(e, studentId){
   s.name = name;
   s.email = email || vuEmail(name);
   if(prog){ s.dept = prog.name; s.deptKey = prog.key; s.facultyKey = prog.facultyKey; s.faculty = prog.facultyName; }
-  s.year = document.getElementById('editStudentYear').value || null;
-  s.mode = document.getElementById('editStudentMode').value;
+  s.year = newYear;
+  s.mode = newMode;
   s.gender = document.getElementById('editStudentGender').value;
   s.semester = document.getElementById('editStudentSemester').value;
+  s.isClassCoordinator = wantsCoordinator;
+  s.coordinatorForProgramme = wantsCoordinator ? prog.name : null;
+  s.coordinatorForYear = wantsCoordinator ? newYear : null;
 
   // Keep the login record (USERS) in sync — resolveCheckInOutcome()'s
   // Day/Evening mismatch check reads State.user.mode live off this record,
@@ -5622,10 +5695,15 @@ async function submitEditStudent(e, studentId){
   if(account){
     account.name = name; account.email = s.email; account.dept = s.dept;
     account.year = s.year; account.mode = s.mode; account.gender = s.gender; account.semester = s.semester;
+    account.is_class_coordinator = wantsCoordinator;
+    account.coordinator_for_programme = s.coordinatorForProgramme;
+    account.coordinator_for_year = s.coordinatorForYear;
   }
 
   closeSheet('editStudentSheet');
-  showToast(`${s.name} updated`);
+  showToast(wantsCoordinator ? `${s.name} updated - Class Coordinator`
+    : wasCoordinator ? `${s.name} updated - no longer a Class Coordinator`
+    : `${s.name} updated`);
   // This action already knows the correct new state (we just mutated STUDENTS
   // directly) and isn't a fetch triggered by a navigate() hook, so refresh the
   // visible screen's HTML directly rather than going through navigate() again.
@@ -5685,6 +5763,13 @@ async function handleEnroll(e){
 
   await syncRegNoCounterFromSupabase();
   const prog = PROGRAMMES.find(p => p.key === deptKey);
+  if(isCoordinator){
+    const coordMode = mode === 'DAY' ? 'day' : 'evening';
+    if(coordinatorsForClass(prog.name, year, coordMode, null).length >= MAX_COORDINATORS_PER_CLASS){
+      showToast(classFullMessage(prog.name, year, coordMode));
+      return false;
+    }
+  }
   const reg = `VU-${prog.codePrefix}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
 
   // Generated once, up front, so the live Auth account (if LIVE_BACKEND is
@@ -5713,21 +5798,6 @@ async function handleEnroll(e){
 
   regNoCounter++;
 
-  // Exactly one Class Coordinator per programme+year — handing the badge to
-  // this new student demotes whoever currently holds it for the same class,
-  // rather than letting two students both claim to be "the" coordinator.
-  let replacedCoordinatorName = null;
-  if(isCoordinator){
-    const previous = Object.values(USERS).find(a => a.role === 'student' && a.is_class_coordinator && a.dept === prog.name && a.year === year);
-    if(previous){
-      replacedCoordinatorName = previous.name;
-      previous.is_class_coordinator = false;
-      previous.coordinator_for_programme = null;
-      previous.coordinator_for_year = null;
-      liveSyncCoordinatorStatus(previous.reg, { isCoordinator: false });
-    }
-  }
-
   // Add to the visible Student Register immediately...
   STUDENTS.push({
     id: STUDENTS.length + 1, name, reg,
@@ -5737,6 +5807,9 @@ async function handleEnroll(e){
     gender, semester,
     mode: mode === 'DAY' ? 'day' : 'evening',
     email,
+    isClassCoordinator: isCoordinator,
+    coordinatorForProgramme: isCoordinator ? prog.name : null,
+    coordinatorForYear: isCoordinator ? year : null,
   });
 
   // ...and mirror it into the local USERS object — either as the mock
@@ -5753,7 +5826,6 @@ async function handleEnroll(e){
 
   liveSyncCoordinatorStatus(reg, { isCoordinator, programme: prog.name, year });
 
-  if(replacedCoordinatorName) showToast(`${replacedCoordinatorName} is no longer Class Coordinator — replaced by ${name}`);
   showTempPasswordConfirmation(name, reg, tempPassword);
   return false;
 }
