@@ -974,6 +974,94 @@ async function liveFinalizeSessionAttendance(courseCode, dateISO){
 }
 
 // ------------------------------------------------------------
+// RECORDS — bulk live load (Sept 2026). Until now the only way a live
+// check-in/correction ever reached RECORDS was liveLoadAttendanceForLectureDate()
+// above, which only syncs the ONE lecture+date currently open in Attendance
+// Corrections -- so a student's "My Attendance" history, a Registrar's
+// scoped records/reports, and the Database Management count all only ever
+// showed whatever happened to already be in memory (the mock seed, plus
+// anything the current browser session itself wrote), never a student's
+// full history from earlier sessions or other devices/logins.
+//
+// venue turned out NOT to need a schema change (MOCK-DATA-AUDIT.md's
+// original note on this was too pessimistic): `classes` has no room column
+// by design (see loadClassesFromSupabase()'s comment), but SCHEDULE already
+// carries the right room per (course code, weekday) once the timetable is
+// live -- the same source liveLoadAttendanceForLectureDate() already reads
+// via its `lecture` argument. Rebuilt here as a lookup since this loader
+// isn't scoped to one lecture object.
+//
+// Merge philosophy: live rows are matched into RECORDS by (code, date,
+// reg) and win on match (so a correction made anywhere shows up
+// everywhere), but nothing is purged -- a RECORDS row with no live match
+// is left alone, same as SCHEDULE/COURSES' "stays mixed" decision, since a
+// purely mock-timetable course's attendance was never going to have a live
+// row to match against anyway.
+// ------------------------------------------------------------
+
+async function loadRecordsFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('attendance')
+      .select('student_id, student_name, status, marked_at, sessions(date, classes(code, name, programmes(name)))')
+      .order('marked_at', { ascending: false })
+      .limit(1000); // soft cap, same reasoning as loadAnnouncementsFromSupabase()'s .limit(200) -- not meant to be a perfect full history, just enough that real records aren't invisible
+    if(error){ console.warn('loadRecordsFromSupabase failed, keeping existing RECORDS:', error); return; }
+    if(!rows || rows.length === 0) return; // no live attendance yet -- keep whatever RECORDS already has
+
+    // Batch-resolve each student's registration number -- attendance rows
+    // carry a Supabase user id, not the human-readable reg RECORDS uses
+    // everywhere else (matches the teacherNames batch-lookup pattern in
+    // loadTimetableFromSupabase() above).
+    const studentIds = [...new Set(rows.map(r => r.student_id).filter(Boolean))];
+    let regByStudentId = {};
+    if(studentIds.length){
+      try {
+        const { data: userRows } = await SUPABASE_CLIENT
+          .from('users').select('id, university_id').in('id', studentIds);
+        (userRows || []).forEach(u => { regByStudentId[u.id] = u.university_id; });
+      } catch(e){
+        console.warn('loadRecordsFromSupabase: reg lookup failed:', e);
+      }
+    }
+
+    // (course code, weekday) -> room, built from whatever SCHEDULE already
+    // has loaded (mock or live) -- see the file-level comment above.
+    const roomByCodeAndDay = {};
+    SCHEDULE.forEach(d => {
+      (d.lectures || []).forEach(l => { roomByCodeAndDay[`${l.code}|${d.day}`] = l.room; });
+    });
+    const weekdayOf = (dateISO) => new Date(dateISO + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+
+    let changed = false;
+    rows.forEach(row => {
+      const session = row.sessions;
+      const cls = session?.classes;
+      if(!session?.date || !cls?.code) return; // can't place this row without a date+course
+      const reg = regByStudentId[row.student_id];
+      if(!reg) return; // no matching live student profile -- skip rather than show a blank reg
+
+      const weekday = weekdayOf(session.date);
+      const rec = {
+        date: session.date, reg, name: row.student_name || '',
+        prog: cls.programmes?.name || '',
+        code: cls.code, course: cls.name || cls.code,
+        venue: roomByCodeAndDay[`${cls.code}|${weekday}`] || null,
+        status: row.status,
+      };
+      const idx = RECORDS.findIndex(r => r.code === rec.code && r.date === rec.date && r.reg === rec.reg);
+      if(idx >= 0) RECORDS[idx] = { ...RECORDS[idx], ...rec }; else RECORDS.unshift(rec);
+      changed = true;
+    });
+
+    if(changed) refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadRecordsFromSupabase error, keeping existing RECORDS:', e);
+  }
+}
+
+// ------------------------------------------------------------
 // FRAUD DETECTION (Gate 4, part 6). Runs two checks, both driven by the
 // existing FRAUD_THRESHOLDS admin settings (previously decorative — this is
 // what actually wires them up):
@@ -12782,6 +12870,7 @@ function navigate(screenId, opts){
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
   if(screenId === 'announcements' || screenId === 'home' || screenId === 'dashboard') loadAnnouncementsFromSupabase();
   if(screenId === 'courseRecords' || screenId === 'myAttendance') loadCourseAttendanceCapsFromSupabase();
+  if(screenId === 'records' || screenId === 'facultyRecordsCatalog' || screenId === 'courseRecords' || screenId === 'myAttendance' || screenId === 'database') loadRecordsFromSupabase();
 
   if(!opts.fromPopstate){
     const state = { vusapScreen: screenId, vusapRole: State.role };
