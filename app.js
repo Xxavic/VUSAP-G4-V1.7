@@ -645,9 +645,33 @@ async function checkLecturerActiveSession(){
     // look like nothing was running. Search every course this Lecturer
     // actually teaches instead — same discovery pattern as the Student
     // side's startStudentLiveSessionSync().
+    //
+    // Sept 2026 follow-up: this used to call liveFindActiveSession(code)
+    // with no mode at all -- flagged in the original Day/Evening
+    // independence fix's own commit message as "deliberately left
+    // mode-blind... a known, minor, separate case", which turned out not to
+    // be minor. Every navigate('dashboard') call runs this (see the
+    // navigate() hook below), and a course's QR token rotates every
+    // windowSeconds, which bumps that row's updated_at -- so an any-mode
+    // "most recently updated" lookup would essentially always favor
+    // whichever mode's token happened to rotate most recently, with no
+    // relation to which one the Lecturer actually just started or is
+    // looking at. Concretely: start an Evening session, then visit
+    // Dashboard, and if the Day session's token happened to rotate a
+    // moment later, this would silently swap LIVE_SESSION back to Day.
+    //
+    // Fix: once a mode is already known locally (LIVE_SESSION.mode set,
+    // whether from starting a session this page load or a prior discovery),
+    // stay scoped to that mode -- this call's whole job at that point is
+    // "is MY session still running", not "pick whichever one changed most
+    // recently". Only fall back to the broad any-mode search when mode is
+    // genuinely unknown (a fresh reload/login, LIVE_SESSION back at its
+    // module-level default with mode never set) -- see endSession() and the
+    // "else if" stale-clear branch below for the two places that reset
+    // mode to null, which is what lets this go broad again afterward.
     let row = null, resumedCode = null;
     for(const code of coursesForLecturer().map(c => c.code)){
-      row = await liveFindActiveSession(code);
+      row = await liveFindActiveSession(code, LIVE_SESSION.mode || undefined);
       if(row){ resumedCode = code; break; }
     }
     if(row){
