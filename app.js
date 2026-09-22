@@ -379,6 +379,7 @@ async function resumeSupabaseSession() {
       document.getElementById('app').setAttribute('data-role', normalized.role);
       loadEnrollmentsFromSupabase(); // Gate 4 — see handleLogin() for the same fire-and-forget call
       loadStudentsFromSupabase(); // the page-load call ran signed out and got no rows — see its call site at startup
+      loadStaffFromSupabase(); // same reasoning, staff-directory counterpart
       loadNotificationsFromSupabase();
       loadSentNotificationsFromSupabase();
       loadCourseAttendanceCapsFromSupabase();
@@ -2005,6 +2006,85 @@ async function loadStudentsFromSupabase(){
   }
 }
 
+// Sept 2026, MOCK-DATA-AUDIT.md follow-up: LECTURERS/REGISTRARS/
+// ADMINISTRATORS previously had no live loader at all -- they only ever
+// grew (via createStaffAccount()'s directoryArray.push(), or the original
+// mock seed), so a Lecturer/Registrar/Administrator created directly in
+// Supabase (not through this app's own Create Account form) never showed up
+// in these directories, and the mock seed staff never disappeared. Same
+// merge-by-id-then-purge-unmatched shape as loadStudentsFromSupabase()
+// above, just fanned out across three arrays/roles from one query instead
+// of one array/role.
+async function loadStaffFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT
+      .from('users')
+      .select('*')
+      .in('role', ['lecturer', 'registrar', 'administrator'])
+      .order('university_id');
+
+    if(error){
+      console.warn('Staff fetch failed, keeping mock LECTURERS/REGISTRARS/ADMINISTRATORS:', error);
+      return;
+    }
+    if(!rows || rows.length === 0){
+      // Table reachable but no live staff rows yet — keep mock data
+      return;
+    }
+
+    const directoriesByRole = { lecturer: LECTURERS, registrar: REGISTRARS, administrator: ADMINISTRATORS };
+
+    rows.forEach(row => {
+      const directoryArray = directoriesByRole[row.role];
+      if(!directoryArray || !row.university_id) return; // unrecognized role, or a row with no id to key on
+
+      const existingIndex = directoryArray.findIndex(p => p.id === row.university_id);
+      const liveEntry = {
+        id: row.university_id,
+        name: row.name || '',
+        // No dedicated department column exists for staff — see
+        // createStaffAccount()'s comment on why `program` doubles as the
+        // dept text carrier for Lecturers specifically. A Registrar's
+        // "department" is always derived from faculty_key instead (matches
+        // reassignRegistrar()'s own logic), and Administrator has never had
+        // a dept concept in this app — null for both, same as the mock seed.
+        dept: row.role === 'lecturer' ? (row.program || null)
+            : row.role === 'registrar' ? (row.faculty_key ? facultyName(row.faculty_key) : null)
+            : null,
+        email: row.email || '',
+        status: 'active', // overwritten per-render by getStaffDirectory()'s own USERS/isProvisionedAccount check — see its comment
+        supabaseId: row.id,
+      };
+      if(row.role === 'registrar') liveEntry.facultyKey = row.faculty_key || null;
+
+      if(existingIndex >= 0){
+        directoryArray[existingIndex] = liveEntry;
+      } else {
+        directoryArray.push(liveEntry);
+      }
+    });
+
+    // Purge unmatched mock seed entries, scoped per role: once genuinely
+    // live data exists for a given role, its mock seed rows shouldn't stick
+    // around forever alongside (or in place of) real ones. Scoped rather
+    // than blanket, since rows can be live for one role (e.g. Lecturer)
+    // while another (e.g. Administrator) still has zero live accounts —
+    // that role's mock entries stay put until it has live data of its own.
+    const liveRolesSeen = new Set(rows.map(r => r.role));
+    Object.entries(directoriesByRole).forEach(([role, directoryArray]) => {
+      if(!liveRolesSeen.has(role)) return;
+      for(let i = directoryArray.length - 1; i >= 0; i--){
+        if(!directoryArray[i].supabaseId) directoryArray.splice(i, 1);
+      }
+    });
+
+    if(!openSheetId) refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadStaffFromSupabase error, keeping mock staff directories:', e);
+  }
+}
+
 async function loadEnrollmentsFromSupabase(){
   if(!LIVE_BACKEND || !State.user || !State.user.supabaseId) return;
   try {
@@ -3291,10 +3371,19 @@ async function createStaffAccount(role, name, email, deptOrFaculty){
   // accounts have no faculty scoping yet (deptOrFaculty above is free text
   // like "Computer Science", not a FACULTIES key), so facultyKey is left
   // null -- same as the mock layer already did for all three roles.
+  //
+  // Lecturer dept text is passed through as `program` -- the users table
+  // has no dedicated department column, and `program` is otherwise unused
+  // by any non-student role, so it's the one free-text slot available to
+  // round-trip this through Supabase. loadStaffFromSupabase() reads it back
+  // the same way. Registrar "department" is derived from facultyKey instead
+  // (see reassignRegistrar()), and Administrator has no dept concept in the
+  // mock layer either, so both stay null here.
   const tempPassword = generateTempPassword();
   const live = await authProvisionAccount({
     universityId: id, name: name.trim(), email: email || vuEmail(name), role, tempPassword,
     facultyKey: null,
+    program: role === 'lecturer' ? (deptOrFaculty || null) : null,
   });
   if(live && live.error){
     return { error: live.error };
@@ -4474,6 +4563,7 @@ async function handleLogin(e){
   // no-ops for any non-student role or a mock-only login.
   loadEnrollmentsFromSupabase();
   loadStudentsFromSupabase(); // startup call ran signed out (no rows) — reload now that there's a session
+  loadStaffFromSupabase(); // same reasoning, staff-directory counterpart
   loadNotificationsFromSupabase();
   loadSentNotificationsFromSupabase();
   loadCourseAttendanceCapsFromSupabase();
@@ -12945,7 +13035,7 @@ function navigate(screenId, opts){
   // back to Dashboard) would see "Start Live Session" instead of "Current
   // Session", since nothing re-checks reality on Dashboard entry.
   if(screenId === 'dashboard' && State.role === 'lecturer') checkLecturerActiveSession();
-  if(screenId === 'register'){ loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); }
+  if(screenId === 'register'){ loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); loadStaffFromSupabase(); }
   if(screenId === 'sendNotification'){ updateComposeNotificationFields('allStudents'); updateNotifPreview(); }
   // Charts need their <canvas> elements in the DOM first, which only
   // happens after the innerHTML assignment above — safe to call synchronously
@@ -12958,6 +13048,7 @@ function navigate(screenId, opts){
   if(screenId === 'notifications') loadNotificationsFromSupabase();
   if(screenId === 'sentNotifications') loadSentNotificationsFromSupabase();
   if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
+  if(screenId === 'database') loadStaffFromSupabase(); // Database screen's table-count tiles read LECTURERS/REGISTRARS.length directly
   if(screenId === 'compliance') loadLecturerComplianceFromSupabase();
   if(screenId === 'fraudCenter' || screenId === 'database') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
@@ -13259,6 +13350,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // would shrink the visible roster from hundreds down to a handful the
   // moment this succeeds, which is never what should happen silently).
   loadStudentsFromSupabase();
+  // Same merge philosophy, staff-directory counterpart of the STUDENTS
+  // loader above — see loadStaffFromSupabase()'s own comment.
+  loadStaffFromSupabase();
   // Gate 6: live timetable_slots loader — same merge philosophy as
   // STUDENTS, for the same reason: the mock SCHEDULE baseline stays as
   // fallback/coexisting data rather than being wiped by a handful of real
