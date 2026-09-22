@@ -1,16 +1,18 @@
 # Getting the real schema, before a second client happens
 
 Prep for the "new institution wants in" scenario: this is the missing
-piece in that plan. None of the `migrate-*.sql` files in this repo create
-the base tables — only `system_settings` has a `CREATE TABLE` anywhere in
-version control. The other 17 tables the app uses (`users`, `faculties`,
+piece in that plan. Of the 18 tables the app actually queries, 13 have no
+`CREATE TABLE` anywhere in version control: `users`, `faculties`,
 `programmes`, `classes`, `enrollments`, `attendance`, `attendance_appeals`,
-`sessions`, `timetable_slots`, `live_qr_sessions`, `course_attendance_caps`,
-`announcements`, `notifications`, `fraud_logs`, `audit_log`,
-`support_tickets`, `account_deletion_requests`) were built directly in the
-Supabase dashboard over time and were never exported to a file. A fresh
-project for a new client would need that whole schema, not just the 15
-patch files here — and `users` in particular carries real security logic
+`sessions`, `timetable_slots`, `live_qr_sessions`, `fraud_logs`,
+`audit_log`, `notifications`. They were built directly in the Supabase
+dashboard over time and were never exported to a file. (The other 5 —
+`account_deletion_requests`, `announcements`, `course_attendance_caps`,
+`support_tickets`, `system_settings` — are already covered, each by its
+own `migrate-*.sql` file. `rate_limits` has one too, though it's reached
+only via RPC from the Edge Functions, not a direct table query.) A fresh
+project for a new client would need that missing base schema, not just the
+15 patch files here — and `users` in particular carries real security logic
 (see `migrate-harden-users-privilege-escalation.sql`: row-level self-service
 restrictions and faculty-scoped access, enforced by a trigger, not just
 RLS). That's not something to reconstruct by guessing from `app.js` queries
