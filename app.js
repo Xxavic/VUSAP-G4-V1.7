@@ -2337,14 +2337,6 @@ function computeCheckInStreak(reg){
   return streak;
 }
 
-const RECENT_SUBMISSIONS = [
-  { name:"Prossy Namutebi", code:"BAR4301", date:"2026-06-23", status:"present" },
-  { name:"Opio Emmanuel", code:"BAR4301", date:"2026-06-23", status:"absent" },
-  { name:"Nabaale Annet", code:"BAR4301", date:"2026-06-22", status:"late" },
-  { name:"Mary Tendo", code:"BAR4301", date:"2026-06-22", status:"present" },
-  { name:"Lwanga Moses", code:"BAR4301", date:"2026-06-21", status:"present" },
-];
-
 const USERS = {
   // Class Coordinator is NOT a separate login — it's a privilege flag on a student account.
   "VU-CSF-2401-0001-DAY": {
@@ -2398,6 +2390,30 @@ const USERS = {
 // Mirrors Mak-BAMS's own stance: a new consent requirement applies to new
 // registrations going forward, not retroactively to existing staff.
 Object.values(USERS).forEach(u => { if(u.consentAt === undefined) u.consentAt = '2026-01-01T00:00:00.000Z'; });
+
+// Sept 2026, MOCK-DATA-AUDIT.md follow-up ("USERS mock credential store"):
+// USERS itself stays — it's the local overlay every suspend/reactivate,
+// Registrar reassignment, consent, and orphan-account check reads/writes
+// (see e.g. suspendAccount(), reassignRegistrar()), not just a login table.
+// The one real smell was the plaintext demo passwords above always being
+// live and workable. authSignIn()'s mock fallback (see its own comment) is
+// only ever reached when LIVE_BACKEND is false or the live call throws —
+// and LIVE_BACKEND is already resolved, synchronously, above this point in
+// the file (see the top-of-file SUPABASE_CLIENT block) — so once a device
+// has the Supabase client library available at all (true on essentially
+// every load except a genuinely first-ever-offline one, since the PWA
+// caches supabase.min.js), these passwords are dead weight sitting in
+// memory with nothing that can legitimately use them. Deleting them here
+// closes that off for any normal (LIVE_BACKEND-true) session — a truly
+// offline first load, where LIVE_BACKEND is false from the start, is the
+// only case that still needs them, and skips this block entirely.
+// Note this doesn't remove the literal strings from the shipped app.js
+// source itself (there's no build/minify step in this project to strip
+// them from — see hosting-github-pages notes) — only from what's readable
+// at runtime in a live session.
+if(LIVE_BACKEND){
+  Object.values(USERS).forEach(u => { delete u.password; });
+}
 
 // Courses the demo student is enrolled in
 const STUDENT_COURSES = [
@@ -3626,10 +3642,9 @@ function cascadeRenameCourseCode(oldCode, newCode){
   RECORDS.forEach(r => {
     if(r.code === oldCode){ r.code = newCode; touched++; }
   });
-
-  RECENT_SUBMISSIONS.forEach(s => {
-    if(s.code === oldCode){ s.code = newCode; touched++; }
-  });
+  // RECENT_SUBMISSIONS no longer exists as its own array (Sept 2026 —
+  // see scopedRecentSubmissions()) — it's now derived from RECORDS on
+  // every render, so renaming RECORDS above already covers it.
 
   STUDENT_COURSES.forEach(c => {
     if(c.code === oldCode){ c.code = newCode; touched++; }
@@ -3717,10 +3732,23 @@ function scopedRecords(){
   return RECORDS.filter(r => facultyKeyForProgrammeName(r.prog) === fk);
 }
 
-function scopedRecentSubmissions(){
-  const fk = currentRegistrarFacultyKey();
-  if(!fk) return RECENT_SUBMISSIONS;
-  return RECENT_SUBMISSIONS.filter(r => facultyKeyForStudentName(r.name) === fk);
+// Sept 2026, MOCK-DATA-AUDIT.md follow-up: RECENT_SUBMISSIONS used to be its
+// own hardcoded array, purely additive (submitAttendance() pushed a live
+// correction onto it but nothing ever removed a mock seed row, and
+// loadRecordsFromSupabase() never touched it at all — so a correction made
+// on another device, or any record loaded live, never showed up here).
+// It was always just "the newest few rows of RECORDS" by another name — the
+// same call site pushed an identical-shaped entry into both arrays at once
+// — so it's now derived from RECORDS directly instead of duplicated.
+// RECORDS isn't guaranteed to already be newest-first (loadRecordsFromSupabase
+// unshifts as it iterates a descending-marked_at batch, which inverts order
+// within that batch — see its own comment), so this sorts explicitly by
+// date rather than trusting array order.
+function scopedRecentSubmissions(limit){
+  return [...scopedRecords()]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit || 5)
+    .map(r => ({ name: r.name, code: r.code, date: r.date, status: r.status }));
 }
 
 function scopedAppeals(){
@@ -5288,7 +5316,9 @@ function submitAttendance(){
         code: lec.courseCode, course: lec.courseName, venue: lec.room, status, source: 'correction',
       });
     }
-    RECENT_SUBMISSIONS.unshift({ name: s.name, code: lec.courseCode, date: currentCorrectionsDate, status });
+    // RECENT_SUBMISSIONS no longer exists as its own array — it's derived
+    // from RECORDS (see scopedRecentSubmissions()), and RECORDS was already
+    // updated just above.
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Attendance correction', lec.courseCode, `${s.name} (${s.reg}): marked ${status} — no scan on record`);
     liveWriteAttendanceCorrection({ lecture: lec, dateISO: currentCorrectionsDate, student: s, status, source: 'correction', actorName: State.user?.name });
   });
