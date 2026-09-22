@@ -11,6 +11,19 @@
 const SUPABASE_URL  = 'https://eumhlccvaembpqxcuaqf.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1bWhsY2N2YWVtYnBxeGN1YXFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NTA5ODEsImV4cCI6MjA5NDUyNjk4MX0.spQS7jBkRWLjOZamVAaEPDXkqQHCzWIaqBbldd_-B0E';
 
+// demo-neutral-branding branch ONLY (Sept 2026) — this build still points at
+// the same live Supabase project as production (see this branch's own
+// commit message), so it reads real Victoria University data. That's an
+// accepted risk for this build, but the institution's NAME and LOGO must not
+// leak through regardless — loadSystemSettingsFromSupabase() below normally
+// overwrites both from the live system_settings row the moment it resolves,
+// which would silently undo this branch's own neutral-branding change the
+// instant anyone loads the app with a network connection. This flag blocks
+// just those two overwrites; every other live-loaded field (faculties,
+// students, records, etc.) is untouched and still comes from the real data.
+// Not present on main — this is demo-build-only scaffolding.
+const DEMO_BUILD = true;
+
 // Initialise the client. If the supabase global isn't loaded (e.g. network
 // blocked the CDN), SUPABASE_CLIENT stays null and every auth call
 // gracefully falls back to the in-memory USERS mock.
@@ -10546,7 +10559,9 @@ async function loadSystemSettingsFromSupabase(){
       return;
     }
     SYSTEM_SETTINGS.systemName = data.system_name ?? SYSTEM_SETTINGS.systemName;
-    SYSTEM_SETTINGS.institutionName = data.institution_name ?? SYSTEM_SETTINGS.institutionName;
+    // DEMO_BUILD guard (see its own comment at the top of the file): skip
+    // both these two specifically, keep everything else live as normal.
+    if(!DEMO_BUILD) SYSTEM_SETTINGS.institutionName = data.institution_name ?? SYSTEM_SETTINGS.institutionName;
     SYSTEM_SETTINGS.portalName = data.portal_name ?? SYSTEM_SETTINGS.portalName;
     SYSTEM_SETTINGS.supportEmail = data.support_email ?? SYSTEM_SETTINGS.supportEmail;
     SYSTEM_SETTINGS.academicYear = data.academic_year ?? SYSTEM_SETTINGS.academicYear;
@@ -10554,7 +10569,7 @@ async function loadSystemSettingsFromSupabase(){
     SYSTEM_SETTINGS.requireEmailVerification = data.require_email_verification ?? SYSTEM_SETTINGS.requireEmailVerification;
     SYSTEM_SETTINGS.allowSelfEnrollment = data.allow_self_enrollment ?? SYSTEM_SETTINGS.allowSelfEnrollment;
     SYSTEM_SETTINGS.maintenanceMode = data.maintenance_mode ?? SYSTEM_SETTINGS.maintenanceMode;
-    SYSTEM_SETTINGS.logoDataUri = data.logo_data_uri ?? null;
+    if(!DEMO_BUILD) SYSTEM_SETTINGS.logoDataUri = data.logo_data_uri ?? null;
     SYSTEM_SETTINGS.termStartDate = data.term_start_date ?? SYSTEM_SETTINGS.termStartDate;
     SYSTEM_SETTINGS.lateCreditPct = data.late_credit_pct ?? SYSTEM_SETTINGS.lateCreditPct;
 
@@ -10573,6 +10588,21 @@ async function loadSystemSettingsFromSupabase(){
 
 async function saveSystemSettingsToSupabase(){
   if(!LIVE_BACKEND) return true;
+  // DEMO_BUILD guard (see the flag's own comment at the top of the file):
+  // this build shares the real production Supabase project, and this write
+  // is an upsert onto the SAME system_settings row real VU users read --
+  // including maintenance_mode, which would lock every non-Administrator
+  // out of the live app the moment anyone hits Save here during a demo.
+  // Reads still happen normally elsewhere; this is the one write worth
+  // blocking outright rather than just defaulting to neutral, since a wrong
+  // read is cosmetic and a wrong write here is an outage.
+  //
+  // Deliberately no toast here -- every call site already shows its own
+  // "Saved on this device only — couldn't reach the server" message when
+  // this returns false, which is what a demo visitor should see (the
+  // change did take effect locally, just didn't persist) without a second,
+  // contradictory toast stacked on top of it.
+  if(DEMO_BUILD) return false;
   try {
     const { error } = await SUPABASE_CLIENT.from('system_settings').upsert({
       id: 1,
@@ -13472,9 +13502,13 @@ function loadBrandingCache(){
     const c = JSON.parse(localStorage.getItem(BRANDING_CACHE_KEY) || localStorage.getItem(LEGACY_BRANDING_CACHE_KEY) || 'null');
     if(!c) return false;
     if(c.systemName) SYSTEM_SETTINGS.systemName = c.systemName;
-    if(c.institutionName) SYSTEM_SETTINGS.institutionName = c.institutionName;
+    // DEMO_BUILD guard, same reasoning as loadSystemSettingsFromSupabase()'s
+    // own copy of this comment -- a fresh Netlify origin won't have this
+    // cache populated yet, but skip it here too rather than leave a second
+    // path that could apply a real institution's name/logo.
+    if(!DEMO_BUILD && c.institutionName) SYSTEM_SETTINGS.institutionName = c.institutionName;
     if(c.portalName) SYSTEM_SETTINGS.portalName = c.portalName;
-    SYSTEM_SETTINGS.logoDataUri = c.logoDataUri ?? null;
+    if(!DEMO_BUILD) SYSTEM_SETTINGS.logoDataUri = c.logoDataUri ?? null;
     return true;
   } catch(e){ return false; }
 }
