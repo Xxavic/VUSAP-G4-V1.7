@@ -4997,7 +4997,19 @@ function lectureListMarkup(lectures, sessionActive, opts){
     const isLiveOne = sessionActive && l.code === LIVE_SESSION.courseCode && l.mode === LIVE_SESSION.mode;
     const isDisabled = sessionActive && !isLiveOne;
     const closeAttr = opts.sheetPicker ? "closeSheet('startSessionPickerSheet');" : '';
-    const clickAttr = isDisabled ? '' : `onclick="${closeAttr}handleLectureRowTap('${jsAttr(l.code)}')"`;
+    // Sept 2026: was handleLectureRowTap('${l.code}') alone -- course code
+    // only, no way to tell which of today's lecture ROWS was actually
+    // tapped. Harmless while a course only has one slot today, but the
+    // whole point of Day/Evening independence is a course CAN have two
+    // (e.g. CSC3103 at 08:00 and again at 17:00) -- and handleLectureRowTap()
+    // resolved the code back to a lecture via .find(), which always returns
+    // the FIRST match. Tapping the Evening row silently started the Day
+    // lecture instead every time, because Day sorts first in the array --
+    // this is what actually caused "started an Evening session but the Day
+    // one went Live instead", not the mode-blind lookup fixed earlier (real
+    // bug, just not this one). l.time disambiguates same-code rows on the
+    // same day; passed through so handleLectureRowTap() can match on both.
+    const clickAttr = isDisabled ? '' : `onclick="${closeAttr}handleLectureRowTap('${jsAttr(l.code)}','${jsAttr(l.time)}')"`;
     return `
       <div class="lecture-row" style="${isDisabled ? 'opacity:.45;' : 'cursor:pointer;'}" ${clickAttr}>
         <div>
@@ -7769,10 +7781,14 @@ function handleStartLiveSessionTap(){
 }
 
 // Row-tap handler shared by the dashboard's Today's Lectures card and the
-// picker sheet (lectureListMarkup) — both just resolve the code back to the
-// lecture object and hand off to the same start flow.
-function handleLectureRowTap(code){
-  const lecture = getLecturerTodayLectures().find(l => l.code === code);
+// picker sheet (lectureListMarkup) — both just resolve the code+time back to
+// the lecture object and hand off to the same start flow.
+//
+// Sept 2026: time added alongside code -- see lectureListMarkup()'s own
+// comment on the onclick attribute for why matching on code alone silently
+// started the wrong one of two same-code lectures on the same day.
+function handleLectureRowTap(code, time){
+  const lecture = getLecturerTodayLectures().find(l => l.code === code && l.time === time);
   if(!lecture) return;
   startSessionForLecture(lecture);
 }
