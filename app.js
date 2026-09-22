@@ -17,13 +17,25 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 let SUPABASE_CLIENT = null;
 let LIVE_BACKEND    = false;
 
+// PENDING-DELICATE-RENAMES.md item 2 (Sept 2026): one-time carry-over of
+// the signed-in session from the old key to the new one, run BEFORE the
+// Supabase client is constructed (it reads storageKey at construction
+// time) so nobody who was already signed in gets logged out by this
+// rename. Safe to leave in permanently — it's a no-op once every browser
+// has migrated (new key already has a value, or old key never did).
+try {
+  if (!localStorage.getItem('qrast-auth-token') && localStorage.getItem('vusap-auth-token')) {
+    localStorage.setItem('qrast-auth-token', localStorage.getItem('vusap-auth-token'));
+  }
+} catch(e) { /* storage unavailable — falls through to a fresh sign-in, same as today */ }
+
 try {
   SUPABASE_CLIENT = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,        // picks up magic-link / OAuth tokens in URL
-      storageKey: 'vusap-auth-token',  // localStorage key — namespaced so it doesn't
+      storageKey: 'qrast-auth-token',  // localStorage key — namespaced so it doesn't
     },                                 // collide with other Supabase apps on the same origin
   });
   LIVE_BACKEND = !!SUPABASE_CLIENT;
@@ -174,13 +186,16 @@ function toggleDarkMode() {
   const currentTheme = html.getAttribute('data-theme');
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   html.setAttribute('data-theme', newTheme);
-  localStorage.setItem('vusap-theme', newTheme);
+  localStorage.setItem('qrast-theme', newTheme);
   showToast(newTheme === 'dark' ? 'Dark mode enabled' : 'Light mode enabled');
 }
 
 // Initialize theme from localStorage or system preference
 function initializeTheme() {
-  const savedTheme = localStorage.getItem('vusap-theme');
+  // PENDING-DELICATE-RENAMES.md item 3 (Sept 2026): fall back to the old
+  // key once, same carry-over trick as the auth token, so nobody's saved
+  // preference silently reverts to the default because of this rename.
+  const savedTheme = localStorage.getItem('qrast-theme') || localStorage.getItem('vusap-theme');
   if (savedTheme) {
     document.documentElement.setAttribute('data-theme', savedTheme);
   } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -776,12 +791,18 @@ async function liveEnsureSchedulingSession(courseCode){
 // "same device checking in two different students" signal this needs.
 function getDeviceId(){
   let id;
-  try { id = localStorage.getItem('vusap-device-id'); } catch(e){ /* storage unavailable */ }
+  // PENDING-DELICATE-RENAMES.md item 3 (Sept 2026): carry over an existing
+  // device id from the old key rather than minting a new one, so this
+  // rename alone doesn't make an already-recognized device look new to
+  // the fraud heuristics that key off this id.
+  try {
+    id = localStorage.getItem('qrast-device-id') || localStorage.getItem('vusap-device-id');
+  } catch(e){ /* storage unavailable */ }
   if(!id){
     const rand = (window.crypto && crypto.randomUUID) ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10);
     id = 'DVC-' + rand.toUpperCase();
-    try { localStorage.setItem('vusap-device-id', id); } catch(e){ /* falls back to a session-only id */ }
   }
+  try { localStorage.setItem('qrast-device-id', id); } catch(e){ /* falls back to a session-only id */ }
   return id;
 }
 
@@ -1774,9 +1795,12 @@ async function loadTimetableFromSupabase(){
     // collide either, since a mock entry can only ever be claimed once —
     // the second live slot's first-time match simply finds a different
     // unclaimed entry (or adds a new one if none remain).
-    const CLAIMS_KEY = 'vusap-timetable-claims';
+    const CLAIMS_KEY = 'qrast-timetable-claims';
+    const LEGACY_CLAIMS_KEY = 'vusap-timetable-claims'; // PENDING-DELICATE-RENAMES.md item 3 (Sept 2026)
     let claims = {};
-    try { claims = JSON.parse(localStorage.getItem(CLAIMS_KEY) || '{}'); } catch(e){ claims = {}; }
+    try {
+      claims = JSON.parse(localStorage.getItem(CLAIMS_KEY) || localStorage.getItem(LEGACY_CLAIMS_KEY) || '{}');
+    } catch(e){ claims = {}; }
     // Reverse lookup: live slot id -> the mock signature it already claimed
     const claimedSignatureByLiveId = {};
     Object.entries(claims).forEach(([sig, liveId]) => { claimedSignatureByLiveId[liveId] = sig; });
@@ -7194,7 +7218,7 @@ function handleScannedQrPayload(raw){
   const parts = String(raw).split('|');
   const [marker, token, courseCode] = parts;
 
-  if(marker !== 'VUSAP' || !token){
+  if(marker !== 'QRAST' || !token){
     showToast("That doesn't look like a QRAST attendance QR code");
     qrScanLastResult = null; // allow re-scanning immediately
     qrScanRafId = requestAnimationFrame(scanFrame);
@@ -7753,7 +7777,7 @@ function qrPayloadForSession(){
   // Real QR payload: app marker, current rotating token, course code, session start.
   // The student-side scanner checks the token against the live session before
   // accepting it, which is what actually defeats a screenshotted/reused QR.
-  return `VUSAP|${LIVE_SESSION.token}|${LIVE_SESSION.courseCode}|${LIVE_SESSION.startedAt}`;
+  return `QRAST|${LIVE_SESSION.token}|${LIVE_SESSION.courseCode}|${LIVE_SESSION.startedAt}`;
 }
 
 function drawQrPlaceholder(){
@@ -13101,7 +13125,7 @@ function navigate(screenId, opts){
   if(screenId === 'records' || screenId === 'facultyRecordsCatalog' || screenId === 'courseRecords' || screenId === 'myAttendance' || screenId === 'database') loadRecordsFromSupabase();
 
   if(!opts.fromPopstate){
-    const state = { vusapScreen: screenId, vusapRole: State.role };
+    const state = { qrastScreen: screenId, qrastRole: State.role };
     if(opts.replace){
       history.replaceState(state, '', '');
     } else {
@@ -13143,7 +13167,7 @@ let openSheetId = null;
 openSheet = function(id){
   _openSheetBase(id);
   openSheetId = id;
-  history.pushState({ vusapSheet: id }, '', '');
+  history.pushState({ qrastSheet: id }, '', '');
 };
 
 closeSheet = function(id){
@@ -13178,15 +13202,15 @@ window.addEventListener('popstate', (event)=>{
   }
 
   const state = event.state;
-  if(state && state.vusapScreen && State.role){
-    navigate(state.vusapScreen, { fromPopstate: true });
+  if(state && state.qrastScreen && State.role){
+    navigate(state.qrastScreen, { fromPopstate: true });
     return;
   }
-  if(state && state.vusapAuthScreen){
-    renderAuthScreenFromHistory(state.vusapAuthScreen);
+  if(state && state.qrastAuthScreen){
+    renderAuthScreenFromHistory(state.qrastAuthScreen);
     return;
   }
-  if(state && state.vusapScreen === null){
+  if(state && state.qrastScreen === null){
     // The login-screen floor, set by renderApp()'s replaceState. Reaching it
     // via back navigation means abandoning whatever auth flow was in
     // progress (forced password change, forgot-password, etc) — clear any
@@ -13208,7 +13232,7 @@ window.addEventListener('popstate', (event)=>{
 // They still need a history entry each so the hardware back button steps
 // through them sensibly instead of doing nothing.
 function pushAuthScreenState(name){
-  history.pushState({ vusapAuthScreen: name }, '', '');
+  history.pushState({ qrastAuthScreen: name }, '', '');
 }
 
 function renderAuthScreenFromHistory(name){
@@ -13248,7 +13272,7 @@ function renderApp(){
     navEl.style.display = 'none';
     // Anchor history here so a stray back-press after logout can't resurrect
     // a previous session's screen underneath the login form.
-    history.replaceState({ vusapScreen: null }, '', '');
+    history.replaceState({ qrastScreen: null }, '', '');
     return;
   }
   navEl.style.display = 'flex';
@@ -13297,12 +13321,13 @@ function boot(){
 // arrives in time -- the in-code defaults). Painting the defaults first is
 // what made the old institution name flash for a split second before the
 // configured one replaced it.
-const BRANDING_CACHE_KEY = 'vusap_branding_cache';
+const BRANDING_CACHE_KEY = 'qrast_branding_cache';
+const LEGACY_BRANDING_CACHE_KEY = 'vusap_branding_cache'; // found during the Sept 2026 rename pass, not in PENDING-DELICATE-RENAMES.md -- same treatment
 let splashBrandingReady = false;
 
 function loadBrandingCache(){
   try {
-    const c = JSON.parse(localStorage.getItem(BRANDING_CACHE_KEY) || 'null');
+    const c = JSON.parse(localStorage.getItem(BRANDING_CACHE_KEY) || localStorage.getItem(LEGACY_BRANDING_CACHE_KEY) || 'null');
     if(!c) return false;
     if(c.systemName) SYSTEM_SETTINGS.systemName = c.systemName;
     if(c.institutionName) SYSTEM_SETTINGS.institutionName = c.institutionName;

@@ -39,7 +39,12 @@ lookup breaks instantly — this needs the data migrated first.
 
 ---
 
-## 2. `vusap-auth-token` localStorage key — low risk, but touches every session
+## 2. `vusap-auth-token` localStorage key — **DONE (Sept 2026)**
+
+Renamed to `qrast-auth-token`, with the one-time carry-over described
+below so nobody got logged out. Original writeup kept for reference.
+
+---
 
 **What it is:** the key Supabase Auth uses in the browser's localStorage
 to store the signed-in session.
@@ -60,7 +65,14 @@ browser looks for the old key, doesn't find it, and they're logged out
 
 ---
 
-## 3. Other localStorage keys — `vusap-theme`, `vusap-device-id`, `vusap-timetable-claims`
+## 3. Other localStorage keys — `vusap-theme`, `vusap-device-id`, `vusap-timetable-claims` — **DONE (Sept 2026)**
+
+All three renamed with the same fallback-copy trick, plus one found
+along the way that wasn't listed here (`vusap_branding_cache`, the
+splash-screen branding cache — same low-risk treatment). Original
+writeup kept for reference.
+
+---
 
 **What they are:** theme preference, device fingerprint (used for fraud
 heuristics), and claimed-timetable-slot tracking, all stored locally per
@@ -105,14 +117,11 @@ moment you switch.
 
 ## Lower tier — genuinely no risk, no coordination needed, say the word anytime
 
-These cost nothing to change and gain nothing by changing — they were
-left alone purely because there's no upside, not because they're risky.
-No need to "call it" for these specifically; just mention it and I'll
-knock them out in a few minutes:
-
-- QR code's internal protocol marker string (never shown to a user,
-  regenerated fresh every session)
+- QR code's internal protocol marker string — **DONE (Sept 2026)**:
+  `VUSAP|...` → `QRAST|...`, renamed outright (never shown to a user,
+  regenerated fresh every session).
 - History API navigation state property names (`vusapScreen`, etc.) —
-  in-memory only
-- `design/vusap-redesign-preview.html` — unused, unlinked design mockup
-  (can rename, edit, or just delete it, your call)
+  **DONE (Sept 2026)**: renamed to `qrastScreen`/`qrastRole`/
+  `qrastSheet`/`qrastAuthScreen`, in-memory only, no migration needed.
+- `design/vusap-redesign-preview.html` — still untouched, your call:
+  unused, unlinked design mockup. Rename, edit, or delete it whenever.
