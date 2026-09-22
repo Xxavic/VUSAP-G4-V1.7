@@ -429,26 +429,37 @@ async function resumeSupabaseSession() {
 // before starting a fresh session, so a Lecturer restarting without properly
 // ending the last session never leaves two "active" rows for the same course
 // (which would otherwise let a Student's device latch onto the stale one).
-async function liveDeactivateOtherSessions(courseCode){
+async function liveDeactivateOtherSessions(courseCode, mode){
   if(!LIVE_BACKEND) return;
   try {
-    // A Lecturer can only genuinely teach one live session at a time — if an
-    // earlier session for a DIFFERENT course was never explicitly ended
-    // (e.g. testing/navigating away instead of clicking "End Session Now"),
-    // it stayed active:true in the database forever. A Student's device
-    // discovering active sessions by looping through their own enrolled
-    // courses could then lock onto that stale old session instead of the
-    // Lecturer's actually-current one, showing a different course as "Live"
-    // on each side. Deactivating only same-course-code duplicates (the
-    // original behavior) didn't catch this — so this now also cleans up
-    // any other active session across every course this lecturer teaches.
+    // A Lecturer can only genuinely teach one live session at a time per
+    // mode — if an earlier session for a DIFFERENT course was never
+    // explicitly ended (e.g. testing/navigating away instead of clicking
+    // "End Session Now"), it stayed active:true in the database forever. A
+    // Student's device discovering active sessions by looping through their
+    // own enrolled courses could then lock onto that stale old session
+    // instead of the Lecturer's actually-current one, showing a different
+    // course as "Live" on each side. Deactivating only same-course-code
+    // duplicates (the original behavior) didn't catch this — so this also
+    // cleans up any other active session across every course this lecturer
+    // teaches.
     const ownCourseCodes = COURSES.filter(c => c.lecturer === State.user?.name).map(c => c.code);
     const codesToClear = [...new Set([courseCode, ...ownCourseCodes])];
-    const { error } = await SUPABASE_CLIENT
+    let query = SUPABASE_CLIENT
       .from('live_qr_sessions')
       .update({ active: false, updated_at: new Date().toISOString() })
       .in('course_code', codesToClear)
       .eq('active', true);
+    // Sept 2026: a course can now have an active Day session AND an active
+    // Evening session at the same time (see liveFindActiveSession()'s own
+    // comment for the matching half of this fix) — this cleanup must only
+    // ever touch stale sessions in the SAME mode as the one being started,
+    // or starting an Evening session would silently end a genuinely
+    // still-running Day one for the same course. Guarded (not always
+    // applied) so a caller with no specific mode in mind — there isn't one
+    // today — still gets the old any-mode cleanup behavior.
+    if(mode) query = query.eq('mode', mode);
+    const { error } = await query;
     if(error) console.warn('liveDeactivateOtherSessions failed:', error);
   } catch(e){
     console.warn('liveDeactivateOtherSessions error:', e);
@@ -510,14 +521,25 @@ async function liveWriteSession(){
 }
 
 // Student side: find the currently active broadcast row for a given course code.
-async function liveFindActiveSession(courseCode){
+async function liveFindActiveSession(courseCode, mode){
   if(!LIVE_BACKEND) return null;
   try {
-    const { data, error } = await SUPABASE_CLIENT
+    let query = SUPABASE_CLIENT
       .from('live_qr_sessions')
       .select('*')
       .eq('course_code', courseCode)
-      .eq('active', true)
+      .eq('active', true);
+    // Sept 2026: a course can have an independent Day section and Evening
+    // section broadcasting at the same time now. Without this, starting an
+    // Evening session could "discover" the still-active Day session for the
+    // same course code and resume THAT instead — silently overwriting the
+    // Evening mode the Lecturer just picked back to Day, which is exactly
+    // what made the Day lecture show the "Live" tag instead of Evening.
+    // Guarded so a caller with no specific mode to check against (today,
+    // only checkLecturerActiveSession()'s "is anything at all running"
+    // Dashboard-tile discovery) keeps the old any-mode behavior.
+    if(mode) query = query.eq('mode', mode);
+    const { data, error } = await query
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -574,7 +596,12 @@ function subscribeToLiveSession(courseCode){
       if(!row) return;
       // Only adopt a row if it's the currently active one, or it's the
       // session we're already tracking (so we still see it flip to ended).
-      if(row.active || row.id === LIVE_SESSION.liveSessionId){
+      // Sept 2026: mode-scoped for the same reason as liveFindActiveSession()
+      // above — a Day and Evening broadcast for the same course are now
+      // independent, so a Realtime event for the OTHER mode's row must not
+      // overwrite the one this device is actually tracking. The id-match
+      // half is unchanged, so we still see our own session flip to ended.
+      if((row.active && row.mode === LIVE_SESSION.mode) || row.id === LIVE_SESSION.liveSessionId){
         applyLiveSessionRow(row);
         // Keeps a Class Coordinator's open QR display in sync with the
         // Lecturer's device — a token rotation redraws the code, and a
@@ -664,7 +691,7 @@ async function startStudentLiveSessionSync(){
   if(!LIVE_BACKEND || studentLiveSyncDoneForThisVisit) return;
   studentLiveSyncDoneForThisVisit = true;
   for(const c of STUDENT_COURSES){
-    const row = await liveFindActiveSession(c.code);
+    const row = await liveFindActiveSession(c.code, State.user?.mode);
     if(row){
       applyLiveSessionRow(row);
       subscribeToLiveSession(c.code);
@@ -1514,7 +1541,7 @@ async function loadClassesFromSupabase(){
   try {
     const { data: rows, error } = await SUPABASE_CLIENT
       .from('classes')
-      .select('id, code, name, teacher_id, programme_id, mode, programmes(key, name)')
+      .select('id, code, name, teacher_id, programme_id, mode, year, programmes(key, name)')
       .order('code');
 
     if(error){
@@ -1549,6 +1576,7 @@ async function loadClassesFromSupabase(){
       lecturer: r.teacher_id ? (teacherNames[r.teacher_id] || 'TBA') : null,
       room: null, // see comment above — not a classes-table concept
       mode: r.mode || null,
+      year: r.year || null,
     }));
 
     const liveCodes = new Set(newCourses.map(c => c.code));
@@ -1570,20 +1598,20 @@ async function loadClassesFromSupabase(){
 // local-only behavior unchanged). RLS (can_write_faculty on programme_id)
 // is the real enforcement boundary — a cross-faculty write surfaces here
 // as a Postgres/RLS error, not a silent no-op.
-async function liveCreateClass({ code, name, programmeId, teacherId, mode }){
+async function liveCreateClass({ code, name, programmeId, teacherId, mode, year }){
   if(!LIVE_BACKEND) return { ok: true };
   const { error } = await SUPABASE_CLIENT
     .from('classes')
-    .insert({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null });
+    .insert({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null, year: year || null });
   if(error) return { error: error.message };
   return { ok: true };
 }
 
-async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mode }){
+async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mode, year }){
   if(!LIVE_BACKEND) return { ok: true };
   const { data, error } = await SUPABASE_CLIENT
     .from('classes')
-    .update({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null })
+    .update({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null, year: year || null })
     .eq('code', oldCode)
     .select('id');
   if(error) return { error: error.message };
@@ -1595,7 +1623,7 @@ async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mo
     // look like it saved, then lose the change with no trace anywhere live
     // the moment COURSES next merged with loadClassesFromSupabase(). Insert
     // it live now instead, using this edit's values.
-    return liveCreateClass({ code, name, programmeId, teacherId, mode });
+    return liveCreateClass({ code, name, programmeId, teacherId, mode, year });
   }
   return { ok: true };
 }
@@ -2180,6 +2208,66 @@ async function loadEnrollmentsFromSupabase(){
     }
   } catch(e){
     console.warn('loadEnrollmentsFromSupabase error, keeping mock STUDENT_COURSES:', e);
+  }
+}
+
+// ------------------------------------------------------------
+// AUTO-ENROLLMENT (Sept 2026): every course in a programme+year+mode
+// cohort is a fixed part of that cohort's curriculum, so a newly
+// registered student doesn't pick courses individually — they're
+// enrolled in all of them automatically, the moment their account is
+// created. Called from handleEnroll() right after authProvisionAccount()
+// succeeds.
+//
+// Root cause this fixes: nothing anywhere in this codebase ever inserted
+// into `enrollments` before this. A student's live login existed, but
+// their `enrollments` rows never did, so loadEnrollmentsFromSupabase()
+// correctly (per its own Sept 2026 fix) found zero rows and left
+// STUDENT_COURSES empty — an honest empty timetable, but also an
+// unscannable one, since the QR check-in eligibility check
+// (isLiveSessionOpenForStudent()) reads STUDENT_COURSES too.
+//
+// Matches classes where programme_id and year are exact, and mode is
+// either an exact match or null ("no restriction" — same convention the
+// Course Catalog's own Mode field already uses). Non-blocking by design:
+// a failure here must never be reported as the enrollment itself having
+// failed — the account is real either way — so this returns an outcome
+// object for the caller to surface via the confirmation screen rather
+// than throwing.
+async function autoEnrollStudentInCourses(studentId, programmeId, year, mode){
+  if(!LIVE_BACKEND || !studentId || !programmeId || !year) return { count: 0 };
+  try {
+    const { data: classRows, error: findErr } = await SUPABASE_CLIENT
+      .from('classes')
+      .select('id')
+      .eq('programme_id', programmeId)
+      .eq('year', year)
+      .or(`mode.eq.${mode},mode.is.null`);
+
+    if(findErr){
+      console.warn('autoEnrollStudentInCourses: class lookup failed:', findErr);
+      return { error: findErr.message };
+    }
+    if(!classRows || classRows.length === 0){
+      // Not an error — this programme/year/mode combination just has no
+      // classes tagged with this year yet (Course Catalog → Edit Course →
+      // Year). Common right after the Year field is first introduced,
+      // before anyone has gone through and set it on existing courses.
+      return { count: 0 };
+    }
+
+    const { error: insertErr } = await SUPABASE_CLIENT
+      .from('enrollments')
+      .insert(classRows.map(c => ({ student_id: studentId, class_id: c.id })));
+
+    if(insertErr){
+      console.warn('autoEnrollStudentInCourses: enrollment insert failed:', insertErr);
+      return { error: insertErr.message };
+    }
+    return { count: classRows.length };
+  } catch(e){
+    console.warn('autoEnrollStudentInCourses error:', e);
+    return { error: String(e) };
   }
 }
 
@@ -3645,7 +3733,7 @@ function courseHasDependents(code){
   return inSchedule || inRecords;
 }
 
-function createCourse(code, name, programmeKey, lecturer, room, mode){
+function createCourse(code, name, programmeKey, lecturer, room, mode, year){
   code = code.trim().toUpperCase();
   if(!code || !name.trim()) return { error: 'Course code and name are required' };
   if(COURSES.find(c => c.code === code)) return { error: `${code} already exists in the catalog` };
@@ -3654,6 +3742,7 @@ function createCourse(code, name, programmeKey, lecturer, room, mode){
     code, name: name.trim(), programme: prog ? prog.name : null, programmeKey,
     lecturer: lecturer ? lecturer.trim() : null, room: room ? room.trim() : null,
     mode: mode || null, // 'day' | 'evening' | null — see Part 3 note in buildInitialCourseCatalog()
+    year: year || null, // 'Year 1' | 'Year 2' | 'Year 3' | null — drives auto-enrollment, see autoEnrollStudentInCourses()
   });
   return { code };
 }
@@ -5966,6 +6055,13 @@ async function handleEnroll(e){
   // "Account Created" confirmation.
   if(live) LIVE_PROVISIONED_IDS.add(reg);
 
+  // Sept 2026: auto-enroll into every course tagged for this cohort
+  // (programme + year + mode) — see autoEnrollStudentInCourses()'s own
+  // comment for why this exists. live.id is the just-created student's
+  // real Supabase users.id; in mock/offline mode (live is null) this is a
+  // no-op, same as every other live-only write in this function.
+  const enrollOutcome = live ? await autoEnrollStudentInCourses(live.id, prog.id, year, mode === 'DAY' ? 'day' : 'evening') : { count: 0 };
+
   regNoCounter++;
 
   // Add to the visible Student Register immediately...
@@ -5996,11 +6092,11 @@ async function handleEnroll(e){
 
   liveSyncCoordinatorStatus(reg, { isCoordinator, programme: prog.name, year });
 
-  showTempPasswordConfirmation(name, reg, tempPassword);
+  showTempPasswordConfirmation(name, reg, tempPassword, enrollOutcome);
   return false;
 }
 
-function showTempPasswordConfirmation(name, reg, tempPassword){
+function showTempPasswordConfirmation(name, reg, tempPassword, enrollOutcome){
   // Swaps the CONTENT of the already-open enroll sheet in place, rather than
   // closing it and opening a second sheet. Closing+reopening a sheet on the
   // same tick fights with the back-button history bookkeeping (the pending
@@ -6009,6 +6105,18 @@ function showTempPasswordConfirmation(name, reg, tempPassword){
   const title = document.getElementById('enrollSheetTitle');
   if(title) title.textContent = 'Account Created';
   const sheetBody = document.getElementById('enrollSheetBody');
+  // Sept 2026: the account can succeed while the course auto-enrollment
+  // that just rode along with it (autoEnrollStudentInCourses()) didn't —
+  // wrong to let a Registrar walk away thinking a student is fully set up
+  // when their timetable is actually still going to be empty. Only shown
+  // in live mode (enrollOutcome is always {count:0} in mock/offline, which
+  // is expected there and not worth alarming anyone about).
+  let enrollNote = '';
+  if(LIVE_BACKEND && enrollOutcome && enrollOutcome.error){
+    enrollNote = `<div class="info-box" style="margin-top:6px;border-color:var(--danger,#dc2626);"><div class="k">Course enrollment didn't complete</div><div class="v" style="font-size:12px;font-weight:500;">${escapeHtmlText(enrollOutcome.error)} — the account works, but this student won't see any courses until an Administrator re-checks it.</div></div>`;
+  } else if(LIVE_BACKEND && enrollOutcome && enrollOutcome.count === 0){
+    enrollNote = `<div class="info-box" style="margin-top:6px;"><div class="k">No courses enrolled yet</div><div class="v" style="font-size:12px;font-weight:500;">No courses are tagged for this programme/year/mode in the Course Catalog yet — set the Year on the relevant courses, then this student's account will need its enrollment re-run.</div></div>`;
+  }
   if(sheetBody){
     sheetBody.innerHTML = `
       <div class="empty-state" style="padding:6px 0 4px;">
@@ -6020,6 +6128,7 @@ function showTempPasswordConfirmation(name, reg, tempPassword){
         <div class="k">One-time temporary password</div>
         <div class="v" style="font-size:20px; letter-spacing:1px; font-family:monospace;">${tempPassword}</div>
       </div>
+      ${enrollNote}
       <div style="font-size:11.5px; color:var(--ink-soft); line-height:1.5; margin-top:12px;">
         Share this with the student through a secure channel. It's shown only once and won't appear anywhere else —
         not in the Student Register, not in People search. They'll be asked to set their own password the first time they sign in.
@@ -7671,7 +7780,7 @@ async function startSessionForLecture(lecture){
   // disappear from the roster even though it was still perfectly valid.
   // Mirrors the Student side's liveFindActiveSession() use in
   // startStudentLiveSessionSync() — same helper, same idea, other role.
-  const resumed = LIVE_BACKEND ? await liveFindActiveSession(LIVE_SESSION.courseCode) : null;
+  const resumed = LIVE_BACKEND ? await liveFindActiveSession(LIVE_SESSION.courseCode, LIVE_SESSION.mode) : null;
   if(resumed){
     applyLiveSessionRow(resumed);
     subscribeToLiveSession(LIVE_SESSION.courseCode);
@@ -7694,14 +7803,14 @@ async function startSessionForLecture(lecture){
       // never this device's clock (see the "never send a client timestamp
       // for a compliance record" gotcha) — wait for the real write to
       // resolve, then classify against whatever the DB actually recorded.
-      liveDeactivateOtherSessions(LIVE_SESSION.courseCode)
+      liveDeactivateOtherSessions(LIVE_SESSION.courseCode, LIVE_SESSION.mode)
         .then(liveWriteSession)
         .then(() => recordLectureComplianceEvent(lecture));
     } else {
       // No live DB round trip to wait for in mock mode — LIVE_SESSION.startedAt
       // (this device's clock) is the only signal available at all, same
       // fallback checkFraudSignals() already relies on elsewhere.
-      liveDeactivateOtherSessions(LIVE_SESSION.courseCode).then(liveWriteSession);
+      liveDeactivateOtherSessions(LIVE_SESSION.courseCode, LIVE_SESSION.mode).then(liveWriteSession);
       recordLectureComplianceEvent(lecture);
     }
   }
@@ -9952,6 +10061,16 @@ async function openCourseFormSheet(code){
           <option value="evening" ${course && course.mode==='evening' ? 'selected' : ''}>Evening</option>
         </select>
       </div>
+      <div class="field">
+        <label>Year</label>
+        <select class="select" id="courseYearInput">
+          <option value="" ${!course || !course.year ? 'selected' : ''}>Not set</option>
+          <option value="Year 1" ${course && course.year==='Year 1' ? 'selected' : ''}>Year 1</option>
+          <option value="Year 2" ${course && course.year==='Year 2' ? 'selected' : ''}>Year 2</option>
+          <option value="Year 3" ${course && course.year==='Year 3' ? 'selected' : ''}>Year 3</option>
+        </select>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Which year of the programme this course belongs to — drives automatic enrollment when a student is registered.</div>
+      </div>
       <div class="btn-row" style="margin-top:16px;">
         <button type="button" class="btn btn-ghost" onclick="closeSheet('courseFormSheet')">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="submitCourseForm(${course ? `'${jsAttr(course.code)}'` : 'null'})">${ICONS.check} ${course ? 'Save' : 'Add Course'}</button>
@@ -9976,6 +10095,7 @@ async function submitCourseForm(existingCode){
     : (lecturerEl?.value.trim() || null);
   const room = document.getElementById('courseRoomInput')?.value.trim();
   const mode = document.getElementById('courseModeInput')?.value || null; // '' -> null ("no restriction")
+  const year = document.getElementById('courseYearInput')?.value || null; // '' -> null ("not set")
   const prog = PROGRAMMES.find(p => p.key === programmeKey);
 
   // Belt-and-suspenders: the Programme <select> is already restricted to the
@@ -10011,7 +10131,7 @@ async function submitCourseForm(existingCode){
       showToast(`${newCode} is already in use by another course`);
       return;
     }
-    const live = await liveUpdateClass(existingCode, { code: newCode, name, programmeId: prog ? prog.id : null, teacherId, mode });
+    const live = await liveUpdateClass(existingCode, { code: newCode, name, programmeId: prog ? prog.id : null, teacherId, mode, year });
     if(live.error){
       showToast(live.error);
       return;
@@ -10020,7 +10140,7 @@ async function submitCourseForm(existingCode){
     if(newCode !== existingCode){
       touched = cascadeRenameCourseCode(existingCode, newCode);
     }
-    result = editCourse(existingCode, { code: newCode, name, programmeKey, programme: prog ? prog.name : null, lecturer: lecturer || null, room: room || null, mode: mode || null });
+    result = editCourse(existingCode, { code: newCode, name, programmeKey, programme: prog ? prog.name : null, lecturer: lecturer || null, room: room || null, mode: mode || null, year: year || null });
     if(!result.error && touched > 0){
       showToast(`${existingCode} renamed to ${newCode} — updated ${touched} reference${touched===1?'':'s'} across the app`);
       closeSheet('courseFormSheet');
@@ -10038,12 +10158,12 @@ async function submitCourseForm(existingCode){
       showToast(`${upperCode} already exists in the catalog`);
       return;
     }
-    const live = await liveCreateClass({ code: upperCode, name, programmeId: prog ? prog.id : null, teacherId, mode });
+    const live = await liveCreateClass({ code: upperCode, name, programmeId: prog ? prog.id : null, teacherId, mode, year });
     if(live.error){
       showToast(live.error);
       return;
     }
-    result = createCourse(code, name, programmeKey, lecturer, room, mode);
+    result = createCourse(code, name, programmeKey, lecturer, room, mode, year);
   }
   if(result.error){
     showToast(result.error);

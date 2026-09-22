@@ -2,14 +2,15 @@
 -- SCHEMA SNAPSHOT — read-only introspection, safe to run on the LIVE
 -- Victoria University project.
 --
--- Purpose: none of the migrate-*.sql files in this repo create the base
--- tables (users, faculties, programmes, classes, enrollments, attendance,
--- attendance_appeals, sessions, timetable_slots, live_qr_sessions,
--- course_attendance_caps, announcements, notifications, fraud_logs,
--- audit_log, support_tickets, account_deletion_requests) — only
--- system_settings has a CREATE TABLE anywhere in version control. The rest
--- were built directly in the Supabase dashboard over time and were never
--- exported. Before a second client's Supabase project can be stood up,
+-- Purpose: of the 18 tables the app actually queries, 13 have no CREATE
+-- TABLE anywhere in version control (users, faculties, programmes, classes,
+-- enrollments, attendance, attendance_appeals, sessions, timetable_slots,
+-- live_qr_sessions, fraud_logs, audit_log, notifications). They were built
+-- directly in the Supabase dashboard over time and were never exported.
+-- (The other 5 -- account_deletion_requests, announcements,
+-- course_attendance_caps, support_tickets, system_settings -- are already
+-- covered, each by its own migrate-*.sql file.) Before a second client's
+-- Supabase project can be stood up,
 -- someone needs the REAL schema — columns, types, defaults, constraints,
 -- indexes, RLS policies, functions and triggers — not a guess reconstructed
 -- from what app.js happens to query.
