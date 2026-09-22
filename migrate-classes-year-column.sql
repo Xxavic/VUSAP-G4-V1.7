@@ -1,0 +1,31 @@
+-- Adds a `year` column to public.classes, so a class (course offering)
+-- can be scoped to the specific year of study it belongs to, not just a
+-- programme + mode.
+--
+-- Why: `classes` currently has code, name, programme_id, teacher_id, mode
+-- -- nothing says a course is "Computer Science, Year 2" rather than Year
+-- 1 or Year 3 of the same programme. That's the missing piece behind
+-- auto-enrolling a newly registered student into their actual courses --
+-- without a year on the class, "every Computer Science class" and "every
+-- Computer Science, Year 2 class" are indistinguishable, and a student
+-- would end up enrolled in courses from every year of their programme
+-- instead of just their own.
+--
+-- Text, not an integer, to match the free-text "Year 1" / "Year 2" /
+-- "Year 3" convention already used for public.users.year and
+-- coordinator_for_year (see migrate-coordinator-users-columns.sql) --
+-- keeps the comparison in the enrollment code a plain string match with
+-- no parsing/casting on either side.
+--
+-- Nullable and additive: every existing class keeps working exactly as
+-- today (mode's "no restriction" pattern already established a null-is-
+-- valid precedent). A class with no year set simply won't be matched by
+-- the new auto-enrollment logic until someone sets one -- via the Course
+-- Catalog's Edit Course screen, which this same change adds a Year field
+-- to. No RLS changes needed here: classes' existing write policy already
+-- governs this column like any other.
+--
+-- Safe to run once. `add column if not exists` is idempotent.
+
+alter table public.classes
+  add column if not exists year text;
