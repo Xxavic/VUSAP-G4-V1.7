@@ -72,7 +72,7 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 - **Fix:** `recomputeFacultyProgrammeDerivedData()` is now also called at the end of `loadFacultiesAndProgrammesFromSupabase()` and `loadStudentsFromSupabase()` (previously it only ran from the Administrator's own Faculty/Programme CRUD actions). Whichever of the two live loads resolves last ends up authoritative, matching the same eventual-consistency tolerance this file already relies on everywhere else. Commit `3e224f5`.
 
 ### LECTURER_COMPLIANCE
-~~- **What:** a hardcoded compliance dataset.~~ **RESOLVED (Sept 2026).** Now computed from real live data: sessions held comes from the live `sessions` table (grouped by teacher_id), sessions expected comes from confirmed-live SCHEDULE slots × weeks elapsed since a new Administrator-set `termStartDate` (System Settings screen, migration `migrate-term-start-date.sql` — Chris still needs to run this and set a date for the report to show real numbers instead of "Term Start Date isn't set yet"). A lecturer with no live-confirmed weekly slots shows "—"/N/A rather than a fabricated rate, in both the on-screen report and its CSV/PDF export. Commit `eb4a6e3`.
+~~- **What:** a hardcoded compliance dataset.~~ **RESOLVED (Sept 2026).** Now computed from real live data: sessions held comes from the live `sessions` table (grouped by teacher_id), sessions expected comes from confirmed-live SCHEDULE slots × weeks elapsed since a new Administrator-set `termStartDate` (System Settings screen, migration `migrate-term-start-date.sql`). A lecturer with no live-confirmed weekly slots shows "—"/N/A rather than a fabricated rate, in both the on-screen report and its CSV/PDF export. Commit `eb4a6e3`. Migration run and `termStartDate` set to 2026-09-01 (academic year 2026/2027) directly in Supabase, Sept 2026 — the report now computes real numbers instead of showing the unset-date message.
 
 ### DEPT_COUNTS — **RESOLVED (Sept 2026).**
 - **What:** confirmed entirely dead code — not referenced anywhere live.
@@ -90,7 +90,7 @@ Already fixed this week (before this report): the 97% attendance-rate constant o
 
 ### ANNOUNCEMENTS — **RESOLVED (Sept 2026).**
 - **What:** hardcoded announcements.
-- **Fix:** live read/write wiring added, matching the loadSupportTicketsFromSupabase()/loadAppealsFromSupabase() shape. submitAnnouncement() now writes to a new `announcements` table via liveWriteAnnouncement() (fire-and-forget, with a pendingSync flag so a just-submitted post isn't mistaken for a permanent mock seed), and loadAnnouncementsFromSupabase() loads live rows on entering announcements/home/dashboard, merging in any still-pending local post and dropping mock seeds once live data exists. Requires the `announcements` table + RLS from `migrate-announcements.sql` (delivered separately, not yet run) — INSERT is restricted to Lecturer/Registrar, matching the UI's own `canPost` rule; Administrator cannot post in the UI today and this migration doesn't change that. Commit `e6982d7`.
+- **Fix:** live read/write wiring added, matching the loadSupportTicketsFromSupabase()/loadAppealsFromSupabase() shape. submitAnnouncement() now writes to a new `announcements` table via liveWriteAnnouncement() (fire-and-forget, with a pendingSync flag so a just-submitted post isn't mistaken for a permanent mock seed), and loadAnnouncementsFromSupabase() loads live rows on entering announcements/home/dashboard, merging in any still-pending local post and dropping mock seeds once live data exists. Requires the `announcements` table + RLS from `migrate-announcements.sql` — INSERT is restricted to Lecturer/Registrar, matching the UI's own `canPost` rule; Administrator cannot post in the UI today and this migration doesn't change that. Commit `e6982d7`. Migration run in Supabase, Sept 2026 (table, RLS policies, and sender-stamping trigger all verified live) — the feature is fully wired end to end now.
 
 ### Lecturer dashboard "87%" — **RESOLVED (Sept 2026).**
 - **What:** a single bare hardcoded percentage on the Lecturer dashboard's Attendance Rate tile, with no computation and no data source at all — confirmed via a full-file grep to be the only literal of its kind left anywhere in the app.
@@ -107,17 +107,17 @@ Every item above falls into one of four buckets:
 3. **No live loader existed at all** (LECTURERS/REGISTRARS/ADMINISTRATORS, RECORDS, ANNOUNCEMENTS, LECTURER_COMPLIANCE — all now resolved) — these were missing features, not stale data; deleting the mock wouldn't have fixed anything without building the real thing first.
 4. **Dead or trivially fixable** (DEPT_COUNTS — delete; LECTURER_COURSES — repoint to existing correct function; the 87% tile — compute like Student Home already does).
 
-Plus the two standalone flags: the login-screen credential exposure (fix now, independent of everything else) and the two real documents (LECTURER_COMPLIANCE export, AUDIT_LOG backup export) that currently ship fabricated data to real stakeholders — these two probably deserve priority over the UI-only items, since they leave the app as real-looking paperwork.
+Plus the two standalone flags: ~~the login-screen credential exposure (fix now, independent of everything else) and the two real documents (LECTURER_COMPLIANCE export, AUDIT_LOG backup export) that currently ship fabricated data to real stakeholders~~ — **both resolved (Sept 2026)**, see their own entries above.
 
 **On "removing it all completely":** that's realistic for buckets 1, 2, and 4 — the mock data itself can go once each loader is fixed to fully replace it. It is not realistic for bucket 3 without building the missing live features first, since removing that mock data today would just leave those screens and that PDF/CSV export empty or broken, with nothing behind them yet.
 
 ## Suggested order, if you want one
 
-1. Login-screen credential exposure — independent, urgent, quick to fix.
-2. LECTURER_COMPLIANCE and AUDIT_LOG backup export — fake data currently leaving the app as real documents.
-3. The three "empty looks broken" repeats (SUSPICION_LOG, AUDIT_LOG display, NOTIFICATIONS seed) — same fix already proven this week.
-4. Merge-never-purge structures (STUDENTS everywhere, SCHEDULE, COURSES, tickets/appeals) — the biggest chunk of work, but same fix pattern each time.
-5. Dead/trivial cleanup (DEPT_COUNTS, LECTURER_COURSES, the 87% tile).
+1. ~~Login-screen credential exposure — independent, urgent, quick to fix.~~ **Done.**
+2. ~~LECTURER_COMPLIANCE and AUDIT_LOG backup export — fake data currently leaving the app as real documents.~~ **Both done.**
+3. ~~The three "empty looks broken" repeats (SUSPICION_LOG, AUDIT_LOG display, NOTIFICATIONS seed) — same fix already proven this week.~~ **All three done.**
+4. ~~Merge-never-purge structures (STUDENTS everywhere, SCHEDULE, COURSES, tickets/appeals) — the biggest chunk of work, but same fix pattern each time.~~ **Done, except SCHEDULE/COURSES — Chris decided to leave those permanently mixed (see their own entries above), not a leftover.**
+5. ~~Dead/trivial cleanup (DEPT_COUNTS, LECTURER_COURSES, the 87% tile).~~ **Done.**
 6. ~~Missing-feature items (staff account provisioning, RECORDS bulk loader, ANNOUNCEMENTS live wiring).~~ **All done (Sept 2026)** — staff provisioning + directory loader, RECORDS bulk loader, and ANNOUNCEMENTS live wiring are all resolved above.
 
-Let me know which of these you want tackled first and I'll start there.
+Nothing left to tackle from this audit — the only open item anywhere in this file is the SCHEDULE/COURSES decision above, and that's a deliberate "leave as-is," not a gap.
