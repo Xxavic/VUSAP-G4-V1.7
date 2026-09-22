@@ -77,6 +77,7 @@ async function authSignIn(universityId, password) {
         return { user: null, role: null, error: 'Account profile not found. Contact your Administrator.' };
       }
 
+      retireDemoPasswords(); // live auth confirmed -- see this function's own comment for why this can't happen eagerly at module load
       return {
         user: normalizeProfile(profile, universityId),
         role: profile.role,
@@ -373,6 +374,7 @@ async function resumeSupabaseSession() {
       .single();
 
     if (profile) {
+      retireDemoPasswords(); // live session confirmed -- see this function's own comment for why this can't happen eagerly at module load
       const normalized = normalizeProfile(profile, profile.university_id || session.user.email);
       State.role = normalized.role;
       State.user = normalized;
@@ -2397,21 +2399,31 @@ Object.values(USERS).forEach(u => { if(u.consentAt === undefined) u.consentAt = 
 // (see e.g. suspendAccount(), reassignRegistrar()), not just a login table.
 // The one real smell was the plaintext demo passwords above always being
 // live and workable. authSignIn()'s mock fallback (see its own comment) is
-// only ever reached when LIVE_BACKEND is false or the live call throws —
-// and LIVE_BACKEND is already resolved, synchronously, above this point in
-// the file (see the top-of-file SUPABASE_CLIENT block) — so once a device
-// has the Supabase client library available at all (true on essentially
-// every load except a genuinely first-ever-offline one, since the PWA
-// caches supabase.min.js), these passwords are dead weight sitting in
-// memory with nothing that can legitimately use them. Deleting them here
-// closes that off for any normal (LIVE_BACKEND-true) session — a truly
-// offline first load, where LIVE_BACKEND is false from the start, is the
-// only case that still needs them, and skips this block entirely.
+// only ever reached when LIVE_BACKEND is false or the live call throws, so
+// once a session has genuinely confirmed a live connection, these passwords
+// are dead weight sitting in memory with nothing that can legitimately use
+// them.
+//
+// Sept 2026 timing fix: this used to run eagerly, right here, gated only on
+// LIVE_BACKEND's synchronous initial value (`!!SUPABASE_CLIENT` at the top
+// of the file). That value means "the Supabase client library + config are
+// present" — true even on a fully offline device, since the PWA caches
+// supabase.min.js — NOT "we've confirmed this device can reach Supabase".
+// The real reachability check happens later, asynchronously, in
+// checkBackendStatus()'s network fetch. So a genuinely offline session had
+// its passwords deleted before the offline determination was even made,
+// permanently breaking authSignIn()'s mock fallback for that session
+// (mock.password becomes undefined, so `mock.password !== password` is
+// always true) — defeating this exact fix's own stated goal of preserving
+// offline demo login. Fixed by only retiring passwords once something has
+// actually confirmed a live connection — see retireDemoPasswords()'s call
+// sites (checkBackendStatus(), resumeSupabaseSession(), authSignIn()).
+//
 // Note this doesn't remove the literal strings from the shipped app.js
 // source itself (there's no build/minify step in this project to strip
 // them from — see hosting-github-pages notes) — only from what's readable
-// at runtime in a live session.
-if(LIVE_BACKEND){
+// at runtime once a session is confirmed live.
+function retireDemoPasswords(){
   Object.values(USERS).forEach(u => { delete u.password; });
 }
 
@@ -4528,6 +4540,7 @@ async function checkBackendStatus(){
       el.textContent = '🟢 connected to Supabase';
       el.style.color = 'var(--present)';
       LIVE_BACKEND = true;
+      retireDemoPasswords();
     } else {
       el.textContent = '🟡 Supabase unreachable';
       el.style.color = 'var(--late)';
