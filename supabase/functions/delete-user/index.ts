@@ -107,13 +107,33 @@ Deno.serve(async (req) => {
 
     // Deletes the profile row, then the auth login. If the auth delete fails
     // the profile is put back, so we never leave a login with no profile.
+    //
+    // Sept 2026 race fix: this used to SELECT a snapshot, then DELETE, and
+    // trust `profileErr` (which stays null even when the DELETE matched zero
+    // rows) to mean "I actually deleted this". Under a genuine race -- two
+    // concurrent calls targeting the same student, e.g. two approve clicks,
+    // or an approve racing a direct delete -- the second call's SELECT could
+    // capture a row that was about to vanish, its own DELETE would silently
+    // no-op, and it would then fail trying to delete an auth user the first
+    // call already removed -- triggering the reinsert below and resurrecting
+    // a profile row with no matching auth login (a ghost account). Using
+    // DELETE ... RETURNING (`.delete().select()`) tells this call, for
+    // certain, whether IT was the one that removed the row.
     async function performDelete(target: { id: string }) {
-      const { data: snapshot } = await admin.from("users").select("*").eq("id", target.id).single();
-      const { error: profileErr } = await admin.from("users").delete().eq("id", target.id);
+      const { data: deletedRows, error: profileErr } = await admin
+        .from("users").delete().eq("id", target.id).select();
       if (profileErr) return `Could not delete profile: ${profileErr.message}`;
+      if (!deletedRows || deletedRows.length === 0) {
+        // Nothing to delete -- a concurrent call for the same student
+        // already finished the job. The end state we want (no profile row)
+        // already holds, so treat this as a no-op success rather than
+        // chasing an already-gone auth user.
+        return null;
+      }
+      const snapshot = deletedRows[0];
       const { error: authErr } = await admin.auth.admin.deleteUser(target.id);
       if (authErr) {
-        if (snapshot) await admin.from("users").insert(snapshot);
+        await admin.from("users").insert(snapshot);
         return `Could not delete login: ${authErr.message}`;
       }
       return null;
@@ -156,38 +176,78 @@ Deno.serve(async (req) => {
 
       let universityId = body.universityId;
       let requestRow: any = null;
+
+      // Sept 2026 race fix: decide's pending -> decided transition is now a
+      // single atomic conditional UPDATE (`.eq('status', 'pending')` on the
+      // WRITE, not just an earlier read) instead of "read status, then write
+      // unconditionally later". That old shape let two concurrent decide
+      // calls on the same request (two tabs, a double click, two admins)
+      // both pass the pending check before either wrote, then both proceed
+      // -- see delete-user-race-fix-notes.md for the two concrete ways that
+      // corrupted data. Now only one caller can ever win the conditional
+      // update; everyone else gets zero rows back and a clean "already
+      // decided" error, atomically, with no window between check and act.
       if (action === "decide") {
-        const { data } = await admin.from("account_deletion_requests").select("*").eq("id", body.requestId).maybeSingle();
-        if (!data) return json({ error: "Request not found" }, 404);
-        if (data.status !== "pending") return json({ error: `This request was already ${data.status}` }, 409);
-        requestRow = data;
-        universityId = data.target_university_id;
+        if (body.decision !== "approve" && body.decision !== "reject") {
+          return json({ error: "decision must be 'approve' or 'reject'" }, 400);
+        }
+        const claimStatus = body.decision === "approve" ? "approved" : "rejected";
+        const { data: claimed, error: claimErr } = await admin
+          .from("account_deletion_requests")
+          .update({
+            status: claimStatus,
+            decided_by_name: caller.name,
+            decision_note: body.note || null,
+            decided_at: new Date().toISOString(),
+          })
+          .eq("id", body.requestId)
+          .eq("status", "pending") // <-- the atomic guard: only a still-pending row can be claimed
+          .select()
+          .maybeSingle();
+        if (claimErr) return json({ error: claimErr.message }, 500);
+        if (!claimed) {
+          // Zero rows means either the request doesn't exist, or someone
+          // else already claimed it in the window between this admin
+          // loading the screen and tapping the button -- re-fetch just to
+          // give an accurate message, not to decide anything (that already
+          // happened, atomically, in the update above).
+          const { data: current } = await admin.from("account_deletion_requests").select("status").eq("id", body.requestId).maybeSingle();
+          if (!current) return json({ error: "Request not found" }, 404);
+          return json({ error: `This request was already ${current.status}` }, 409);
+        }
 
         if (body.decision === "reject") {
-          await admin.from("account_deletion_requests").update({
-            status: "rejected", decided_by_name: caller.name,
-            decision_note: body.note || null, decided_at: new Date().toISOString(),
-          }).eq("id", requestRow.id);
-          return json({ ok: true, request: { ...requestRow, status: "rejected" } });
+          // Rejecting needs no deletion and nothing to revert -- the claim
+          // above already wrote the final state.
+          return json({ ok: true, request: claimed });
         }
-        if (body.decision !== "approve") return json({ error: "decision must be 'approve' or 'reject'" }, 400);
+
+        requestRow = claimed; // decision === 'approve' -- carries on below into the shared delete path
+        universityId = claimed.target_university_id;
       }
 
       const { target, error } = await loadTarget(universityId);
-      if (error) return error;
+      if (error) {
+        // We already claimed this request as 'approved' above -- if the
+        // target turns out to be invalid, put the request back to pending
+        // rather than leaving it stuck 'approved' with nothing actually
+        // deleted.
+        if (requestRow) await admin.from("account_deletion_requests").update({ status: "pending" }).eq("id", requestRow.id);
+        return error;
+      }
       const blockers = await blockersFor(target!.id);
-      if (blockers.length) return json({ error: `Can't delete — this student now has ${blockers.join(", ")}. Suspend the account instead.` }, 409);
+      if (blockers.length) {
+        if (requestRow) await admin.from("account_deletion_requests").update({ status: "pending" }).eq("id", requestRow.id);
+        return json({ error: `Can't delete — this student now has ${blockers.join(", ")}. Suspend the account instead.` }, 409);
+      }
 
       const failure = await performDelete(target!);
-      if (failure) return json({ error: failure }, 500);
-
-      if (requestRow) {
-        await admin.from("account_deletion_requests").update({
-          status: "approved", decided_by_name: caller.name,
-          decision_note: body.note || null, decided_at: new Date().toISOString(),
-        }).eq("id", requestRow.id);
+      if (failure) {
+        if (requestRow) await admin.from("account_deletion_requests").update({ status: "pending" }).eq("id", requestRow.id);
+        return json({ error: failure }, 500);
       }
-      return json({ ok: true, request: requestRow ? { ...requestRow, status: "approved" } : null });
+
+      return json({ ok: true, request: requestRow || null });
     }
 
     return json({ error: "Unknown action" }, 400);
