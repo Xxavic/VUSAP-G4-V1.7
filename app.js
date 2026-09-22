@@ -3440,6 +3440,13 @@ async function createStaffAccount(role, name, email, deptOrFaculty){
   if(live && live.error){
     return { error: live.error };
   }
+  // Sept 2026: without this, canManagePerson()/registerPersonRow()'s
+  // "Not provisioned" badge (isProvisioned() -> LIVE_PROVISIONED_IDS) stays
+  // stale until the next full loadProvisionedAccountsFromSupabase() fetch —
+  // a staff account created live shows as unprovisioned right after its own
+  // "Account Created" confirmation, which is exactly backwards. Mirrors the
+  // fix in handleEnroll() below.
+  if(live) LIVE_PROVISIONED_IDS.add(id);
 
   createAccount({ id, name: name.trim(), email: email || vuEmail(name), role, extra, tempPassword });
   directoryArray.push(directoryEntry);
@@ -5952,6 +5959,13 @@ async function handleEnroll(e){
     showToast(live.error);
     return false;
   }
+  // Sept 2026: same fix as createStaffAccount()'s own copy of this line —
+  // without it, this student's "Not provisioned" badge stays stale (reads
+  // LIVE_PROVISIONED_IDS, only ever refreshed by a full
+  // loadProvisionedAccountsFromSupabase() fetch) until the next visit to
+  // Register, showing as unprovisioned immediately after their own
+  // "Account Created" confirmation.
+  if(live) LIVE_PROVISIONED_IDS.add(reg);
 
   regNoCounter++;
 
@@ -9406,13 +9420,22 @@ resetSheetContentIfNeeded = function(sheetId){
       if(body) body.innerHTML = renderCreateAccountFormBody();
     }, 250);
   }
-  if(sheetId === 'accountDetailSheet' || sheetId === 'createAccountSheet'){
-    // Either sheet closing should refresh the underlying list so a status
-    // change or a new account shows up without a full screen reload. (Most
-    // of the time this is already redundant — suspendAccount/reactivateAccount
-    // navigate('register', {replace:true}) themselves — but createAccountSheet's
-    // "Done" close path doesn't re-navigate, so this is what actually shows
-    // a freshly-created account without a manual refresh.)
+  if(sheetId === 'accountDetailSheet' || sheetId === 'createAccountSheet' || sheetId === 'enrollSheet'){
+    // Any of these sheets closing should refresh the underlying list so a
+    // status change or a new account shows up without a full screen reload.
+    // (Most of the time this is already redundant — suspendAccount/
+    // reactivateAccount navigate('register', {replace:true}) themselves —
+    // but createAccountSheet's and enrollSheet's own "Done" close paths
+    // don't re-navigate, so this is what actually shows a freshly-created
+    // account without a manual refresh.)
+    //
+    // Sept 2026: enrollSheet was missing from this list entirely -- found by
+    // enrolling a test student and watching it not appear in People search
+    // afterwards (STUDENTS.push() in handleEnroll() updates the in-memory
+    // array fine, but nothing had ever repainted #registerList to match, so
+    // filterRegister()'s DOM-only filtering had nothing new to find). The
+    // createAccountSheet fix above already solved the identical problem for
+    // staff creation; this just extends it to student enrollment too.
     const list = document.getElementById('registerList');
     if(list && typeof scopedRegisterPeople === 'function'){
       const people = scopedRegisterPeople();
