@@ -25,7 +25,9 @@
 // every other live-write function in this codebase when its backend isn't
 // configured yet.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// npm: specifier, not esm.sh -- see supabase/functions/delete-user/index.ts
+// for why (an unpinned esm.sh "@2" build can break the deploy on a bad day).
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Confirmed live (Sept 2026): every call from app.js's liveSendEmailNotification()
 // failed with "Response to preflight request doesn't pass access control

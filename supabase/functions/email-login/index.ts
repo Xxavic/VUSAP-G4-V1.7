@@ -16,7 +16,9 @@
 // anon key). Needs no new secrets. Setup: deploy in the dashboard or with
 //   supabase functions deploy email-login
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// npm: specifier, not esm.sh -- see supabase/functions/delete-user/index.ts
+// for why (an unpinned esm.sh "@2" build can break the deploy on a bad day).
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

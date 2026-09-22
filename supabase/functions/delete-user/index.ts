@@ -24,7 +24,13 @@
 // (or paste this file into a new function in the dashboard's Edge Functions)
 // No new secrets — SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are automatic.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// npm: specifier, not esm.sh -- esm.sh's unpinned "@2" tag re-resolves to
+// whatever 2.x build is current on every deploy, and that build's own
+// bundling for Deno sometimes breaks (e.g. Sept 2026: 2.117.0's auth-js
+// sub-dependency failed to bundle for the denonext target). npm: goes
+// straight through Deno's own npm compat layer, sidestepping esm.sh
+// entirely, so a bad esm.sh build day can't block a deploy.
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
