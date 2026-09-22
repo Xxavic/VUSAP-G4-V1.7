@@ -9952,6 +9952,9 @@ function renderCourseCatalog(){
       ${ICONS.search}
       <input class="input" placeholder="Search by code or name..." oninput="filterCourseCatalog()" id="courseSearch" />
     </div>
+    <div style="margin:4px 0 12px;">
+      <button class="btn btn-ghost btn-sm" style="width:auto;" onclick="navigate('coursesByYear')">${ICONS.calendar} View by Year</button>
+    </div>
     <div class="field">
       <select class="select" id="courseProgrammeFilter" onchange="filterCourseCatalog()">
         <option value="">All Programmes</option>
@@ -10011,6 +10014,84 @@ function filterCourseCatalog(){
     if(visible) visibleCount++;
   });
   toggleNoResultsState('courseList', visibleCount, 'Try a different search or programme filter');
+}
+
+// ============================================================
+// COURSES BY YEAR (Registrar/Administrator) — catalog audit view
+// ------------------------------------------------------------
+// Chris (Sept 2026): one lecturer can teach across several years, so the
+// flat Course Catalog list alone doesn't make it easy to see, at a glance,
+// which years are actually covered under Day vs Evening mode -- especially
+// useful while going through and tagging classes.year (see
+// migrate-classes-year-column.sql / ENROLLMENT-BACKFILL-README.md, which
+// this same tagging feeds). Read-only: pick a mode, see every course in
+// that mode grouped Year 1 -> 4, with its lecturer. Courses missing a mode
+// or a year surface in their own section instead of silently vanishing, so
+// gaps are obvious rather than hidden.
+// ============================================================
+
+let coursesByYearMode = 'day';
+
+function setCoursesByYearMode(mode){
+  coursesByYearMode = mode;
+  rerenderCurrentScreen();
+}
+
+const COURSE_YEAR_LABELS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'];
+
+function renderCoursesByYear(){
+  const courses = scopedCourses();
+  const modeCourses = courses.filter(c => c.mode === coursesByYearMode);
+  const modeUnsetCourses = courses.filter(c => !c.mode);
+
+  const byYear = COURSE_YEAR_LABELS.map(label => ({
+    label,
+    courses: modeCourses.filter(c => c.year === label),
+  }));
+  const yearNotSet = modeCourses.filter(c => !COURSE_YEAR_LABELS.includes(c.year));
+
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('courseCatalog')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Courses by Year</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn ${coursesByYearMode==='day'?'btn-primary':'btn-ghost'}" onclick="setCoursesByYearMode('day')">${ICONS.clock} Day Mode</button>
+      <button class="btn ${coursesByYearMode==='evening'?'btn-primary':'btn-ghost'}" onclick="setCoursesByYearMode('evening')">${ICONS.calendar} Evening Mode</button>
+    </div>
+
+    ${byYear.map(y => `
+      <div class="section-title" style="margin:16px 0 8px;">${ICONS.book} ${y.label}</div>
+      ${y.courses.length
+        ? `<div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">${y.courses.map(c=>courseByYearRow(c)).join('')}</div>`
+        : `<div class="empty-state-sm">No ${coursesByYearMode==='day'?'Day':'Evening'} courses tagged ${y.label} yet</div>`}
+    `).join('')}
+
+    ${yearNotSet.length ? `
+      <div class="section-title" style="margin:16px 0 8px;">${ICONS.alertTriangle} Year Not Set</div>
+      <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">${yearNotSet.map(c=>courseByYearRow(c)).join('')}</div>
+      <div style="font-size:12px;color:var(--ink-faint);margin-top:6px;">${yearNotSet.length} course${yearNotSet.length>1?'s':''} in ${coursesByYearMode==='day'?'Day':'Evening'} mode ${yearNotSet.length>1?'have':'has'} no Year set — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>
+    ` : ''}
+
+    ${modeUnsetCourses.length ? `
+      <div class="section-title" style="margin:16px 0 8px;">${ICONS.alertTriangle} Mode Not Set</div>
+      <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">${modeUnsetCourses.map(c=>courseByYearRow(c)).join('')}</div>
+      <div style="font-size:12px;color:var(--ink-faint);margin-top:6px;">${modeUnsetCourses.length} course${modeUnsetCourses.length>1?'s':''} with no Day/Evening mode set — won't appear in either tab above until tagged.</div>
+    ` : ''}
+  </div>`;
+}
+
+function courseByYearRow(c){
+  return `
+  <div class="lecture-row">
+    <div style="flex:1;min-width:0;">
+      <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(c.code)} — ${escapeHtmlText(c.name)}</div>
+      <div class="lecture-meta" style="margin-top:4px;">${escapeHtmlText(c.programme || 'No programme')}${c.lecturer ? ' · ' + escapeHtmlText(c.lecturer) : ' · No lecturer assigned'}</div>
+    </div>
+  </div>`;
 }
 
 // Lecturer field: a live <select> of real users(role='lecturer'), faculty-
@@ -13074,6 +13155,7 @@ function getScreenHTML(screenId){
       // Registrar could already create/edit class sessions that reference
       // these same courses.
       case 'courseCatalog': return renderCourseCatalog();
+      case 'coursesByYear': return renderCoursesByYear();
       case 'fraudCenter': return renderFraudCenter();
       case 'reports': return renderReports();
       case 'appeals': return renderAppeals();
@@ -13101,6 +13183,7 @@ function getScreenHTML(screenId){
       case 'roleAssignments': return renderRoleAssignments();
       case 'facultiesProgrammes': return renderFacultiesProgrammes();
       case 'courseCatalog': return renderCourseCatalog();
+      case 'coursesByYear': return renderCoursesByYear();
       case 'attendancePolicies': return renderAttendancePolicies();
       case 'fraudThresholds': return renderFraudThresholds();
       case 'notifTemplates': return renderNotifTemplates();

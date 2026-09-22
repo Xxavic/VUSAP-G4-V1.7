@@ -1,2 +1,9 @@
 supabase/.temp/
 dist/
+
+# Enrollment backfill outputs (backfill-enrollments-1-list.mjs /
+# backfill-enrollments-2-apply.mjs) -- contain real student names and
+# university IDs, never belongs in git history.
+students-missing-enrollments.json
+students-missing-enrollments.csv
+backfill-enrollments-results.json
