@@ -1,7 +1,7 @@
 // QRAST — Service Worker
 // Provides offline-first caching so the app behaves like a native installed app.
 
-const CACHE_NAME = 'qrast-v29';
+const CACHE_NAME = 'qrast-v30';
 const CORE_ASSETS = [
   './index.html',
   './manifest.json',

@@ -474,6 +474,7 @@ async function liveWriteSession(){
     course_name: LIVE_SESSION.courseName,
     room: LIVE_SESSION.room,
     mode: LIVE_SESSION.mode || null,
+    class_id: LIVE_SESSION.classId || null, // requires migrate-live-sessions-class-id.sql — see resolveClassRow()'s comment for why this exists
     // Gate 5, live_qr_sessions RLS: the table previously had no column
     // identifying which lecturer owns a broadcast at all, so "only the
     // owning lecturer can update/end their session" couldn't be enforced
@@ -496,19 +497,39 @@ async function liveWriteSession(){
   // is used at all. A prior version of this sent LIVE_SESSION.startedAt
   // from the Lecturer's own clock, which broke the live roster whenever a
   // Student's device clock had drifted even slightly behind.
+  // Safety net for deploy ordering: if migrate-live-sessions-class-id.sql
+  // hasn't been run yet on this project, `class_id` isn't a real column and
+  // Supabase rejects the whole write (PGRST204/42703, "column does not
+  // exist") — which, unguarded, would silently break EVERY live check-in
+  // (no session ever gets written) the moment this app.js deploys ahead of
+  // that migration. One retry without class_id keeps live sessions working
+  // exactly as before this fix in that window, at the cost of class_id
+  // simply staying unset (resolveClassRow() falls back to the old
+  // code-only lookup, same as pre-fix) until the migration catches up.
+  const isMissingClassIdColumn = (err) => !!err && (err.code === '42703' || err.code === 'PGRST204' || /class_id/i.test(err.message || ''));
   try {
     if(LIVE_SESSION.liveSessionId){
-      const { error } = await SUPABASE_CLIENT
+      let { error } = await SUPABASE_CLIENT
         .from('live_qr_sessions')
         .update(payload)
         .eq('id', LIVE_SESSION.liveSessionId);
+      if(error && isMissingClassIdColumn(error)){
+        console.warn('liveWriteSession: class_id column missing — has migrate-live-sessions-class-id.sql been run? Retrying without it.');
+        const { class_id, ...payloadNoClassId } = payload;
+        ({ error } = await SUPABASE_CLIENT.from('live_qr_sessions').update(payloadNoClassId).eq('id', LIVE_SESSION.liveSessionId));
+      }
       if(error) console.warn('liveWriteSession update failed:', error);
     } else {
-      const { data, error } = await SUPABASE_CLIENT
+      let { data, error } = await SUPABASE_CLIENT
         .from('live_qr_sessions')
         .insert(payload)
         .select()
         .single();
+      if(error && isMissingClassIdColumn(error)){
+        console.warn('liveWriteSession: class_id column missing — has migrate-live-sessions-class-id.sql been run? Retrying without it.');
+        const { class_id, ...payloadNoClassId } = payload;
+        ({ data, error } = await SUPABASE_CLIENT.from('live_qr_sessions').insert(payloadNoClassId).select().single());
+      }
       if(error) console.warn('liveWriteSession insert failed:', error);
       else if(data){
         LIVE_SESSION.liveSessionId = data.id;
@@ -521,7 +542,14 @@ async function liveWriteSession(){
 }
 
 // Student side: find the currently active broadcast row for a given course code.
-async function liveFindActiveSession(courseCode, mode){
+// `classId`, when given, narrows to ONE specific programme/year's section —
+// closes the (rarer, but real) case of two different programmes both
+// broadcasting the same course code in the same mode at the same time,
+// where course_code+mode alone can't tell them apart. Optional: a caller
+// that doesn't have a classId yet (checkLecturerActiveSession()'s "is
+// anything at all running" discovery loop) keeps the old course_code+mode
+// behavior unchanged.
+async function liveFindActiveSession(courseCode, mode, classId){
   if(!LIVE_BACKEND) return null;
   try {
     let query = SUPABASE_CLIENT
@@ -539,10 +567,20 @@ async function liveFindActiveSession(courseCode, mode){
     // only checkLecturerActiveSession()'s "is anything at all running"
     // Dashboard-tile discovery) keeps the old any-mode behavior.
     if(mode) query = query.eq('mode', mode);
-    const { data, error } = await query
+    if(classId) query = query.eq('class_id', classId);
+    let { data, error } = await query
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+    // Deploy-ordering safety net (see liveWriteSession()'s matching comment):
+    // if class_id isn't a real column yet, retry once without that filter
+    // rather than leaving every student unable to discover a live session at all.
+    if(error && classId && (error.code === '42703' || error.code === 'PGRST204' || /class_id/i.test(error.message || ''))){
+      console.warn('liveFindActiveSession: class_id column missing — has migrate-live-sessions-class-id.sql been run? Retrying without it.');
+      let fallbackQuery = SUPABASE_CLIENT.from('live_qr_sessions').select('*').eq('course_code', courseCode).eq('active', true);
+      if(mode) fallbackQuery = fallbackQuery.eq('mode', mode);
+      ({ data, error } = await fallbackQuery.order('updated_at', { ascending: false }).limit(1).maybeSingle());
+    }
     if(error){ console.warn('liveFindActiveSession error:', error); return null; }
     return data;
   } catch(e){
@@ -559,6 +597,11 @@ function applyLiveSessionRow(row){
   LIVE_SESSION.courseName = row.course_name;
   LIVE_SESSION.room = row.room;
   LIVE_SESSION.mode = row.mode || null; // see liveWriteSession() — the actual source of truth for mode, now stored on the row itself rather than only ever known on the Lecturer's own device
+  // Undefined (column doesn't exist yet, migrate-live-sessions-class-id.sql
+  // not run) reads back as undefined here, coerced to null -- every classId
+  // consumer already treats null as "fall back to the old code-only lookup",
+  // so this degrades safely either way. See resolveClassRow().
+  LIVE_SESSION.classId = row.class_id || null;
   LIVE_SESSION.pin = row.pin;
   LIVE_SESSION.token = row.token;
   LIVE_SESSION.active = row.active;
@@ -601,7 +644,12 @@ function subscribeToLiveSession(courseCode){
       // independent, so a Realtime event for the OTHER mode's row must not
       // overwrite the one this device is actually tracking. The id-match
       // half is unchanged, so we still see our own session flip to ended.
-      if((row.active && row.mode === LIVE_SESSION.mode) || row.id === LIVE_SESSION.liveSessionId){
+      // Also class-scoped when both sides know a classId (post-migration) —
+      // two different programmes can broadcast the same code+mode at once,
+      // and a Realtime event for the OTHER programme's class must not
+      // overwrite this device's own tracked session either.
+      const sameClass = !LIVE_SESSION.classId || !row.class_id || row.class_id === LIVE_SESSION.classId;
+      if((row.active && row.mode === LIVE_SESSION.mode && sameClass) || row.id === LIVE_SESSION.liveSessionId){
         applyLiveSessionRow(row);
         // Keeps a Class Coordinator's open QR display in sync with the
         // Lecturer's device — a token rotation redraws the code, and a
@@ -683,7 +731,11 @@ async function checkLecturerActiveSession(){
       // blocked forever after a rediscovery like this, even though a session
       // is genuinely running. Same idempotent select-then-insert
       // startSessionForLecture() already relies on for the same field.
-      liveEnsureSchedulingSession(resumedCode).then(id => {
+      // LIVE_SESSION.classId is already set by applyLiveSessionRow() above
+      // (from the discovered row's own class_id) -- pass it through so this
+      // resolves the SAME class the broadcast is actually for, not just
+      // whichever `classes` row happens to share resumedCode's course code.
+      liveEnsureSchedulingSession(resumedCode, LIVE_SESSION.classId).then(id => {
         LIVE_SESSION.schedulingSessionId = id;
       });
       refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
@@ -715,7 +767,7 @@ async function startStudentLiveSessionSync(){
   if(!LIVE_BACKEND || studentLiveSyncDoneForThisVisit) return;
   studentLiveSyncDoneForThisVisit = true;
   for(const c of STUDENT_COURSES){
-    const row = await liveFindActiveSession(c.code, State.user?.mode);
+    const row = await liveFindActiveSession(c.code, State.user?.mode, c.classId);
     if(row){
       applyLiveSessionRow(row);
       subscribeToLiveSession(c.code);
@@ -781,18 +833,48 @@ function resetStudentLiveSync(){
 // course later the same day reuses one scheduling row instead of minting
 // a fresh one per click — mirrors liveDeactivateOtherSessions()'s intent
 // for live_qr_sessions, applied to the durable table instead.
-async function liveEnsureSchedulingSession(courseCode){
+// Resolves the exact `classes` row a live action belongs to. A course code
+// alone is NOT unique -- the same code can be taught to more than one
+// programme/year (confirmed real scenario: a lecturer teaching one section
+// of a course to Year 1 and a different section of the SAME course code to
+// Year 3). `.eq('code', courseCode).maybeSingle()` on its own breaks the
+// instant that happens: either it errors (more than one row matches) or,
+// worse, silently attaches an attendance session to the WRONG programme's
+// class. Prefers an exact id lookup when classId is known (threaded
+// through from the lecture the Lecturer actually picked, or read back off
+// the live broadcast row itself -- see LIVE_SESSION.classId and
+// applyLiveSessionRow()). Falls back to the old code-only lookup only when
+// classId isn't available yet (mock data, or migrate-live-sessions-class-id.sql
+// hasn't been run) -- .limit(1) instead of .maybeSingle() so a genuine
+// multi-row match never throws and breaks live check-in outright; it just
+// picks one, exactly as risky as before this fix, never worse.
+async function resolveClassRow(courseCode, classId){
+  try {
+    if(classId){
+      const { data, error } = await SUPABASE_CLIENT
+        .from('classes').select('id, teacher_id').eq('id', classId).maybeSingle();
+      if(error){ console.warn('resolveClassRow: id lookup failed:', error); return null; }
+      // classId given but not found (deleted/renamed class?) -- don't fall
+      // through to a possibly-different class that happens to share the code.
+      return data || null;
+    }
+    const { data, error } = await SUPABASE_CLIENT
+      .from('classes').select('id, teacher_id').eq('code', courseCode).limit(1);
+    if(error){ console.warn('resolveClassRow: code lookup failed:', error); return null; }
+    return (data && data[0]) || null;
+  } catch(e){
+    console.warn('resolveClassRow error:', e);
+    return null;
+  }
+}
+
+async function liveEnsureSchedulingSession(courseCode, classId){
   if(!LIVE_BACKEND) return null;
   try {
-    const { data: classRow, error: cErr } = await SUPABASE_CLIENT
-      .from('classes')
-      .select('id, teacher_id')
-      .eq('code', courseCode)
-      .maybeSingle();
-    if(cErr || !classRow){
-      // No seeded `classes` row for this course code — stay local-only for
-      // scheduling/attendance rather than guessing at a class_id.
-      if(cErr) console.warn('liveEnsureSchedulingSession: classes lookup failed:', cErr);
+    const classRow = await resolveClassRow(courseCode, classId);
+    if(!classRow){
+      // No resolvable `classes` row for this course/class — stay local-only
+      // for scheduling/attendance rather than guessing at a class_id.
       return null;
     }
 
@@ -865,7 +947,7 @@ async function liveWriteAttendance(){
       // startSessionForLecture() already fires this once per broadcast (fire-and-
       // forget); re-resolving here (idempotent select-then-insert) covers
       // the rare race where a check-in lands before that resolves.
-      sessionId = await liveEnsureSchedulingSession(LIVE_SESSION.courseCode);
+      sessionId = await liveEnsureSchedulingSession(LIVE_SESSION.courseCode, LIVE_SESSION.classId);
       LIVE_SESSION.schedulingSessionId = sessionId;
     }
     if(!sessionId) return; // no live classes/sessions row to attach to — stays local-only
@@ -924,10 +1006,10 @@ async function liveWriteAttendance(){
 // sessions row for (course, date) without ever creating one. Attendance
 // Corrections should only ever show a date a session genuinely ran on, not
 // silently mint a new row for a date picked out of curiosity.
-async function liveResolveSessionId(courseCode, dateISO){
+async function liveResolveSessionId(courseCode, classId, dateISO){
   if(!LIVE_BACKEND) return null;
   try {
-    const { data: classRow } = await SUPABASE_CLIENT.from('classes').select('id').eq('code', courseCode).maybeSingle();
+    const classRow = await resolveClassRow(courseCode, classId);
     if(!classRow) return null;
     const { data: existing } = await SUPABASE_CLIENT
       .from('sessions').select('id').eq('class_id', classRow.id).eq('date', dateISO)
@@ -948,7 +1030,7 @@ async function liveResolveSessionId(courseCode, dateISO){
 async function liveLoadAttendanceForLectureDate(lecture, dateISO){
   if(!LIVE_BACKEND || !lecture) return;
   try {
-    const sessionId = await liveResolveSessionId(lecture.courseCode, dateISO);
+    const sessionId = await liveResolveSessionId(lecture.courseCode, lecture.classId, dateISO);
     if(!sessionId) return;
     const { data, error } = await SUPABASE_CLIENT
       .from('attendance').select('student_id, student_name, status, device_id')
@@ -993,7 +1075,7 @@ async function liveLoadAttendanceForLectureDate(lecture, dateISO){
 async function liveWriteAttendanceCorrection({ lecture, dateISO, student, status }){
   if(!LIVE_BACKEND || !student.supabaseId) return;
   try {
-    const sessionId = await liveResolveSessionId(lecture.courseCode, dateISO);
+    const sessionId = await liveResolveSessionId(lecture.courseCode, lecture.classId, dateISO);
     if(!sessionId) return;
     const { data: existing } = await SUPABASE_CLIENT
       .from('attendance').select('id').eq('session_id', sessionId).eq('student_id', student.supabaseId).maybeSingle();
@@ -1019,12 +1101,12 @@ async function liveWriteAttendanceCorrection({ lecture, dateISO, student, status
 // every enrolled student's row here (not just your own) likely needs that
 // same coverage extended to `enrollments`/`users`, so this may currently
 // no-op under RLS until that policy exists. Safe to attempt either way.
-async function liveFinalizeSessionAttendance(courseCode, dateISO){
+async function liveFinalizeSessionAttendance(courseCode, classId, dateISO){
   if(!LIVE_BACKEND) return;
   try {
-    const sessionId = await liveResolveSessionId(courseCode, dateISO);
+    const sessionId = await liveResolveSessionId(courseCode, classId, dateISO);
     if(!sessionId) return;
-    const { data: classRow } = await SUPABASE_CLIENT.from('classes').select('id').eq('code', courseCode).maybeSingle();
+    const classRow = await resolveClassRow(courseCode, classId);
     if(!classRow) return;
     const { data: enrolled, error: eErr } = await SUPABASE_CLIENT
       .from('enrollments').select('student_id, users(name)').eq('class_id', classRow.id);
@@ -1280,7 +1362,7 @@ async function resolveCheckInOutcome(){
     // sync hasn't already filled it in.
     let sessionId = LIVE_SESSION.schedulingSessionId;
     if(!sessionId){
-      sessionId = await liveEnsureSchedulingSession(courseCode);
+      sessionId = await liveEnsureSchedulingSession(courseCode, LIVE_SESSION.classId);
       LIVE_SESSION.schedulingSessionId = sessionId;
     }
     if(sessionId){
@@ -1751,7 +1833,7 @@ async function loadTimetableFromSupabase(){
   try {
     const { data: rows, error } = await SUPABASE_CLIENT
       .from('timetable_slots')
-      .select('*, classes(code, name, teacher_id, year, programmes(name))')
+      .select('*, classes(id, code, name, teacher_id, year, programmes(name))')
       .order('day_of_week, start_time');
 
     if(error){
@@ -1809,6 +1891,11 @@ async function loadTimetableFromSupabase(){
           time: timeStr,
           mode: slot.mode || null,
           year: cls?.year || null,
+          // The exact `classes` row this lecture slot belongs to -- the one
+          // piece of information that actually tells apart two sections of
+          // the same course code taught to different programmes/years. See
+          // resolveClassRow()'s comment for the live-session bug this closes.
+          classId: cls?.id || null,
           // Carries the real row id so editing/deleting a live-sourced
           // lecture can target it directly by id, rather than re-deriving
           // which row it was via a field-matching lookup that's fragile to
@@ -2780,6 +2867,12 @@ let LIVE_SESSION = {
   active: true,
   liveSessionId: null, // Supabase row id for this session, once written live (Gate 3 Realtime sync)
   schedulingSessionId: null, // Gate 4: `sessions` (scheduling) row id for today's lecture — distinct from liveSessionId above, see liveEnsureSchedulingSession()
+  // Sept 2026: the exact `classes` row (one programme+year+mode+code
+  // section) this broadcast belongs to, once known -- see resolveClassRow()'s
+  // comment. Null until either startSessionForLecture() sets it from the
+  // picked lecture, or applyLiveSessionRow() reads it back off a discovered
+  // broadcast row (requires migrate-live-sessions-class-id.sql to have run).
+  classId: null,
   courseCode:"CSC3103",
   courseName:"Software Engineering",
   room:"LT1 - Main Building",
@@ -5076,6 +5169,7 @@ function getLecturerLectures(){
         id, day: d.day, isToday: !!d.isToday,
         courseCode: l.code, courseName: l.name, dept: l.dept,
         lecturer: l.lecturer, room: l.room, time: l.time, mode: l.mode || null,
+        classId: l.classId || null, // see resolveClassRow()'s comment — disambiguates two programmes sharing one course code
         label: `${l.code} — ${l.name} (${d.day} ${l.time.split(' ')[0]})`,
       });
     });
@@ -8117,9 +8211,16 @@ function stopRosterPolling(){
 // turns out to be a no-phone case), never a status they can casually flip
 // away from a real scan.
 function finalizeSessionAttendance(){
-  const { courseCode, courseName, room } = LIVE_SESSION;
+  const { courseCode, courseName, room, classId } = LIVE_SESSION;
   if(!courseCode) return;
-  const lecture = getLecturerLectures().find(l => l.courseCode === courseCode) || { courseCode, courseName, dept: null, room };
+  // Prefer the exact class this broadcast was actually for (LIVE_SESSION.classId
+  // — see resolveClassRow()'s comment) over a bare code match, which could
+  // otherwise pick a DIFFERENT programme's lecture of the same course code
+  // and sweep the wrong roster's no-shows.
+  const candidates = getLecturerLectures().filter(l => l.courseCode === courseCode);
+  const lecture = (classId ? candidates.find(l => l.classId === classId) : null)
+    || candidates[0]
+    || { courseCode, courseName, dept: null, room, classId };
   const dateISO = new Date().toISOString().slice(0,10);
   const roster = getSessionStudents(lecture);
   const alreadyRecorded = new Set(RECORDS.filter(r => r.code === courseCode && r.date === dateISO).map(r => r.reg));
@@ -8134,7 +8235,7 @@ function finalizeSessionAttendance(){
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Session ended', courseCode,
       `${noShows.length} student${noShows.length>1?'s':''} auto-marked absent — no check-in received`);
   }
-  liveFinalizeSessionAttendance(courseCode, dateISO); // fire-and-forget — mock sweep above already covers the actual screen
+  liveFinalizeSessionAttendance(courseCode, classId, dateISO); // fire-and-forget — mock sweep above already covers the actual screen
 }
 
 function endSession(){
@@ -8201,6 +8302,10 @@ async function startSessionForLecture(lecture){
   LIVE_SESSION.courseCode = lecture.code;
   LIVE_SESSION.courseName = lecture.name;
   LIVE_SESSION.room = lecture.room;
+  // See resolveClassRow()'s comment — the exact programme/year section this
+  // broadcast is for, so every scheduling/attendance write below resolves
+  // the SAME class, never a different one that happens to share this code.
+  LIVE_SESSION.classId = lecture.classId || null;
   // Needed once a course can have both a Day and Evening section on the
   // same day (e.g. CSC3103 at 08:00 and again at 17:00) — without this,
   // the "Live" badge matched on course code alone and lit up BOTH entries
@@ -8219,7 +8324,7 @@ async function startSessionForLecture(lecture){
   // disappear from the roster even though it was still perfectly valid.
   // Mirrors the Student side's liveFindActiveSession() use in
   // startStudentLiveSessionSync() — same helper, same idea, other role.
-  const resumed = LIVE_BACKEND ? await liveFindActiveSession(LIVE_SESSION.courseCode, LIVE_SESSION.mode) : null;
+  const resumed = LIVE_BACKEND ? await liveFindActiveSession(LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.classId) : null;
   if(resumed){
     applyLiveSessionRow(resumed);
     subscribeToLiveSession(LIVE_SESSION.courseCode);
@@ -8260,7 +8365,7 @@ async function startSessionForLecture(lecture){
   // Gate 4: pre-warm today's scheduling `sessions` row so attendance writes
   // (from students checking in moments later) don't have to race to resolve
   // it themselves. Fire-and-forget, same as the broadcast write above.
-  liveEnsureSchedulingSession(LIVE_SESSION.courseCode).then(id => {
+  liveEnsureSchedulingSession(LIVE_SESSION.courseCode, LIVE_SESSION.classId).then(id => {
     LIVE_SESSION.schedulingSessionId = id;
   });
   navigate('startSession');
