@@ -584,6 +584,15 @@ input,select,textarea{font-family:inherit;}
 .day-header.today-day{color:var(--theme-primary);}
 .day-count{font-size:11px; font-weight:600; color:var(--ink-faint);}
 
+/* Sept 2026 (Chris): collapsible Mode/Year/Programme section headers on
+   the Timetable and Courses-by-Year screens -- same look as .day-header
+   (which stays as-is for the classic weekday view) so collapsing in a
+   header row doesn't change how it reads. */
+.collapsible-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 2px; font-size:13px; font-weight:800; color:var(--ink-soft);
+}
+
 /* records list (administrator) */
 .record-card{
   border:1px solid var(--line); border-radius:var(--radius-md); padding:13px;

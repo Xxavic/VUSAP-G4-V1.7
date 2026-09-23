@@ -5534,12 +5534,11 @@ function renderSchedule(opts){
         SCHEDULE.forEach(d => {
           d.lectures.forEach(l => { if(l.mode === mode) itemsForMode.push({ l, sourceDay: d }); });
         });
-        return `
-        <div class="section-title" style="margin:18px 0 8px;">${mode==='day'?ICONS.clock:ICONS.calendar} ${label}</div>
-        ${itemsForMode.length
+        const header = `<span style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;">${mode==='day'?ICONS.clock:ICONS.calendar} ${label}</span>`;
+        const body = itemsForMode.length
           ? scheduleYearProgrammeGroups(itemsForMode, showDeptFilter, showCreateSession)
-          : `<div class="empty-state-sm">No ${mode} sessions scheduled</div>`}
-      `;
+          : `<div class="empty-state-sm">No ${mode} sessions scheduled</div>`;
+        return `<div style="margin:18px 0 8px;">${collapsibleSection(header, body)}</div>`;
       }).join('') + (() => {
         // Slots with no mode set yet — surfaced separately rather than
         // silently dropped from both sections above, so it's obvious which
@@ -5618,6 +5617,35 @@ function renderSchedule(opts){
 // (scheduleYearProgrammeGroups). showDayMeta controls the extra day-name
 // line: redundant when a day-group header already names the day, useful
 // once day is no longer the outer grouping.
+// Generic collapsible section (Mode / Year / Programme headers on the
+// Timetable and Courses-by-Year screens). Plain DOM toggle, same approach
+// as toggleNotifExpand() elsewhere in this file -- no re-render, no
+// framework state. Starts expanded by default so nothing that used to be
+// visible disappears on first load; the chevron/click is purely additive.
+let _collapseSectionSeq = 0;
+function collapsibleSection(headerHtml, bodyHtml, opts){
+  opts = opts || {};
+  const id = 'collapse-' + (++_collapseSectionSeq);
+  const startCollapsed = !!opts.startCollapsed;
+  return `
+  <div data-collapsible>
+    <div class="collapsible-header" onclick="toggleCollapsibleSection('${id}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="flex:1;min-width:0;">${headerHtml}</div>
+      <div id="${id}-chevron" data-collapsible-chevron style="color:var(--ink-faint);flex-shrink:0;transition:transform .15s;transform:${startCollapsed?'':'rotate(90deg)'};">${ICONS.chevR}</div>
+    </div>
+    <div id="${id}-body" data-collapsible-body style="display:${startCollapsed?'none':'block'};">${bodyHtml}</div>
+  </div>`;
+}
+
+function toggleCollapsibleSection(id){
+  const body = document.getElementById(id + '-body');
+  const chevron = document.getElementById(id + '-chevron');
+  if(!body) return;
+  const isCollapsed = body.style.display === 'none';
+  body.style.display = isCollapsed ? 'block' : 'none';
+  if(chevron) chevron.style.transform = isCollapsed ? 'rotate(90deg)' : '';
+}
+
 function scheduleLectureRow(l, sourceDay, showDept, editable, showDayMeta){
   const idx = sourceDay.lectures.findIndex(sl => sl.code === l.code && sl.room === l.room && sl.time === l.time);
   return `
@@ -5678,17 +5706,13 @@ function scheduleYearProgrammeGroups(items, showDept, editable){
       const key = x.l.dept || 'No Programme';
       (grouped[key] = grouped[key] || []).push(x);
     });
-    return Object.keys(grouped).sort().map(progName => `
-      <div class="day-group" data-programme-group>
-        <div class="day-header">
-          <span>${ICONS.building} ${escapeHtmlText(progName)}</span>
-          <span class="day-count">${grouped[progName].length} lecture${grouped[progName].length>1?'s':''}</span>
-        </div>
-        <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
+    return Object.keys(grouped).sort().map(progName => {
+      const header = `<span>${ICONS.building} ${escapeHtmlText(progName)}</span><span class="day-count" style="margin-left:auto;">${grouped[progName].length} lecture${grouped[progName].length>1?'s':''}</span>`;
+      const body = `<div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
           ${grouped[progName].map(x=>scheduleLectureRow(x.l, x.sourceDay, showDept, editable, true)).join('')}
-        </div>
-      </div>
-    `).join('');
+        </div>`;
+      return `<div class="day-group" data-programme-group>${collapsibleSection(header, body)}</div>`;
+    }).join('');
   };
 
   const byYear = COURSE_YEAR_LABELS.map(label => ({
@@ -5697,18 +5721,15 @@ function scheduleYearProgrammeGroups(items, showDept, editable){
   }));
   const yearNotSet = items.filter(x => !COURSE_YEAR_LABELS.includes(x.l.year));
 
-  return byYear.map(y => `
-    <div data-year-group>
-      <div class="section-title" style="margin:14px 0 6px;font-size:13px;padding-left:2px;">${ICONS.calendar} ${y.label}</div>
-      ${y.items.length ? byProgramme(y.items) : `<div class="empty-state-sm">No lectures tagged ${y.label} yet</div>`}
-    </div>
-  `).join('') + (yearNotSet.length ? `
-    <div data-year-group>
-      <div class="section-title" style="margin:14px 0 6px;font-size:13px;padding-left:2px;">${ICONS.alertTriangle} Year Not Set</div>
-      ${byProgramme(yearNotSet)}
-      <div style="font-size:12px;color:var(--ink-faint);margin:2px 0 6px;">${yearNotSet.length} lecture${yearNotSet.length>1?'s':''} with no Year set on their course — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>
-    </div>
-  ` : '');
+  return byYear.map(y => {
+    const header = `<span style="font-size:13px;font-weight:700;">${ICONS.calendar} ${y.label}</span>`;
+    const body = y.items.length ? byProgramme(y.items) : `<div class="empty-state-sm">No lectures tagged ${y.label} yet</div>`;
+    return `<div data-year-group style="margin:14px 0 6px;">${collapsibleSection(header, body)}</div>`;
+  }).join('') + (yearNotSet.length ? (() => {
+    const header = `<span style="font-size:13px;font-weight:700;">${ICONS.alertTriangle} Year Not Set</span>`;
+    const body = byProgramme(yearNotSet) + `<div style="font-size:12px;color:var(--ink-faint);margin:2px 0 6px;">${yearNotSet.length} lecture${yearNotSet.length>1?'s':''} with no Year set on their course — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>`;
+    return `<div data-year-group style="margin:14px 0 6px;">${collapsibleSection(header, body)}</div>`;
+  })() : '');
 }
 
 function filterSchedule(){
@@ -5735,6 +5756,20 @@ function filterSchedule(){
     const hasVisibleRow = Array.from(group.querySelectorAll('[data-lecture-row]')).some(r => r.style.display !== 'none');
     group.style.display = hasVisibleRow ? 'block' : 'none';
   });
+
+  // While actively filtering, force open any Mode/Year/Programme section
+  // a manual collapse would otherwise hide a match behind -- restored to
+  // whatever the user left it at once search/day/dept are cleared again.
+  if(q || day || dept){
+    document.querySelectorAll('[data-collapsible-body]').forEach(body=>{
+      const hasVisibleRow = Array.from(body.querySelectorAll('[data-lecture-row]')).some(r => r.style.display !== 'none');
+      if(hasVisibleRow){
+        body.style.display = 'block';
+        const chevron = document.getElementById(body.id.replace(/-body$/, '-chevron'));
+        if(chevron) chevron.style.transform = 'rotate(90deg)';
+      }
+    });
+  }
 
   toggleNoResultsState('scheduleList', anyRowVisible ? 1 : 0, 'Try a different search, day, or department');
 }
@@ -10145,17 +10180,13 @@ function coursesByProgrammeHtml(courseList){
     const key = c.programme || 'No Programme';
     (byProgramme[key] = byProgramme[key] || []).push(c);
   });
-  return Object.keys(byProgramme).sort().map(progName => `
-    <div class="day-group" data-programme-group>
-      <div class="day-header">
-        <span>${ICONS.building} ${escapeHtmlText(progName)}</span>
-        <span class="day-count">${byProgramme[progName].length} course${byProgramme[progName].length>1?'s':''}</span>
-      </div>
-      <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
+  return Object.keys(byProgramme).sort().map(progName => {
+    const header = `<span>${ICONS.building} ${escapeHtmlText(progName)}</span><span class="day-count" style="margin-left:auto;">${byProgramme[progName].length} course${byProgramme[progName].length>1?'s':''}</span>`;
+    const body = `<div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
         ${byProgramme[progName].map(c=>courseByYearRow(c)).join('')}
-      </div>
-    </div>
-  `).join('');
+      </div>`;
+    return `<div class="day-group" data-programme-group>${collapsibleSection(header, body)}</div>`;
+  }).join('');
 }
 
 function renderCoursesByYear(){
@@ -10168,6 +10199,11 @@ function renderCoursesByYear(){
     courses: modeCourses.filter(c => c.year === label),
   }));
   const yearNotSet = modeCourses.filter(c => !COURSE_YEAR_LABELS.includes(c.year));
+
+  const yearSection = (headerHtml, courseList, emptyLabel) => {
+    const body = courseList.length ? coursesByProgrammeHtml(courseList) : `<div class="empty-state-sm">${emptyLabel}</div>`;
+    return `<div style="margin:16px 0 8px;">${collapsibleSection(`<span style="font-size:14.5px;font-weight:700;">${headerHtml}</span>`, body)}</div>`;
+  };
 
   return `
   <div class="app-header">
@@ -10182,23 +10218,16 @@ function renderCoursesByYear(){
       <button class="btn ${coursesByYearMode==='evening'?'btn-primary':'btn-ghost'}" onclick="setCoursesByYearMode('evening')">${ICONS.calendar} Evening Mode</button>
     </div>
 
-    ${byYear.map(y => `
-      <div class="section-title" style="margin:16px 0 8px;">${ICONS.calendar} ${y.label}</div>
-      ${y.courses.length
-        ? coursesByProgrammeHtml(y.courses)
-        : `<div class="empty-state-sm">No ${coursesByYearMode==='day'?'Day':'Evening'} courses tagged ${y.label} yet</div>`}
-    `).join('')}
+    ${byYear.map(y => yearSection(`${ICONS.calendar} ${y.label}`, y.courses, `No ${coursesByYearMode==='day'?'Day':'Evening'} courses tagged ${y.label} yet`)).join('')}
 
     ${yearNotSet.length ? `
-      <div class="section-title" style="margin:16px 0 8px;">${ICONS.alertTriangle} Year Not Set</div>
-      ${coursesByProgrammeHtml(yearNotSet)}
-      <div style="font-size:12px;color:var(--ink-faint);margin-top:6px;">${yearNotSet.length} course${yearNotSet.length>1?'s':''} in ${coursesByYearMode==='day'?'Day':'Evening'} mode ${yearNotSet.length>1?'have':'has'} no Year set — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>
+      ${yearSection(`${ICONS.alertTriangle} Year Not Set`, yearNotSet, '')}
+      <div style="font-size:12px;color:var(--ink-faint);margin-top:-4px;">${yearNotSet.length} course${yearNotSet.length>1?'s':''} in ${coursesByYearMode==='day'?'Day':'Evening'} mode ${yearNotSet.length>1?'have':'has'} no Year set — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>
     ` : ''}
 
     ${modeUnsetCourses.length ? `
-      <div class="section-title" style="margin:16px 0 8px;">${ICONS.alertTriangle} Mode Not Set</div>
-      ${coursesByProgrammeHtml(modeUnsetCourses)}
-      <div style="font-size:12px;color:var(--ink-faint);margin-top:6px;">${modeUnsetCourses.length} course${modeUnsetCourses.length>1?'s':''} with no Day/Evening mode set — won't appear in either tab above until tagged.</div>
+      ${yearSection(`${ICONS.alertTriangle} Mode Not Set`, modeUnsetCourses, '')}
+      <div style="font-size:12px;color:var(--ink-faint);margin-top:-4px;">${modeUnsetCourses.length} course${modeUnsetCourses.length>1?'s':''} with no Day/Evening mode set — won't appear in either tab above until tagged.</div>
     ` : ''}
   </div>`;
 }
