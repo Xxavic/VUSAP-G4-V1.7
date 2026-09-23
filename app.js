@@ -3745,6 +3745,10 @@ function buildInitialCourseCatalog(){
         // this until SCHEDULE itself grows a real mode field, which is out
         // of scope here (mock SCHEDULE stays as-is, per the brief's judgment call).
         mode: null,
+        // SCHEDULE entries do carry a (hand-tagged, demo-only) `year` now
+        // -- see the Mode -> Year -> Programme timetable work -- so this one
+        // rides along for free, unlike mode above.
+        year: l.year || null,
       });
     }
   }));
@@ -6347,6 +6351,287 @@ function studentsForLecturer(){
   const progKeys = new Set(coursesForLecturer().map(c => c.programmeKey).filter(Boolean));
   if(!progKeys.size) return [];
   return STUDENTS.filter(s => progKeys.has(s.deptKey));
+}
+
+// ============================================================
+// LECTURER: MY STUDENTS (Sept 2026, Chris)
+// ------------------------------------------------------------
+// Rebuilt per Chris's correction: the old "My Students" screen showed one
+// flat student list with one flat attendance percentage, computed globally
+// across every course a student has ever attended anywhere -- meaningless
+// once the same course code can be taught to more than one programme, and
+// a lecturer's own roster spans several years/programmes at once.
+//
+// Each `classes` row already IS one specific programme+year+mode+code
+// offering (see migrate-classes-year-column.sql), and the durable
+// scheduling table `sessions` (id, class_id, teacher_id, date -- distinct
+// from the ephemeral live_qr_sessions broadcast table, see
+// liveEnsureSchedulingSession()'s comment) already keys every attendance
+// row back to a class_id with no ambiguity. So a student's attendance
+// percentage and day-by-day history can be computed strictly scoped to
+// ONE class, never mixed with another programme's section of "the same"
+// course -- exactly what was asked for.
+//
+// Known related gap, NOT fixed here (flagged to Chris separately): a few
+// existing live write paths (liveEnsureSchedulingSession,
+// liveFinalizeSessionAttendance, liveResolveSessionId) resolve `classes`
+// by course_code alone via .maybeSingle(), which errors out if two classes
+// ever share a code -- meaning live attendance recording itself can
+// silently stop working for a shared course code today. This screen only
+// READS sessions/attendance, so it's unaffected either way, but that write
+// -side gap is real and separate from this rebuild.
+// ============================================================
+
+let LECTURER_CLASSES = []; // live-scoped: [{ classId, code, name, year, mode, programme, students:[...] }]
+
+async function loadLecturerRosterFromSupabase(){
+  if(!LIVE_BACKEND || State.role !== 'lecturer' || !State.user || !State.user.supabaseId) return;
+  try {
+    const { data: classRows, error } = await SUPABASE_CLIENT
+      .from('classes')
+      .select('id, code, name, year, mode, programme_id, programmes(name), enrollments(student_id, users(id, university_id, name, gender))')
+      .eq('teacher_id', State.user.supabaseId);
+    if(error){ console.warn('loadLecturerRosterFromSupabase: classes fetch failed:', error); return; }
+    if(!classRows) return;
+
+    const classIds = classRows.map(c => c.id);
+    const sessionIdsByClass = {};
+    const allSessionIds = [];
+    if(classIds.length){
+      const { data: sessionRows, error: sErr } = await SUPABASE_CLIENT
+        .from('sessions').select('id, class_id').in('class_id', classIds);
+      if(sErr) console.warn('loadLecturerRosterFromSupabase: sessions fetch failed:', sErr);
+      (sessionRows || []).forEach(sr => {
+        (sessionIdsByClass[sr.class_id] = sessionIdsByClass[sr.class_id] || []).push(sr.id);
+        allSessionIds.push(sr.id);
+      });
+    }
+
+    const attendanceBySession = {}; // session_id -> [{student_id, status}]
+    if(allSessionIds.length){
+      const { data: attRows, error: aErr } = await SUPABASE_CLIENT
+        .from('attendance').select('session_id, student_id, status').in('session_id', allSessionIds);
+      if(aErr) console.warn('loadLecturerRosterFromSupabase: attendance fetch failed:', aErr);
+      (attRows || []).forEach(a => {
+        (attendanceBySession[a.session_id] = attendanceBySession[a.session_id] || []).push(a);
+      });
+    }
+
+    LECTURER_CLASSES = classRows.map(c => {
+      const sessIds = sessionIdsByClass[c.id] || [];
+      const students = (c.enrollments || [])
+        .filter(e => e.users)
+        .map(e => {
+          const rows = sessIds
+            .map(sid => (attendanceBySession[sid] || []).find(a => a.student_id === e.student_id))
+            .filter(Boolean);
+          return {
+            studentId: e.student_id,
+            universityId: e.users.university_id,
+            name: e.users.name,
+            gender: e.users.gender || null,
+            pct: weightedAttendancePct(rows),
+            trend: null, // per-class recent-vs-older trend not computed -- no fabricated arrow
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return {
+        classId: c.id, code: c.code, name: c.name,
+        year: c.year || null, mode: c.mode || null,
+        programme: c.programmes?.name || null,
+        students,
+      };
+    });
+
+    if(State.role === 'lecturer' && currentScreen === 'register') refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadLecturerRosterFromSupabase error:', e);
+  }
+}
+
+function lecturerStudentRow(s, cls){
+  const pctBlock = (s.pct !== null && s.pct !== undefined)
+    ? `<div class="attendance-pct ${s.pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good':'bad'}">${s.trend==='up'?'↑':s.trend==='down'?'↓':''} ${s.pct}%<span class="lbl">attendance</span></div>`
+    : `<div class="attendance-pct" style="color:var(--ink-faint);font-weight:600;font-size:11px;">no records</div>`;
+  const source = cls.classId ? 'live' : 'mock';
+  return `
+  <div class="student-card-row" data-student-row data-search="${escapeHtmlText((s.name+' '+(s.universityId||'')).toLowerCase())}" onclick="openStudentAttendanceDetail('${jsAttr(source)}','${jsAttr(s.studentId)}','${jsAttr(cls.classId||'')}','${jsAttr(cls.code)}','${jsAttr(s.name)}')" style="cursor:pointer;">
+    <div class="avatar">${escapeHtmlText(initials(s.name))}</div>
+    <div class="student-info">
+      <div class="student-name">${escapeHtmlText(s.name)}</div>
+      <div class="student-meta">${escapeHtmlText(s.universityId||'')}${s.gender?' · '+escapeHtmlText(s.gender):''}</div>
+    </div>
+    ${pctBlock}
+  </div>`;
+}
+
+function renderLecturerStudents(){
+  const live = LIVE_BACKEND && LECTURER_CLASSES.length > 0;
+  const classes = live
+    ? LECTURER_CLASSES
+    : coursesForLecturer().map(c => ({
+        classId: null, code: c.code, name: c.name, year: c.year || null, mode: c.mode || null,
+        programme: c.programme || null,
+        students: STUDENTS
+          .filter(s => s.deptKey === c.programmeKey && (!c.year || s.year === c.year))
+          .map(s => ({ studentId: s.reg, universityId: s.reg, name: s.name, gender: s.gender, pct: s.pct, trend: s.trend })),
+      }));
+
+  const totalStudents = new Set(classes.flatMap(c => c.students.map(s => s.studentId))).size;
+
+  const classSection = (cls) => {
+    const header = `<span>${ICONS.book} ${escapeHtmlText(cls.code)} — ${escapeHtmlText(cls.name)}</span><span class="day-count" style="margin-left:auto;">${cls.students.length} student${cls.students.length!==1?'s':''}</span>`;
+    const body = cls.students.length
+      ? `<div class="card card-pad" style="display:flex;flex-direction:column;gap:8px;">${cls.students.map(s=>lecturerStudentRow(s, cls)).join('')}</div>`
+      : `<div class="empty-state-sm">No students enrolled yet</div>`;
+    return `<div data-class-group>${collapsibleSection(header, body)}</div>`;
+  };
+
+  const programmeGroups = (classList) => {
+    const byProg = {};
+    classList.forEach(c => { const key = c.programme || 'No Programme'; (byProg[key]=byProg[key]||[]).push(c); });
+    return Object.keys(byProg).sort().map(progName => {
+      const progClasses = byProg[progName];
+      const studentCount = new Set(progClasses.flatMap(c=>c.students.map(s=>s.studentId))).size;
+      const header = `<span>${ICONS.building} ${escapeHtmlText(progName)}</span><span class="day-count" style="margin-left:auto;">${studentCount} student${studentCount!==1?'s':''}</span>`;
+      const body = progClasses.map(classSection).join('');
+      return `<div data-programme-group>${collapsibleSection(header, body)}</div>`;
+    }).join('');
+  };
+
+  const yearSection = (label, classList, icon) => {
+    if(!classList.length) return '';
+    const header = `<span style="font-size:13px;font-weight:700;">${icon} ${label}</span>`;
+    return `<div data-year-group style="margin:14px 0 6px;">${collapsibleSection(header, programmeGroups(classList))}</div>`;
+  };
+
+  const byYear = COURSE_YEAR_LABELS.map(label => ({ label, classes: classes.filter(c => c.year === label) }));
+  const yearNotSet = classes.filter(c => !COURSE_YEAR_LABELS.includes(c.year));
+
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">My Students</div>
+    </div>
+  </div>
+  <div class="content">
+    <div style="font-size:12px;color:var(--ink-faint);margin-bottom:10px;">Students enrolled in your courses — grouped by year and programme, read only. ${totalStudents} enrolled.</div>
+    <div class="search-wrap" style="margin-bottom:14px;">
+      ${ICONS.search}
+      <input class="input" placeholder="Search by name or ID..." oninput="filterLecturerStudents()" id="lecturerStudentSearch" />
+    </div>
+    <div id="lecturerStudentsList">
+      ${byYear.map(y => yearSection(y.label, y.classes, ICONS.calendar)).join('')}
+      ${yearNotSet.length ? yearSection('Year Not Set', yearNotSet, ICONS.alertTriangle) : ''}
+      ${!classes.length ? `<div class="empty-state-sm">You're not assigned to any courses yet.</div>` : ''}
+    </div>
+  </div>
+
+  <div class="sheet" id="studentAttendanceSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="studentAttendanceTitle">Student</span>
+      <button onclick="closeSheet('studentAttendanceSheet')">${ICONS.close}</button>
+    </div>
+    <div id="studentAttendanceBody"></div>
+  </div>`;
+}
+
+function filterLecturerStudents(){
+  const q = (document.getElementById('lecturerStudentSearch')?.value || '').toLowerCase();
+  let anyVisible = false;
+  document.querySelectorAll('[data-student-row]').forEach(row=>{
+    const visible = !q || row.dataset.search.includes(q);
+    row.style.display = visible ? 'flex' : 'none';
+    if(visible) anyVisible = true;
+  });
+  document.querySelectorAll('[data-class-group], [data-programme-group], [data-year-group]').forEach(group=>{
+    const hasVisible = Array.from(group.querySelectorAll('[data-student-row]')).some(r => r.style.display !== 'none');
+    group.style.display = hasVisible ? 'block' : 'none';
+  });
+  if(q){
+    document.querySelectorAll('[data-collapsible-body]').forEach(body=>{
+      const hasVisible = Array.from(body.querySelectorAll('[data-student-row]')).some(r => r.style.display !== 'none');
+      if(hasVisible){
+        body.style.display = 'block';
+        const chevron = document.getElementById(body.id.replace(/-body$/, '-chevron'));
+        if(chevron) chevron.style.transform = 'rotate(90deg)';
+      }
+    });
+  }
+  toggleNoResultsState('lecturerStudentsList', anyVisible ? 1 : 0, 'Try a different search');
+}
+
+// Tap-through from a My Students row: day-by-day attendance for this ONE
+// student in this ONE class -- never another programme's section of the
+// same course code. `source` is 'live' (classId is a real classes.id,
+// fetched via the durable `sessions`/`attendance` tables) or 'mock'
+// (offline/demo, falls back to the existing RECORDS array filtered by
+// reg+code, since mock data has no session table to query).
+async function openStudentAttendanceDetail(source, idOrReg, classId, code, name){
+  const title = document.getElementById('studentAttendanceTitle');
+  if(title) title.textContent = name || 'Student';
+  const body = document.getElementById('studentAttendanceBody');
+  if(!body) return;
+  openSheet('studentAttendanceSheet');
+  body.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--ink-faint);font-size:13px;">Loading attendance…</div>`;
+
+  if(source === 'live' && LIVE_BACKEND && classId){
+    try {
+      const { data: sessionRows, error: sErr } = await SUPABASE_CLIENT
+        .from('sessions').select('id, date').eq('class_id', classId).order('date', { ascending: false });
+      if(sErr){ body.innerHTML = `<div class="empty-state-sm">Couldn't load attendance right now.</div>`; return; }
+      if(!sessionRows || sessionRows.length === 0){
+        body.innerHTML = `<div class="empty-state-sm">No lectures recorded yet for this course.</div>`;
+        return;
+      }
+      const sessionIds = sessionRows.map(r => r.id);
+      const { data: attRows, error: aErr } = await SUPABASE_CLIENT
+        .from('attendance').select('session_id, status').eq('student_id', idOrReg).in('session_id', sessionIds);
+      if(aErr) console.warn('openStudentAttendanceDetail: attendance fetch failed:', aErr);
+      const statusBySession = {};
+      (attRows || []).forEach(a => { statusBySession[a.session_id] = a.status; });
+
+      const rows = sessionRows.map(sr => ({
+        date: sr.date,
+        day: new Date(sr.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' }),
+        status: statusBySession[sr.id] || null,
+      }));
+      const pct = weightedAttendancePct(rows.filter(r => r.status).map(r => ({ status: r.status })));
+      body.innerHTML = studentAttendanceDetailHtml(rows, pct, code);
+    } catch(e){
+      console.warn('openStudentAttendanceDetail live fetch error:', e);
+      body.innerHTML = `<div class="empty-state-sm">Couldn't load attendance right now.</div>`;
+    }
+  } else {
+    const rows = RECORDS
+      .filter(r => r.reg === idOrReg && r.code === code)
+      .map(r => ({ date: r.date, day: new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' }), status: r.status }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const pct = weightedAttendancePct(rows);
+    body.innerHTML = rows.length ? studentAttendanceDetailHtml(rows, pct, code) : `<div class="empty-state-sm">No attendance records yet for this course.</div>`;
+  }
+}
+
+function studentAttendanceDetailHtml(rows, pct, code){
+  const pctLine = pct !== null && pct !== undefined
+    ? `<div class="info-box" style="margin-bottom:14px;"><div class="k">Attendance in ${escapeHtmlText(code)}</div><div class="v" style="font-size:20px;font-weight:800;color:${pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'var(--present)':'var(--absent)'};">${pct}%</div></div>`
+    : '';
+  return `
+    ${pctLine}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${rows.map(r => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
+          <div>
+            <div style="font-size:13px;font-weight:700;">${escapeHtmlText(r.day)}</div>
+            <div style="font-size:11px;color:var(--ink-faint);">${escapeHtmlText(r.date)}</div>
+          </div>
+          ${r.status
+            ? `<span class="status-pill ${escapeHtmlText(r.status)}">${escapeHtmlText(r.status.charAt(0).toUpperCase()+r.status.slice(1))}</span>`
+            : `<span style="font-size:11px;color:var(--ink-faint);font-weight:600;">Not marked yet</span>`}
+        </div>`).join('')}
+    </div>`;
 }
 
 // Whether the current user can edit/suspend/reactivate this specific person.
@@ -13272,7 +13557,7 @@ function getScreenHTML(screenId){
       case 'dashboard': return renderLecturerDashboard();
       case 'markAttendance': return renderMarkAttendance();
       case 'schedule': return renderSchedule({ title:'My Timetable', subtitle:'Weekly timetable overview', backTarget:'dashboard', groupByMode:true });
-      case 'register': return renderRegister({ backTarget:'dashboard' });
+      case 'register': return renderLecturerStudents();
       case 'startSession': return renderStartSession();
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
@@ -13500,7 +13785,7 @@ function navigate(screenId, opts){
   // back to Dashboard) would see "Start Live Session" instead of "Current
   // Session", since nothing re-checks reality on Dashboard entry.
   if(screenId === 'dashboard' && State.role === 'lecturer') checkLecturerActiveSession();
-  if(screenId === 'register'){ loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); loadStaffFromSupabase(); }
+  if(screenId === 'register'){ loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); loadStaffFromSupabase(); loadLecturerRosterFromSupabase(); }
   if(screenId === 'sendNotification'){ updateComposeNotificationFields('allStudents'); updateNotifPreview(); }
   // Charts need their <canvas> elements in the DOM first, which only
   // happens after the innerHTML assignment above — safe to call synchronously
