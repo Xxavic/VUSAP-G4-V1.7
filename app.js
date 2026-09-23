@@ -1751,7 +1751,7 @@ async function loadTimetableFromSupabase(){
   try {
     const { data: rows, error } = await SUPABASE_CLIENT
       .from('timetable_slots')
-      .select('*, classes(code, name, teacher_id, programmes(name))')
+      .select('*, classes(code, name, teacher_id, year, programmes(name))')
       .order('day_of_week, start_time');
 
     if(error){
@@ -1808,6 +1808,7 @@ async function loadTimetableFromSupabase(){
           room: slot.room,
           time: timeStr,
           mode: slot.mode || null,
+          year: cls?.year || null,
           // Carries the real row id so editing/deleting a live-sourced
           // lecture can target it directly by id, rather than re-deriving
           // which row it was via a field-matching lookup that's fragile to
@@ -2407,37 +2408,37 @@ const STUDENTS = [{"id":1,"name":"Aisha Nakamya","reg":"VU-CSF-2401-0001-DAY","f
 // own State.user.mode — see filterLecturesForStudentMode() below.
 const SCHEDULE = [
   { day:"Monday", isToday:false, lectures:[
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", mode:"day" },
-    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"10:30 – 12:30", mode:"day" },
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening" },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", mode:"day", year:"Year 2" },
+    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"10:30 – 12:30", mode:"day", year:"Year 2" },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening", year:"Year 2" },
   ]},
   { day:"Tuesday", isToday:false, lectures:[
-    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"07:00 – 11:00", mode:"day" },
-    { code:"BAR4302", name:"Engineering Mathematics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"14:00 – 16:00", mode:"day" },
-    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT4 - Main Building", time:"18:00 – 20:00", mode:"evening" },
+    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"07:00 – 11:00", mode:"day", year:"Year 1" },
+    { code:"BAR4302", name:"Engineering Mathematics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"14:00 – 16:00", mode:"day", year:"Year 1" },
+    { code:"CSC3102", name:"Database Systems", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT4 - Main Building", time:"18:00 – 20:00", mode:"evening", year:"Year 2" },
   ]},
   { day:"Wednesday", isToday:true, lectures:[
-    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", status:"pending", mode:"day" },
-    { code:"BAR4303", name:"Marketing Management", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"11:00 – 13:00", mode:"day" },
+    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT1 - Main Building", time:"08:00 – 10:00", status:"pending", mode:"day", year:"Year 3" },
+    { code:"BAR4303", name:"Marketing Management", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"11:00 – 13:00", mode:"day", year:"Year 2" },
     // Sept 2026 handoff, Part 1: the demo Lecturer account (Dr. Patrick
     // Mukasa) previously had only one lecture on the "today" mock day, so
     // the multi-course session-selection flow had nothing to actually pick
     // between. Added a second one of his own assigned courses later the
     // same day so the picker/greyed-list flow is real to test, not just
     // theoretical.
-    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00", mode:"day" },
-    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening" },
+    { code:"CSC3101", name:"Data Structures & Algorithms", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"14:00 – 16:00", mode:"day", year:"Year 2" },
+    { code:"CSC3103", name:"Software Engineering", dept:"Computer Science", lecturer:"Dr. Patrick Mukasa", room:"LT4 - Main Building", time:"17:00 – 19:00", mode:"evening", year:"Year 3" },
   ]},
   { day:"Thursday", isToday:false, lectures:[
-    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"14:00 – 16:00", mode:"day" },
-    { code:"BAR4304", name:"Entrepreneurship", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"08:00 – 11:00", mode:"day" },
-    { code:"ENG4101", name:"Mechanics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"13:00 – 15:00", mode:"day" },
-    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"17:30 – 19:30", mode:"evening" },
+    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT3 - Main Building", time:"14:00 – 16:00", mode:"day", year:"Year 3" },
+    { code:"BAR4304", name:"Entrepreneurship", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"08:00 – 11:00", mode:"day", year:"Year 2" },
+    { code:"ENG4101", name:"Mechanics", dept:"Civil Engineering", lecturer:"Dr. Grace Atim", room:"LT5 - Engineering Block", time:"13:00 – 15:00", mode:"day", year:"Year 1" },
+    { code:"BAR4301", name:"Financial Accounting", dept:"Business Administration", lecturer:"Mr. Alex Otim", room:"LT2 - Business Block", time:"17:30 – 19:30", mode:"evening", year:"Year 1" },
   ]},
   { day:"Friday", isToday:false, lectures:[
-    { code:"CSC3105", name:"Operating Systems", dept:"Computer Science", lecturer:"Mr. Ivan Tumwesigye", room:"LT1 - Main Building", time:"09:00 – 11:00", mode:"day" },
-    { code:"BAR4305", name:"Business Statistics", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"08:00 – 10:00", mode:"day" },
-    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT4 - Main Building", time:"19:00 – 21:00", mode:"evening" },
+    { code:"CSC3105", name:"Operating Systems", dept:"Computer Science", lecturer:"Mr. Ivan Tumwesigye", room:"LT1 - Main Building", time:"09:00 – 11:00", mode:"day", year:"Year 1" },
+    { code:"BAR4305", name:"Business Statistics", dept:"Business Administration", lecturer:"Ms. Joy Tumwesigye", room:"LT2 - Business Block", time:"08:00 – 10:00", mode:"day", year:"Year 3" },
+    { code:"CSC3104", name:"Computer Networks", dept:"Computer Science", lecturer:"Prof. Sarah Akwango", room:"LT4 - Main Building", time:"19:00 – 21:00", mode:"evening", year:"Year 3" },
   ]},
 ];
 
@@ -5519,16 +5520,24 @@ function renderSchedule(opts){
   // below) unless a future request asks for it there too.
   const groupByMode = !!opts.groupByMode;
 
+  // Sept 2026 (Chris): the flat "Mode -> Weekday" grouping made it hard to
+  // see, per lecturer, which programmes' sections of a course sit in which
+  // year -- the same course code can be taught to different programmes'
+  // cohorts across different years, and a lecturer's day is scattered
+  // across all of them. Mode -> Year -> Programme is the real ask; each
+  // lecture row keeps its own day/time (see scheduleLectureRow's showDay
+  // flag) so nothing that was visible before is lost, just re-grouped.
   const scheduleBody = groupByMode
     ? ['day','evening'].map(mode => {
         const label = mode === 'day' ? 'Day Sessions' : 'Evening Sessions';
-        const daysForMode = SCHEDULE
-          .map(d => ({ ...d, lectures: d.lectures.filter(l => l.mode === mode) }))
-          .filter(d => d.lectures.length > 0);
+        const itemsForMode = [];
+        SCHEDULE.forEach(d => {
+          d.lectures.forEach(l => { if(l.mode === mode) itemsForMode.push({ l, sourceDay: d }); });
+        });
         return `
         <div class="section-title" style="margin:18px 0 8px;">${mode==='day'?ICONS.clock:ICONS.calendar} ${label}</div>
-        ${daysForMode.length
-          ? daysForMode.map(d=>scheduleDayGroup(d, showDeptFilter, showCreateSession, SCHEDULE.find(sd => sd.day === d.day))).join('')
+        ${itemsForMode.length
+          ? scheduleYearProgrammeGroups(itemsForMode, showDeptFilter, showCreateSession)
           : `<div class="empty-state-sm">No ${mode} sessions scheduled</div>`}
       `;
       }).join('') + (() => {
@@ -5604,10 +5613,45 @@ function renderSchedule(opts){
 // code can legitimately appear on more than one day), so slots are targeted
 // by (day, index within that day) rather than by code — recomputed fresh on
 // every re-render, so it stays correct even as slots are added/removed.
+// Shared by both the classic weekday-grouped layout (scheduleDayGroup,
+// below) and the new Mode -> Year -> Programme layout
+// (scheduleYearProgrammeGroups). showDayMeta controls the extra day-name
+// line: redundant when a day-group header already names the day, useful
+// once day is no longer the outer grouping.
+function scheduleLectureRow(l, sourceDay, showDept, editable, showDayMeta){
+  const idx = sourceDay.lectures.findIndex(sl => sl.code === l.code && sl.room === l.room && sl.time === l.time);
+  return `
+  <div class="lecture-row" data-lecture-row data-dept="${escapeHtmlText(l.dept)}" data-day="${escapeHtmlText(sourceDay.day)}" data-search="${escapeHtmlText((l.code+' '+l.name+' '+l.lecturer+' '+l.room+' '+sourceDay.day).toLowerCase())}">
+    <div>
+      <div class="lecture-code">${escapeHtmlText(l.code)} <span class="badge dept ${l.dept.includes('Business')?'biz':l.dept.includes('Engineering')?'eng':''}" style="margin-left:4px;">${l.dept.split(' ')[0]}</span>${l.mode ? `<span class="badge dept" style="margin-left:4px;background:#f1f5f9;color:#64748b;">${l.mode==='day'?'Day':'Evening'}</span>` : ''}</div>
+      <div class="lecture-name">${escapeHtmlText(l.name)}</div>
+      <div class="lecture-meta">${ICONS.user} ${escapeHtmlText(l.lecturer)}</div>
+      <div class="lecture-meta">${ICONS.pin} ${escapeHtmlText(l.room)}</div>
+      ${showDayMeta ? `<div class="lecture-meta">${ICONS.calendar.replace('viewBox="0 0 24 24"','viewBox="0 0 24 24" width="12" height="12" style="margin-right:4px;vertical-align:-2px;"')}${escapeHtmlText(sourceDay.day)}</div>` : ''}
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div class="lecture-meta" style="margin-top:0;font-weight:700;color:var(--ink-soft);">${escapeHtmlText(l.time)}</div>
+      ${l.status==='pending' ? '<span class="badge pending" style="margin-top:8px;display:inline-block;">Pending</span>' : ''}
+      ${editable ? `
+      <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
+        <button class="icon-btn" style="width:28px;height:28px;background:var(--unmarked-bg);" onclick="event.stopPropagation();openNewSessionSheet('${jsAttr(sourceDay.day)}', ${idx})" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
+        <button class="icon-btn" style="width:28px;height:28px;background:#fee2e2;color:#b91c1c;" onclick="event.stopPropagation();confirmDeleteSlot('${jsAttr(sourceDay.day)}', ${idx})" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+// Sept 2026 handoff (Register/Timetable/Records), Part 2: `editable` (true
+// only on the showCreateSession screens — Administrator/Registrar's "All
+// Schedules") adds real per-slot edit/delete, not just the existing
+// create-only flow. SCHEDULE lectures aren't uniquely keyed (the same course
+// code can legitimately appear on more than one day), so slots are targeted
+// by (day, index within that day) rather than by code — recomputed fresh on
+// every re-render, so it stays correct even as slots are added/removed.
 function scheduleDayGroup(d, showDept, editable, originalDay = null){
   // If originalDay is provided, use it to find correct indices in the unfiltered array
   const sourceDay = originalDay || d;
-  
+
   return `
   <div class="day-group" data-day-group data-day="${escapeHtmlText(d.day)}">
     <div class="day-header ${d.isToday?'today-day':''}">
@@ -5615,27 +5659,56 @@ function scheduleDayGroup(d, showDept, editable, originalDay = null){
       <span class="day-count">${d.lectures.length} lecture${d.lectures.length>1?'s':''}</span>
     </div>
     <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
-      ${d.lectures.map((l,i)=>`
-      <div class="lecture-row" data-lecture-row data-dept="${escapeHtmlText(l.dept)}" data-search="${escapeHtmlText((l.code+' '+l.name+' '+l.lecturer+' '+l.room).toLowerCase())}">
-        <div>
-          <div class="lecture-code">${escapeHtmlText(l.code)} <span class="badge dept ${l.dept.includes('Business')?'biz':l.dept.includes('Engineering')?'eng':''}" style="margin-left:4px;">${l.dept.split(' ')[0]}</span>${l.mode ? `<span class="badge dept" style="margin-left:4px;background:#f1f5f9;color:#64748b;">${l.mode==='day'?'Day':'Evening'}</span>` : ''}</div>
-          <div class="lecture-name">${escapeHtmlText(l.name)}</div>
-          <div class="lecture-meta">${ICONS.user} ${escapeHtmlText(l.lecturer)}</div>
-          <div class="lecture-meta">${ICONS.pin} ${escapeHtmlText(l.room)}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div class="lecture-meta" style="margin-top:0;font-weight:700;color:var(--ink-soft);">${escapeHtmlText(l.time)}</div>
-          ${l.status==='pending' ? '<span class="badge pending" style="margin-top:8px;display:inline-block;">Pending</span>' : ''}
-          ${editable ? `
-          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
-            <button class="icon-btn" style="width:28px;height:28px;background:var(--unmarked-bg);" onclick="event.stopPropagation();openNewSessionSheet('${jsAttr(sourceDay.day)}', ${sourceDay.lectures.findIndex(sl => sl.code === l.code && sl.room === l.room && sl.time === l.time)})" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
-            <button class="icon-btn" style="width:28px;height:28px;background:#fee2e2;color:#b91c1c;" onclick="event.stopPropagation();confirmDeleteSlot('${jsAttr(sourceDay.day)}', ${sourceDay.lectures.findIndex(sl => sl.code === l.code && sl.room === l.room && sl.time === l.time)})" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:12px;height:12px;" ')}</button>
-          </div>` : ''}
-        </div>
-      </div>`).join('')}
+      ${d.lectures.map(l=>scheduleLectureRow(l, sourceDay, showDept, editable, false)).join('')}
       ${!d.lectures.length ? `<div style="font-size:12px;color:var(--ink-faint);padding:6px 2px;">No sessions scheduled</div>` : ''}
     </div>
   </div>`;
+}
+
+// Mode -> Year -> Programme grouping for the Lecturer "My Timetable" /
+// Registrar "All Schedules" screens. `items` is a flat [{ l, sourceDay }]
+// list, already filtered to one mode by the caller. A course with no year
+// set, or no programme name on its lecture (l.dept), gets its own labeled
+// bucket instead of silently vanishing -- same "surface gaps" approach as
+// the Course Catalog's "Courses by Year" screen, which this mirrors.
+function scheduleYearProgrammeGroups(items, showDept, editable){
+  const byProgramme = (group) => {
+    const grouped = {};
+    group.forEach(x => {
+      const key = x.l.dept || 'No Programme';
+      (grouped[key] = grouped[key] || []).push(x);
+    });
+    return Object.keys(grouped).sort().map(progName => `
+      <div class="day-group" data-programme-group>
+        <div class="day-header">
+          <span>${ICONS.building} ${escapeHtmlText(progName)}</span>
+          <span class="day-count">${grouped[progName].length} lecture${grouped[progName].length>1?'s':''}</span>
+        </div>
+        <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
+          ${grouped[progName].map(x=>scheduleLectureRow(x.l, x.sourceDay, showDept, editable, true)).join('')}
+        </div>
+      </div>
+    `).join('');
+  };
+
+  const byYear = COURSE_YEAR_LABELS.map(label => ({
+    label,
+    items: items.filter(x => x.l.year === label),
+  }));
+  const yearNotSet = items.filter(x => !COURSE_YEAR_LABELS.includes(x.l.year));
+
+  return byYear.map(y => `
+    <div data-year-group>
+      <div class="section-title" style="margin:14px 0 6px;font-size:13px;padding-left:2px;">${ICONS.calendar} ${y.label}</div>
+      ${y.items.length ? byProgramme(y.items) : `<div class="empty-state-sm">No lectures tagged ${y.label} yet</div>`}
+    </div>
+  `).join('') + (yearNotSet.length ? `
+    <div data-year-group>
+      <div class="section-title" style="margin:14px 0 6px;font-size:13px;padding-left:2px;">${ICONS.alertTriangle} Year Not Set</div>
+      ${byProgramme(yearNotSet)}
+      <div style="font-size:12px;color:var(--ink-faint);margin:2px 0 6px;">${yearNotSet.length} lecture${yearNotSet.length>1?'s':''} with no Year set on their course — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>
+    </div>
+  ` : '');
 }
 
 function filterSchedule(){
@@ -5643,22 +5716,27 @@ function filterSchedule(){
   const day = document.getElementById('dayFilter')?.value || '';
   const dept = document.getElementById('deptFilter')?.value || '';
 
-  let anyGroupVisible = false;
-  document.querySelectorAll('[data-day-group]').forEach(group=>{
-    const dayMatch = !day || group.dataset.day === day;
-    let anyVisible = false;
-    group.querySelectorAll('[data-lecture-row]').forEach(row=>{
-      const textMatch = !q || row.dataset.search.includes(q);
-      const deptMatch = !dept || row.dataset.dept === dept;
-      const visible = textMatch && deptMatch;
-      row.style.display = visible ? 'flex' : 'none';
-      if(visible) anyVisible = true;
-    });
-    const groupVisible = dayMatch && anyVisible;
-    group.style.display = groupVisible ? 'block' : 'none';
-    if(groupVisible) anyGroupVisible = true;
+  // Row-driven, then containers collapse based on their own descendant
+  // rows -- works the same whether a row sits under a day-group (classic
+  // weekday layout) or nested under a year-group/programme-group (Mode ->
+  // Year -> Programme layout), since every row carries its own data-day/
+  // data-dept/data-search regardless of which layout built it.
+  let anyRowVisible = false;
+  document.querySelectorAll('[data-lecture-row]').forEach(row=>{
+    const textMatch = !q || row.dataset.search.includes(q);
+    const deptMatch = !dept || row.dataset.dept === dept;
+    const dayMatch = !day || row.dataset.day === day;
+    const visible = textMatch && deptMatch && dayMatch;
+    row.style.display = visible ? 'flex' : 'none';
+    if(visible) anyRowVisible = true;
   });
-  toggleNoResultsState('scheduleList', anyGroupVisible ? 1 : 0, 'Try a different search, day, or department');
+
+  document.querySelectorAll('[data-day-group], [data-year-group], [data-programme-group]').forEach(group=>{
+    const hasVisibleRow = Array.from(group.querySelectorAll('[data-lecture-row]')).some(r => r.style.display !== 'none');
+    group.style.display = hasVisibleRow ? 'block' : 'none';
+  });
+
+  toggleNoResultsState('scheduleList', anyRowVisible ? 1 : 0, 'Try a different search, day, or department');
 }
 
 // ============================================================
@@ -10055,6 +10133,31 @@ function setCoursesByYearMode(mode){
 
 const COURSE_YEAR_LABELS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'];
 
+// Groups a course list by programme name (c.programme), each in its own
+// labeled section -- shared by every Year bucket below and by the
+// Mode-Not-Set fallback, so "Programme sits under Year" is consistent
+// everywhere on this screen, matching how the Lecturer/Registrar
+// Timetable screens are now grouped (Mode -> Year -> Programme, see
+// scheduleYearProgrammeGroups()).
+function coursesByProgrammeHtml(courseList){
+  const byProgramme = {};
+  courseList.forEach(c => {
+    const key = c.programme || 'No Programme';
+    (byProgramme[key] = byProgramme[key] || []).push(c);
+  });
+  return Object.keys(byProgramme).sort().map(progName => `
+    <div class="day-group" data-programme-group>
+      <div class="day-header">
+        <span>${ICONS.building} ${escapeHtmlText(progName)}</span>
+        <span class="day-count">${byProgramme[progName].length} course${byProgramme[progName].length>1?'s':''}</span>
+      </div>
+      <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
+        ${byProgramme[progName].map(c=>courseByYearRow(c)).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
 function renderCoursesByYear(){
   const courses = scopedCourses();
   const modeCourses = courses.filter(c => c.mode === coursesByYearMode);
@@ -10080,21 +10183,21 @@ function renderCoursesByYear(){
     </div>
 
     ${byYear.map(y => `
-      <div class="section-title" style="margin:16px 0 8px;">${ICONS.book} ${y.label}</div>
+      <div class="section-title" style="margin:16px 0 8px;">${ICONS.calendar} ${y.label}</div>
       ${y.courses.length
-        ? `<div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">${y.courses.map(c=>courseByYearRow(c)).join('')}</div>`
+        ? coursesByProgrammeHtml(y.courses)
         : `<div class="empty-state-sm">No ${coursesByYearMode==='day'?'Day':'Evening'} courses tagged ${y.label} yet</div>`}
     `).join('')}
 
     ${yearNotSet.length ? `
       <div class="section-title" style="margin:16px 0 8px;">${ICONS.alertTriangle} Year Not Set</div>
-      <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">${yearNotSet.map(c=>courseByYearRow(c)).join('')}</div>
+      ${coursesByProgrammeHtml(yearNotSet)}
       <div style="font-size:12px;color:var(--ink-faint);margin-top:6px;">${yearNotSet.length} course${yearNotSet.length>1?'s':''} in ${coursesByYearMode==='day'?'Day':'Evening'} mode ${yearNotSet.length>1?'have':'has'} no Year set — open Course Catalog → Edit Course to tag ${yearNotSet.length>1?'them':'it'}.</div>
     ` : ''}
 
     ${modeUnsetCourses.length ? `
       <div class="section-title" style="margin:16px 0 8px;">${ICONS.alertTriangle} Mode Not Set</div>
-      <div class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">${modeUnsetCourses.map(c=>courseByYearRow(c)).join('')}</div>
+      ${coursesByProgrammeHtml(modeUnsetCourses)}
       <div style="font-size:12px;color:var(--ink-faint);margin-top:6px;">${modeUnsetCourses.length} course${modeUnsetCourses.length>1?'s':''} with no Day/Evening mode set — won't appear in either tab above until tagged.</div>
     ` : ''}
   </div>`;
