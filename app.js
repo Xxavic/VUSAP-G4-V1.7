@@ -6478,8 +6478,27 @@ function studentsForLecturer(){
 
 let LECTURER_CLASSES = []; // live-scoped: [{ classId, code, name, year, mode, programme, students:[...] }]
 
+// Sept 2026: found live, not just in code review -- renderLecturerStudents()
+// used to treat "LECTURER_CLASSES is empty because this fetch hasn't
+// resolved yet" identically to "genuinely offline", both falling back to
+// rendering STUDENTS/mock data. On a fresh visit to this screen that fetch
+// hasn't resolved for the first render or two, so EVERY lecturer briefly
+// saw a fully-populated, plausible-looking but entirely fictional roster
+// (real-looking names, IDs, attendance percentages) with no visual
+// distinction from the real one that replaces it a moment later -- easy to
+// mistake the fictional one for correct, which is exactly what happened
+// when this was reported ("Esther Nalubega" etc. don't exist in the live
+// `users` table at all; confirmed by querying it directly). This flag lets
+// the render function tell "still loading" apart from "truly offline" so
+// it can show an honest loading state instead of fabricated data.
+let lecturerRosterLoaded = false;
+
 async function loadLecturerRosterFromSupabase(){
   if(!LIVE_BACKEND || State.role !== 'lecturer' || !State.user || !State.user.supabaseId) return;
+  // finally, not just the end of the try block -- guarantees this flips
+  // regardless of which return/throw path is hit below, so a genuine fetch
+  // failure shows an honest "couldn't load" state rather than leaving the
+  // screen stuck on "loading" forever.
   try {
     const { data: classRows, error } = await SUPABASE_CLIENT
       .from('classes')
@@ -6537,9 +6556,15 @@ async function loadLecturerRosterFromSupabase(){
       };
     });
 
-    if(State.role === 'lecturer' && currentScreen === 'register') refreshScreenContentOnly();
   } catch(e){
     console.warn('loadLecturerRosterFromSupabase error:', e);
+  } finally {
+    lecturerRosterLoaded = true;
+    // Moved here from the end of the try block so this also fires on an
+    // error path -- otherwise a genuine fetch failure would leave the
+    // screen showing "Loading your students…" forever instead of falling
+    // through to the honest "couldn't load" state below.
+    if(State.role === 'lecturer' && currentScreen === 'register') refreshScreenContentOnly();
   }
 }
 
@@ -6560,7 +6585,27 @@ function lecturerStudentRow(s, cls){
 }
 
 function renderLecturerStudents(){
-  const live = LIVE_BACKEND && LECTURER_CLASSES.length > 0;
+  // Sept 2026: was `LIVE_BACKEND && LECTURER_CLASSES.length > 0` -- treated
+  // "the live fetch hasn't resolved yet" and "genuinely offline" as the
+  // same case, both falling into the mock branch below. See
+  // lecturerRosterLoaded's own comment for what that actually caused
+  // (fictional students shown as a real, complete roster with no visual
+  // distinction, on every single visit to this screen). Only ever fall
+  // back to mock now when truly offline; a live backend that just hasn't
+  // answered yet gets an honest loading state instead.
+  if(LIVE_BACKEND && !lecturerRosterLoaded){
+    return `
+    <div class="app-header">
+      <div class="header-back">
+        <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
+        <div class="page-title" style="font-size:18px;">My Students</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="empty-state-sm">Loading your students…</div>
+    </div>`;
+  }
+  const live = LIVE_BACKEND && lecturerRosterLoaded;
   const classes = live
     ? LECTURER_CLASSES
     : coursesForLecturer().map(c => ({
@@ -13890,7 +13935,16 @@ function navigate(screenId, opts){
   // back to Dashboard) would see "Start Live Session" instead of "Current
   // Session", since nothing re-checks reality on Dashboard entry.
   if(screenId === 'dashboard' && State.role === 'lecturer') checkLecturerActiveSession();
-  if(screenId === 'register'){ loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); loadStaffFromSupabase(); loadLecturerRosterFromSupabase(); }
+  if(screenId === 'register'){
+    loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); loadStaffFromSupabase();
+    // Reset before kicking off the fetch, not after -- this render (about to
+    // happen via the normal navigate() flow right after this hook returns)
+    // needs to see "not loaded yet" immediately on a fresh visit, so it
+    // shows the honest loading state instead of whatever LECTURER_CLASSES
+    // was left holding from the last time this screen was visited.
+    if(State.role === 'lecturer') lecturerRosterLoaded = false;
+    loadLecturerRosterFromSupabase();
+  }
   if(screenId === 'sendNotification'){ updateComposeNotificationFields('allStudents'); updateNotifPreview(); }
   // Charts need their <canvas> elements in the DOM first, which only
   // happens after the innerHTML assignment above — safe to call synchronously
