@@ -3007,6 +3007,18 @@ const SYSTEM_SETTINGS = {
   // simple (every week since this date counts, no holiday/break exclusions
   // for now).
   termStartDate: null, // 'YYYY-MM-DD' once set
+  // Semester date ranges (Sept 2026, Chris's own policy decision): the ONLY
+  // place "which semester did this session/attendance row actually happen
+  // in" is derived from -- see semesterForDate() below. All four nullable
+  // 'YYYY-MM-DD' strings, same as termStartDate. Deliberately NOT derived
+  // from termStartDate + some fixed week count (a missed public holiday or
+  // an extended break would silently throw that off) -- an Administrator
+  // sets the real dates once per year/term, same discipline as
+  // academicYear and termStartDate above.
+  semester1Start: null,
+  semester1End: null,
+  semester2Start: null,
+  semester2End: null,
   // Weighted-attendance-to-marks feature (Sept 2026), per Chris's own policy
   // decision: Present = 100% credit, Absent = 0% -- fixed by definition, not
   // configurable -- and Late = this percentage, the one real knob. Lives
@@ -3016,6 +3028,25 @@ const SYSTEM_SETTINGS = {
   // percentage/marks meaningless. See attendanceCreditForStatus() below.
   lateCreditPct: 75,
 };
+
+// Given a 'YYYY-MM-DD' date, returns 'Semester 1' / 'Semester 2' / null --
+// the ONE place this decision is made, so every screen that groups a
+// student's or lecturer's history by semester (My Students' attendance
+// detail, the Registrar's Attendance Records drilldown) agrees. Plain
+// string comparison (dates are already zero-padded ISO, so this sorts
+// correctly without parsing) against whatever an Administrator set in
+// System Settings -- see SYSTEM_SETTINGS.semester1Start etc. above. Returns
+// null whenever the relevant range isn't (fully) set, or the date falls
+// outside both ranges (a holiday/break, or ranges that don't actually
+// cover the whole year) -- callers show that as "no semester set" rather
+// than guessing.
+function semesterForDate(dateISO){
+  if(!dateISO) return null;
+  const s = SYSTEM_SETTINGS;
+  if(s.semester1Start && s.semester1End && dateISO >= s.semester1Start && dateISO <= s.semester1End) return 'Semester 1';
+  if(s.semester2Start && s.semester2End && dateISO >= s.semester2Start && dateISO <= s.semester2End) return 'Semester 2';
+  return null;
+}
 
 // ============================================================
 // AUDIT LOG
@@ -6511,8 +6542,18 @@ async function loadLecturerRosterFromSupabase(){
     const sessionIdsByClass = {};
     const allSessionIds = [];
     if(classIds.length){
-      const { data: sessionRows, error: sErr } = await SUPABASE_CLIENT
-        .from('sessions').select('id, class_id').in('class_id', classIds);
+      // Academic Year Archives (Sept 2026, Chris's own policy decision):
+      // once at least one year has been archived, My Students defaults to
+      // CURRENT-year sessions only -- see currentYearBoundary()'s comment.
+      // Nothing is deleted or hidden elsewhere; this is purely what this
+      // one screen's per-class roster/percentage is computed from, so a
+      // lecturer teaching the same course again this year doesn't see it
+      // muddled with last year's now-archived students. Past years stay
+      // fully browsable via Academic Year Archives (Registrar/Admin).
+      let sessionsQuery = SUPABASE_CLIENT.from('sessions').select('id, class_id').in('class_id', classIds);
+      const yearBoundary = currentYearBoundary();
+      if(yearBoundary) sessionsQuery = sessionsQuery.gte('date', yearBoundary);
+      const { data: sessionRows, error: sErr } = await sessionsQuery;
       if(sErr) console.warn('loadLecturerRosterFromSupabase: sessions fetch failed:', sErr);
       (sessionRows || []).forEach(sr => {
         (sessionIdsByClass[sr.class_id] = sessionIdsByClass[sr.class_id] || []).push(sr.id);
@@ -6718,8 +6759,15 @@ async function openStudentAttendanceDetail(source, idOrReg, classId, code, name)
 
   if(source === 'live' && LIVE_BACKEND && classId){
     try {
-      const { data: sessionRows, error: sErr } = await SUPABASE_CLIENT
-        .from('sessions').select('id, date').eq('class_id', classId).order('date', { ascending: false });
+      // Same current-year scoping as the roster list this was tapped from
+      // (see loadLecturerRosterFromSupabase()'s comment) -- a student who's
+      // been in this class across an archived year boundary shouldn't leak
+      // last year's day-by-day detail to the lecturer through this drill-in
+      // once that year's data is meant to be Registrar/Admin-only.
+      let sessionsQuery = SUPABASE_CLIENT.from('sessions').select('id, date').eq('class_id', classId).order('date', { ascending: false });
+      const yearBoundary = currentYearBoundary();
+      if(yearBoundary) sessionsQuery = sessionsQuery.gte('date', yearBoundary);
+      const { data: sessionRows, error: sErr } = await sessionsQuery;
       if(sErr){ body.innerHTML = `<div class="empty-state-sm">Couldn't load attendance right now.</div>`; return; }
       if(!sessionRows || sessionRows.length === 0){
         body.innerHTML = `<div class="empty-state-sm">No lectures recorded yet for this course.</div>`;
@@ -6753,14 +6801,8 @@ async function openStudentAttendanceDetail(source, idOrReg, classId, code, name)
   }
 }
 
-function studentAttendanceDetailHtml(rows, pct, code){
-  const pctLine = pct !== null && pct !== undefined
-    ? `<div class="info-box" style="margin-bottom:14px;"><div class="k">Attendance in ${escapeHtmlText(code)}</div><div class="v" style="font-size:20px;font-weight:800;color:${pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'var(--present)':'var(--absent)'};">${pct}%</div></div>`
-    : '';
+function attendanceDetailRowHtml(r){
   return `
-    ${pctLine}
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      ${rows.map(r => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
           <div>
             <div style="font-size:13px;font-weight:700;">${escapeHtmlText(r.day)}</div>
@@ -6769,8 +6811,51 @@ function studentAttendanceDetailHtml(rows, pct, code){
           ${r.status
             ? `<span class="status-pill ${escapeHtmlText(r.status)}">${escapeHtmlText(r.status.charAt(0).toUpperCase()+r.status.slice(1))}</span>`
             : `<span style="font-size:11px;color:var(--ink-faint);font-weight:600;">Not marked yet</span>`}
-        </div>`).join('')}
+        </div>`;
+}
+
+// Sept 2026: split a student's history into Semester 1 / Semester 2 via
+// semesterForDate() (an Administrator's own configured date ranges — see
+// SYSTEM_SETTINGS) rather than one continuous list with no sense of which
+// term a date belongs to. Degrades gracefully: if no semester ranges are
+// configured yet (or every row falls outside both of them), this falls
+// straight back to the original flat list -- grouping headers only ever
+// appear once they'd actually mean something.
+function studentAttendanceDetailHtml(rows, pct, code){
+  const pctLine = pct !== null && pct !== undefined
+    ? `<div class="info-box" style="margin-bottom:14px;"><div class="k">Attendance in ${escapeHtmlText(code)}</div><div class="v" style="font-size:20px;font-weight:800;color:${pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'var(--present)':'var(--absent)'};">${pct}%</div></div>`
+    : '';
+
+  const bySemester = { 'Semester 2': [], 'Semester 1': [], 'Other dates': [] };
+  rows.forEach(r => { (bySemester[semesterForDate(r.date) || 'Other dates']).push(r); });
+  const hasRealSemesterMatch = bySemester['Semester 1'].length || bySemester['Semester 2'].length;
+
+  if(!hasRealSemesterMatch){
+    // No semester ranges configured (or none of these dates fall inside
+    // them) -- the flat list every screen showed before this feature existed.
+    return `
+    ${pctLine}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${rows.map(attendanceDetailRowHtml).join('')}
     </div>`;
+  }
+
+  const semesterSection = (label, semRows) => {
+    if(!semRows.length) return '';
+    const semPct = weightedAttendancePct(semRows.filter(r=>r.status).map(r=>({status:r.status})));
+    const pctBadge = semPct !== null && semPct !== undefined
+      ? `<span style="font-size:11px;font-weight:800;color:${semPct >= ATTENDANCE_POLICIES.minAttendancePct ? 'var(--present)':'var(--absent)'};margin-left:auto;">${semPct}%</span>`
+      : `<span class="day-count" style="margin-left:auto;">${semRows.length} lecture${semRows.length!==1?'s':''}</span>`;
+    const header = `<span style="font-size:13px;font-weight:700;">${ICONS.calendar} ${label}</span>${pctBadge}`;
+    const body = `<div style="display:flex;flex-direction:column;gap:8px;">${semRows.map(attendanceDetailRowHtml).join('')}</div>`;
+    return `<div style="margin-bottom:10px;">${collapsibleSection(header, body)}</div>`;
+  };
+
+  return `
+    ${pctLine}
+    ${semesterSection('Semester 2', bySemester['Semester 2'])}
+    ${semesterSection('Semester 1', bySemester['Semester 1'])}
+    ${semesterSection('Other dates', bySemester['Other dates'])}`;
 }
 
 // Whether the current user can edit/suspend/reactivate this specific person.
@@ -8627,7 +8712,160 @@ function renderRegistrarDashboard(){
       <div class="qa-text"><div class="t">Audit Trail</div><div class="s">Your actions & events in your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+    <a class="quick-action" onclick="navigate('yearArchives')">
+      <div class="qa-icon" style="background:#f1f5f9;color:#475569;">${ICONS.archive}</div>
+      <div class="qa-text"><div class="t">Academic Year Archives</div><div class="s">End the year, browse past years</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
   </div>`;
+}
+
+// ============================================================
+// ACADEMIC YEAR ARCHIVES (Sept 2026, Chris's own policy decision)
+// ------------------------------------------------------------
+// Manual only — no automatic date-based rollover. An Administrator or
+// Registrar ends the current academic year (labeled from
+// SYSTEM_SETTINGS.academicYear) explicitly, from this screen, when they've
+// decided it's genuinely over. Nothing is deleted: every existing record
+// stays exactly where it already lives (RECORDS / the live `attendance`
+// table) — this just adds a marker (period_start/period_end + who/when)
+// that (a) this screen can filter scopedRecords() by to show that year's
+// data on demand, restricted to roles that can reach this screen, and (b)
+// currentYearBoundary() uses to scope OTHER screens (today: Lecturer's My
+// Students) to "current year only" by default. A student's own attendance
+// views are never scoped by this — they're untouched, on purpose, so a
+// student keeps their own full history until they're marked graduated
+// (see suspendAccount()'s opts.graduated) and suspended.
+// ============================================================
+
+let ACADEMIC_YEAR_ARCHIVES = []; // mock/demo fallback; live-loaded below
+let currentArchiveId = null;
+
+async function loadAcademicYearArchivesFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data, error } = await SUPABASE_CLIENT
+      .from('academic_year_archives')
+      .select('*')
+      .order('period_end', { ascending: false });
+    if(error){ console.warn('loadAcademicYearArchivesFromSupabase failed:', error); return; }
+    if(!data) return;
+    ACADEMIC_YEAR_ARCHIVES = data.map(row => ({
+      id: row.id, label: row.label,
+      periodStart: row.period_start, periodEnd: row.period_end,
+      endedByName: row.ended_by_name, endedByRole: row.ended_by_role, endedAt: row.ended_at,
+      studentCount: row.student_count, lecturerCount: row.lecturer_count,
+    }));
+    if(currentScreen === 'yearArchives' || currentScreen === 'yearArchiveDetail') refreshScreenContentOnly();
+  } catch(e){ console.warn('loadAcademicYearArchivesFromSupabase error:', e); }
+}
+
+// The date "current" data is scoped to by default (see loadLecturerRosterFromSupabase()) —
+// the day after the most recently archived year's period_end, or null (no
+// boundary — everything counts as current) if nothing's been archived yet.
+function currentYearBoundary(){
+  if(!ACADEMIC_YEAR_ARCHIVES.length) return null;
+  const latest = [...ACADEMIC_YEAR_ARCHIVES].sort((a,b)=>(b.periodEnd||'').localeCompare(a.periodEnd||''))[0];
+  if(!latest || !latest.periodEnd) return null;
+  const d = new Date(latest.periodEnd + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+async function endAcademicYear(){
+  if(!(State.role === 'administrator' || State.role === 'registrar')) return;
+  const label = (SYSTEM_SETTINGS.academicYear || '').trim();
+  if(!label){ showToast('Set an Academic Year in System Settings first'); return; }
+  if(ACADEMIC_YEAR_ARCHIVES.some(a => a.label === label)){
+    showToast(`"${label}" is already archived — set a new Academic Year in System Settings before ending the next one`);
+    return;
+  }
+  // Earliest semester start currently configured, if any — a rough period
+  // marker, not load-bearing (currentYearBoundary() only ever reads periodEnd).
+  const periodStart = [SYSTEM_SETTINGS.semester1Start, SYSTEM_SETTINGS.semester2Start].filter(Boolean).sort()[0] || null;
+  const periodEnd = new Date().toISOString().slice(0,10);
+  const studentCount = getStaffDirectory().filter(p => p.role === 'student').length;
+  const lecturerCount = getStaffDirectory().filter(p => p.role === 'lecturer').length;
+  const entry = {
+    label, periodStart, periodEnd,
+    endedByName: State.user?.name || 'System', endedByRole: State.role,
+    endedAt: new Date().toISOString(), studentCount, lecturerCount,
+  };
+
+  let persisted = !LIVE_BACKEND;
+  if(LIVE_BACKEND){
+    try {
+      const { data, error } = await SUPABASE_CLIENT.from('academic_year_archives').insert({
+        label, period_start: periodStart, period_end: periodEnd,
+        ended_by_name: entry.endedByName, ended_by_role: entry.endedByRole,
+        student_count: studentCount, lecturer_count: lecturerCount,
+      }).select().single();
+      if(error){ console.warn('endAcademicYear insert failed:', error); }
+      else { entry.id = data.id; entry.endedAt = data.ended_at; persisted = true; }
+    } catch(e){ console.warn('endAcademicYear error:', e); }
+  }
+  if(!persisted){ showToast("Couldn't reach the server — the year was NOT archived. Try again once you're back online."); return; }
+
+  ACADEMIC_YEAR_ARCHIVES.unshift(entry);
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Academic year ended', 'system', `${label} archived (${studentCount} students, ${lecturerCount} lecturers)`);
+  showToast(`${label} archived. Update Academic Year in System Settings to start the new year.`);
+  navigate('yearArchives', { replace: true });
+}
+
+function openYearArchiveDetail(archiveId){
+  currentArchiveId = archiveId;
+  navigate('yearArchiveDetail');
+}
+
+function renderYearArchives(){
+  const canEndYear = State.role === 'administrator' || State.role === 'registrar';
+  const currentLabel = SYSTEM_SETTINGS.academicYear || 'current year';
+  const alreadyArchived = ACADEMIC_YEAR_ARCHIVES.some(a => a.label === currentLabel);
+  const sorted = [...ACADEMIC_YEAR_ARCHIVES].sort((a,b)=>(b.periodEnd||'').localeCompare(a.periodEnd||''));
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Academic Year Archives</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card card-pad" style="margin-bottom:14px;">
+      <div class="section-title" style="margin-bottom:6px;">${ICONS.archive} End of Year</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px;">
+        Archives "${escapeHtmlText(currentLabel)}" (the current Academic Year set in System Settings) as of today. Nothing is deleted — every record stays right where it is, browsable here any time. What changes: a Lecturer's My Students starts fresh from the next day onward instead of mixing in last year's students. Update the Academic Year field in System Settings afterward to start the new year.
+      </div>
+      ${canEndYear
+        ? (alreadyArchived
+            ? `<div style="font-size:12px;color:var(--ink-faint);">"${escapeHtmlText(currentLabel)}" is already archived. Set a new Academic Year in System Settings before ending the next one.</div>`
+            : `<button class="btn btn-primary" onclick="endAcademicYear()">${ICONS.archive} End Academic Year "${escapeHtmlText(currentLabel)}"</button>`)
+        : `<div style="font-size:12px;color:var(--ink-faint);">Only an Administrator or Registrar can end an academic year.</div>`}
+    </div>
+
+    <div class="section-title">${ICONS.calendar} Archived Years</div>
+    ${sorted.length ? sorted.map(a => `
+    <a class="quick-action" onclick="openYearArchiveDetail('${jsAttr(a.id)}')">
+      <div class="qa-icon" style="background:#f1f5f9;color:#475569;">${ICONS.archive}</div>
+      <div class="qa-text"><div class="t">${escapeHtmlText(a.label)}</div><div class="s">${escapeHtmlText(a.periodStart||'—')} – ${escapeHtmlText(a.periodEnd||'—')} · ${a.studentCount ?? '—'} students, ${a.lecturerCount ?? '—'} lecturers</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>`).join('') : `<div class="empty-state-sm">No years archived yet</div>`}
+  </div>`;
+}
+
+function renderYearArchiveDetail(){
+  const archive = ACADEMIC_YEAR_ARCHIVES.find(a => String(a.id) === String(currentArchiveId));
+  const header = `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('yearArchives')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${escapeHtmlText(archive ? archive.label : 'Archive')}</div>
+    </div>
+  </div>`;
+  if(!archive) return `${header}<div class="content"><div class="empty-state-sm">This archived year could not be found.</div></div>`;
+
+  const records = scopedRecords().filter(r => (!archive.periodStart || r.date >= archive.periodStart) && (!archive.periodEnd || r.date <= archive.periodEnd));
+  const infoBox = `<div class="info-box" style="margin-bottom:14px;"><div class="k">Archived</div><div class="v" style="font-size:13px;">${escapeHtmlText(archive.periodStart||'—')} – ${escapeHtmlText(archive.periodEnd||'—')} · by ${escapeHtmlText(archive.endedByName||'—')} (${escapeHtmlText(archive.endedByRole||'—')}) on ${escapeHtmlText((archive.endedAt||'').slice(0,10))}</div></div>`;
+  return `${header}${renderAttendanceRecordsBlock({ records, beforeList: infoBox })}`;
 }
 
 // ============================================================
@@ -9005,13 +9243,20 @@ function clearRecordsFilter(){
 // ------------------------------------------------------------
 // Tapping a student in the Attendance Sheet opens this instead of navigating
 // away — same sheet-swap pattern used elsewhere (openAccountDetail, etc).
-// Data is organized semester -> course -> individual dated entries. RECORDS
-// itself has no semester or year field (and no student in this mock dataset
-// has records spanning more than one year), so "year" is shown as header
-// context (the student's own on-file STUDENTS.year) rather than a third
-// nesting level with nothing real to divide on — a judgment call flagged in
-// the handoff summary. Course is the one real grouping axis RECORDS
-// actually has, so that's what's nested under semester.
+// Data is organized semester -> course -> individual dated entries.
+//
+// Sept 2026 follow-up: this used to label the header with the student's
+// CURRENT on-file semester (STUDENTS.semester) regardless of which
+// semester a given record actually happened in -- a static profile
+// attribute standing in for a per-record fact, flagged as a known gap at
+// the time ("RECORDS itself has no semester or year field"). Now that an
+// Administrator can set real Semester 1/2 date ranges (System Settings)
+// and semesterForDate() exists, records are grouped by the semester each
+// one's own date actually falls in -- the header profile label is gone,
+// replaced by real per-record grouping, same fix as My Students' own
+// per-student attendance detail. Falls back to the original flat
+// course-only grouping if no semester ranges are configured yet (or none
+// of this student's records fall inside them).
 // ============================================================
 
 function openStudentRecordDrilldown(reg, recordsOverride){
@@ -9023,42 +9268,18 @@ function openStudentRecordDrilldown(reg, recordsOverride){
   openSheet('studentRecordSheet');
 }
 
-function renderStudentRecordDrilldown(reg, recordsOverride){
-  const student = STUDENTS.find(s => s.reg === reg);
-  const recs = (recordsOverride || scopedRecords()).filter(r => r.reg === reg);
-  const name = student ? student.name : (recs[0] ? recs[0].name : reg);
-  const prog = student ? student.dept : (recs[0] ? recs[0].prog : '—');
-  const semester = student ? (student.semester || 'Semester —') : 'Semester —';
-  const year = student ? (student.year || 'Year —') : 'Year —';
-  const pct = student ? student.pct : null;
-  const hasPct = pct !== null && pct !== undefined;
-  const cls = hasPct ? (pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good' : 'bad') : '';
-
-  // Group this student's records by course, preserving first-seen (newest-
-  // first, since RECORDS is date-descending) order.
+// Groups a set of this-student's records by course, preserving first-seen
+// (newest-first, since RECORDS is date-descending) order, and renders them
+// — shared by the flat fallback and each semester bucket below.
+function studentRecordCourseGroupsHtml(recs){
   const byCourse = new Map();
   recs.forEach(r => {
     const key = r.code;
     if(!byCourse.has(key)) byCourse.set(key, { course: r.course, code: r.code, venue: r.venue, entries: [] });
     byCourse.get(key).entries.push(r);
   });
-
-  return `
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${escapeHtmlText(initials(name))}</div>
-      <div>
-        <div style="font-weight:800; font-size:15px;">${escapeHtmlText(name)}</div>
-        <div style="font-size:12px; color:var(--ink-faint); margin-top:2px;">${escapeHtmlText(reg)} · ${escapeHtmlText(prog || '—')}</div>
-      </div>
-    </div>
-    <div class="info-box" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
-      <div>
-        <div class="k">Overall Attendance</div>
-        <div class="v" style="font-size:13px;">${escapeHtmlText(semester)} · ${escapeHtmlText(year)}</div>
-      </div>
-      ${hasPct ? `<div class="attendance-pct ${cls}" style="position:static;">${pct}%<span class="lbl">attendance</span></div>` : `<div style="font-size:12px;color:var(--ink-faint);">no records</div>`}
-    </div>
-    ${byCourse.size ? Array.from(byCourse.values()).map(group => `
+  if(!byCourse.size) return `<div class="empty-state-sm">No attendance records for this student yet</div>`;
+  return Array.from(byCourse.values()).map(group => `
     <div class="day-group">
       <div class="day-header">
         <span>${ICONS.book.replace('viewBox="0 0 24 24"','viewBox="0 0 24 24" width="14" height="14" style="margin-right:6px;vertical-align:-2px;"')}${escapeHtmlText(group.code)} — ${escapeHtmlText(group.course)}</span>
@@ -9074,7 +9295,48 @@ function renderStudentRecordDrilldown(reg, recordsOverride){
           <span class="status-pill ${escapeHtmlText(e.status)}">${e.status[0].toUpperCase()+e.status.slice(1)}</span>
         </div>`).join('')}
       </div>
-    </div>`).join('') : `<div class="empty-state-sm">No attendance records for this student yet</div>`}
+    </div>`).join('');
+}
+
+function renderStudentRecordDrilldown(reg, recordsOverride){
+  const student = STUDENTS.find(s => s.reg === reg);
+  const recs = (recordsOverride || scopedRecords()).filter(r => r.reg === reg);
+  const name = student ? student.name : (recs[0] ? recs[0].name : reg);
+  const prog = student ? student.dept : (recs[0] ? recs[0].prog : '—');
+  const year = student ? (student.year || 'Year —') : 'Year —';
+  const pct = student ? student.pct : null;
+  const hasPct = pct !== null && pct !== undefined;
+  const cls = hasPct ? (pct >= ATTENDANCE_POLICIES.minAttendancePct ? 'good' : 'bad') : '';
+
+  const bySemester = { 'Semester 2': [], 'Semester 1': [], 'Other dates': [] };
+  recs.forEach(r => { (bySemester[semesterForDate(r.date) || 'Other dates']).push(r); });
+  const hasRealSemesterMatch = bySemester['Semester 1'].length || bySemester['Semester 2'].length;
+
+  const semesterSection = (label, semRecs) => {
+    if(!semRecs.length) return '';
+    const semPct = weightedAttendancePct(semRecs.filter(r=>r.status).map(r=>({status:r.status})));
+    const header = `<span style="font-size:13px;font-weight:700;">${ICONS.calendar} ${label}</span>${semPct !== null && semPct !== undefined ? `<span style="font-size:11px;font-weight:800;color:${semPct >= ATTENDANCE_POLICIES.minAttendancePct ? 'var(--present)':'var(--absent)'};margin-left:auto;">${semPct}%</span>` : ''}`;
+    return `<div style="margin-bottom:10px;">${collapsibleSection(header, studentRecordCourseGroupsHtml(semRecs))}</div>`;
+  };
+
+  return `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <div class="avatar" style="width:48px; height:48px; font-size:16px;">${escapeHtmlText(initials(name))}</div>
+      <div>
+        <div style="font-weight:800; font-size:15px;">${escapeHtmlText(name)}</div>
+        <div style="font-size:12px; color:var(--ink-faint); margin-top:2px;">${escapeHtmlText(reg)} · ${escapeHtmlText(prog || '—')}</div>
+      </div>
+    </div>
+    <div class="info-box" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div class="k">Overall Attendance</div>
+        <div class="v" style="font-size:13px;">${escapeHtmlText(year)}</div>
+      </div>
+      ${hasPct ? `<div class="attendance-pct ${cls}" style="position:static;">${pct}%<span class="lbl">attendance</span></div>` : `<div style="font-size:12px;color:var(--ink-faint);">no records</div>`}
+    </div>
+    ${hasRealSemesterMatch
+      ? semesterSection('Semester 2', bySemester['Semester 2']) + semesterSection('Semester 1', bySemester['Semester 1']) + semesterSection('Other dates', bySemester['Other dates'])
+      : studentRecordCourseGroupsHtml(recs)}
   `;
 }
 
@@ -9539,6 +9801,7 @@ const SYSTEM_MODULES = [
   { id:'sendNotification', label:'Send Notification', sub:'Compose and send to students or staff', icon:ICONS.bell, color:'#1d4ed8', bg:'#dbeafe' },
   { id:'systemSettings', label:'System Settings', sub:'General configuration', icon:ICONS.settings, color:'#475569', bg:'#f1f5f9' },
   { id:'auditSystem', label:'Audit System', sub:'Full system-wide audit trail', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
+  { id:'yearArchives', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
   { id:'backups', label:'Backups', sub:'Schedule and restore backups', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
   { id:'database', label:'Database Management', sub:'Tables, migrations, integrity checks', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
   { id:'supportTickets', label:'Support Tickets', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
@@ -9731,8 +9994,18 @@ function openAccountDetail(personId){
         <div class="k">Account status</div>
         <div class="v" style="font-size:14px; color:var(--present);">Active</div>
       </div>`;
+    // "Mark as Graduated" is student-only and deliberately a separate,
+    // distinctly-worded action from a plain suspension — see
+    // suspendAccount()'s opts.graduated comment. Both end in the same
+    // suspended login state, but graduation is audited/reportable
+    // separately (graduated_at) so it's never confused with e.g. a
+    // misconduct suspension in the audit log or a future report.
+    const graduateButton = person.role === 'student'
+      ? `<button class="btn btn-ghost" style="margin-top:8px;" onclick="markGraduated('${jsAttr(personId)}', '${jsAttr(person.name)}')">${ICONS.graduation} Mark as Graduated</button>`
+      : '';
     actionSection = `
-      <button class="btn btn-ghost" style="color:var(--absent); border-color:#fecaca;" onclick="suspendAccount('${jsAttr(personId)}')">${ICONS.close} Suspend Account</button>`;
+      <button class="btn btn-ghost" style="color:var(--absent); border-color:#fecaca;" onclick="suspendAccount('${jsAttr(personId)}')">${ICONS.close} Suspend Account</button>
+      ${graduateButton}`;
   }
 
   // Students with no records yet can be deleted and re-enrolled (Registrar
@@ -9972,24 +10245,85 @@ async function decideDeletion(requestId, decision, personId){
   loadPendingDeletionRequests();
 }
 
-function suspendAccount(personId){
-  const user = USERS[personId];
-  if(!user) return;
-  user.status = 'suspended';
-  logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account suspended', personId, `${user.name} account suspended`);
+// Sept 2026 follow-up: this used to ONLY touch the local mock USERS
+// object, and would silently no-op entirely for any account that has no
+// mock/demo credential entry (i.e. almost every real, live-only student or
+// lecturer) — `if(!user) return;` meant clicking "Suspend Account" on a
+// real account did nothing at all, no error, no write, nothing. Worse,
+// even for a mock-backed account, `user.status = 'suspended'` never
+// reached the live `users` table, even though `users.status` already
+// exists live and handleLogin() already blocks sign-in on it — so a
+// "suspended" account could still log in from any other device. This is
+// the fix: the live write now happens unconditionally (LIVE_BACKEND
+// permitting), keyed by personId itself (== users.university_id, the same
+// id getStaffDirectory()/openAccountDetail() already use — no separate
+// Supabase-uuid lookup needed), and the mock USERS mutation becomes a
+// same-device convenience on top of that rather than the only thing that happens.
+//
+// `opts.graduated` (Sept 2026, new): a distinct manual action from a plain
+// suspension — see the "Mark as Graduated" button in openAccountDetail() —
+// records graduated_at (new users column, migrate-academic-year-archive.sql)
+// so graduation is auditable/reportable separately from e.g. a misconduct
+// suspension, even though both currently result in the same suspended login state.
+async function suspendAccount(personId, opts){
+  opts = opts || {};
+  const graduated = !!opts.graduated;
+  const person = getStaffDirectory().find(p => p.id === personId);
+  const displayName = person ? person.name : (USERS[personId]?.name || personId);
+  if(USERS[personId]) USERS[personId].status = 'suspended';
+
+  let persisted = !LIVE_BACKEND; // mock-only mode: the in-memory write above IS the whole story
+  if(LIVE_BACKEND){
+    try {
+      const payload = { status: 'suspended' };
+      if(graduated) payload.graduated_at = new Date().toISOString();
+      const { error } = await SUPABASE_CLIENT.from('users').update(payload).eq('university_id', personId);
+      if(error){ console.warn('suspendAccount: live update failed:', error); } else { persisted = true; }
+    } catch(e){ console.warn('suspendAccount error:', e); }
+  }
+
+  logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System',
+    graduated ? 'Student marked graduated' : 'Account suspended', personId,
+    graduated ? `${displayName} marked graduated — account suspended` : `${displayName} account suspended`);
   closeSheet('accountDetailSheet');
-  showToast(`${user.name}'s account has been suspended`);
+  showToast(persisted
+    ? `${displayName}'s account has been ${graduated ? 'marked graduated and suspended' : 'suspended'}`
+    : `Couldn't reach the server — ${displayName}'s account was NOT actually suspended. Try again once you're back online.`);
   navigate('register', { replace: true });
 }
 
-function reactivateAccount(personId){
-  const user = USERS[personId];
-  if(!user) return;
-  user.status = 'active';
-  logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account reactivated', personId, `${user.name} account reactivated`);
+async function reactivateAccount(personId){
+  const person = getStaffDirectory().find(p => p.id === personId);
+  const displayName = person ? person.name : (USERS[personId]?.name || personId);
+  if(USERS[personId]) USERS[personId].status = 'active';
+
+  let persisted = !LIVE_BACKEND;
+  if(LIVE_BACKEND){
+    try {
+      // Clears graduated_at too — a reactivated account isn't "graduated"
+      // anymore (e.g. correcting a mistaken graduation mark).
+      const { error } = await SUPABASE_CLIENT.from('users').update({ status: 'active', graduated_at: null }).eq('university_id', personId);
+      if(error){ console.warn('reactivateAccount: live update failed:', error); } else { persisted = true; }
+    } catch(e){ console.warn('reactivateAccount error:', e); }
+  }
+
+  logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account reactivated', personId, `${displayName} account reactivated`);
   closeSheet('accountDetailSheet');
-  showToast(`${user.name}'s account has been reactivated`);
+  showToast(persisted
+    ? `${displayName}'s account has been reactivated`
+    : `Couldn't reach the server — ${displayName}'s account was NOT actually reactivated. Try again once you're back online.`);
   navigate('register', { replace: true });
+}
+
+// Entry point for the "Mark as Graduated" button — same "just do it, no
+// popup" convention the rest of this file uses for account actions (see
+// confirmDeleteFaculty() etc.), reversible the same way any suspension is
+// (Reactivate Account clears graduated_at too). name is passed straight
+// through from the button that's already rendering it, rather than
+// re-deriving it, since getStaffDirectory() runs off the CURRENT student
+// list and suspendAccount() looks the name up again anyway as a fallback.
+function markGraduated(personId, name){
+  suspendAccount(personId, { graduated: true });
 }
 
 // ============================================================
@@ -11245,6 +11579,10 @@ async function loadSystemSettingsFromSupabase(){
     SYSTEM_SETTINGS.maintenanceMode = data.maintenance_mode ?? SYSTEM_SETTINGS.maintenanceMode;
     SYSTEM_SETTINGS.logoDataUri = data.logo_data_uri ?? null;
     SYSTEM_SETTINGS.termStartDate = data.term_start_date ?? SYSTEM_SETTINGS.termStartDate;
+    SYSTEM_SETTINGS.semester1Start = data.semester1_start ?? SYSTEM_SETTINGS.semester1Start;
+    SYSTEM_SETTINGS.semester1End = data.semester1_end ?? SYSTEM_SETTINGS.semester1End;
+    SYSTEM_SETTINGS.semester2Start = data.semester2_start ?? SYSTEM_SETTINGS.semester2Start;
+    SYSTEM_SETTINGS.semester2End = data.semester2_end ?? SYSTEM_SETTINGS.semester2End;
     SYSTEM_SETTINGS.lateCreditPct = data.late_credit_pct ?? SYSTEM_SETTINGS.lateCreditPct;
 
     // Unlike FACULTIES/PROGRAMMES etc., this data can already be on screen
@@ -11276,6 +11614,10 @@ async function saveSystemSettingsToSupabase(){
       maintenance_mode: SYSTEM_SETTINGS.maintenanceMode,
       logo_data_uri: SYSTEM_SETTINGS.logoDataUri,
       term_start_date: SYSTEM_SETTINGS.termStartDate,
+      semester1_start: SYSTEM_SETTINGS.semester1Start,
+      semester1_end: SYSTEM_SETTINGS.semester1End,
+      semester2_start: SYSTEM_SETTINGS.semester2Start,
+      semester2_end: SYSTEM_SETTINGS.semester2End,
       late_credit_pct: SYSTEM_SETTINGS.lateCreditPct,
       updated_at: new Date().toISOString(),
     });
@@ -11326,6 +11668,21 @@ function renderSystemSettings(){
         <label>Term Start Date</label>
         <input class="input" type="date" id="ssTermStartDate" value="${s.termStartDate||''}" />
         <div style="font-size:11px; color:var(--ink-faint); margin-top:5px; line-height:1.5;">Anchors the Registrar's Lecturer Compliance report — "sessions expected" counts every week from this date. Update it at the start of each new term.</div>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Semester 1</label>
+        <div style="display:flex;gap:8px;">
+          <input class="input" type="date" id="ssSem1Start" value="${s.semester1Start||''}" style="flex:1;" />
+          <input class="input" type="date" id="ssSem1End" value="${s.semester1End||''}" style="flex:1;" />
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Semester 2</label>
+        <div style="display:flex;gap:8px;">
+          <input class="input" type="date" id="ssSem2Start" value="${s.semester2Start||''}" style="flex:1;" />
+          <input class="input" type="date" id="ssSem2End" value="${s.semester2End||''}" style="flex:1;" />
+        </div>
+        <div style="font-size:11px; color:var(--ink-faint); margin-top:5px; line-height:1.5;">Set once per academic year. This is what lets a student's or lecturer's attendance history be split into Semester 1 / Semester 2 instead of one continuous list — a session's own date decides which semester it falls under.</div>
       </div>
     </div>
 
@@ -11405,12 +11762,28 @@ async function saveSystemSettings(){
   const autoLogout = parseInt(document.getElementById('ssAutoLogout')?.value||'30', 10);
   if(autoLogout < 5 || autoLogout > 480){ showToast("Auto-logout must be 5–480 minutes"); return; }
 
+  const sem1Start = document.getElementById('ssSem1Start')?.value.trim() || null;
+  const sem1End = document.getElementById('ssSem1End')?.value.trim() || null;
+  const sem2Start = document.getElementById('ssSem2Start')?.value.trim() || null;
+  const sem2End = document.getElementById('ssSem2End')?.value.trim() || null;
+  // Each semester's own start must not be after its own end -- that's the
+  // one thing semesterForDate() genuinely can't recover from. Two
+  // semesters overlapping, or Semester 2 starting before Semester 1 ends,
+  // are left as the Administrator's own judgment call (a compressed
+  // academic calendar isn't necessarily a mistake) rather than blocked here.
+  if(sem1Start && sem1End && sem1Start > sem1End){ showToast("Semester 1's start date is after its end date"); return; }
+  if(sem2Start && sem2End && sem2Start > sem2End){ showToast("Semester 2's start date is after its end date"); return; }
+
   SYSTEM_SETTINGS.systemName = document.getElementById('ssSystemName')?.value.trim() || SYSTEM_SETTINGS.systemName;
   SYSTEM_SETTINGS.institutionName = document.getElementById('ssInstitutionName')?.value.trim() || SYSTEM_SETTINGS.institutionName;
   SYSTEM_SETTINGS.portalName = document.getElementById('ssPortalName')?.value.trim() || SYSTEM_SETTINGS.portalName;
   SYSTEM_SETTINGS.supportEmail = document.getElementById('ssSupportEmail')?.value.trim() || SYSTEM_SETTINGS.supportEmail;
   SYSTEM_SETTINGS.academicYear = document.getElementById('ssAcademicYear')?.value.trim() || SYSTEM_SETTINGS.academicYear;
   SYSTEM_SETTINGS.termStartDate = document.getElementById('ssTermStartDate')?.value.trim() || null;
+  SYSTEM_SETTINGS.semester1Start = sem1Start;
+  SYSTEM_SETTINGS.semester1End = sem1End;
+  SYSTEM_SETTINGS.semester2Start = sem2Start;
+  SYSTEM_SETTINGS.semester2End = sem2End;
   SYSTEM_SETTINGS.autoLogoutMinutes = autoLogout;
   SYSTEM_SETTINGS.requireEmailVerification = document.getElementById('ssEmailVerif')?.checked ?? SYSTEM_SETTINGS.requireEmailVerification;
   SYSTEM_SETTINGS.allowSelfEnrollment = document.getElementById('ssSelfEnroll')?.checked ?? SYSTEM_SETTINGS.allowSelfEnrollment;
@@ -13751,6 +14124,8 @@ function getScreenHTML(screenId){
       case 'sentNotifications': return renderSentNotifications();
       case 'notifications': return renderNotifications();
       case 'auditSystem': return renderAuditSystem();
+      case 'yearArchives': return renderYearArchives();
+      case 'yearArchiveDetail': return renderYearArchiveDetail();
       case 'profile': return renderStaffProfile();
     }
   } else if(State.role === 'administrator'){
@@ -13774,6 +14149,8 @@ function getScreenHTML(screenId){
       case 'sentNotifications': return renderSentNotifications();
       case 'systemSettings': return renderSystemSettings();
       case 'auditSystem': return renderAuditSystem();
+      case 'yearArchives': return renderYearArchives();
+      case 'yearArchiveDetail': return renderYearArchiveDetail();
       case 'backups': return renderBackups();
       case 'database': return renderDatabaseManagement();
       case 'supportTickets': return renderSupportTickets();
@@ -14272,6 +14649,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // loadSystemSettingsFromSupabase() for why this one also re-applies to
   // the splash/login screen once it resolves, unlike the loaders above.
   loadSystemSettingsFromSupabase();
+  // Academic Year Archives — see currentYearBoundary()'s comment for why
+  // this needs to be loaded early: it's what scopes the Lecturer's My
+  // Students to "current year only" once at least one year is archived.
+  loadAcademicYearArchivesFromSupabase();
 
   resumeSupabaseSession().then(() => {
     if(!State.role) renderApp(); // no session found — show login
