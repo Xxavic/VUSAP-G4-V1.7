@@ -48,8 +48,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Per-client: must match authEmailDomain in the app's client-config.js.
+// Set with: supabase secrets set AUTH_EMAIL_DOMAIN=<domain>. Defaults to the
+// current domain so existing deployments behave exactly as before.
+const AUTH_EMAIL_DOMAIN = Deno.env.get("AUTH_EMAIL_DOMAIN") ?? "vusap.internal";
+
 function universityIdToAuthEmail(universityId: string) {
-  return `${universityId}@vusap.internal`;
+  return `${universityId}@${AUTH_EMAIL_DOMAIN}`;
 }
 
 Deno.serve(async (req) => {

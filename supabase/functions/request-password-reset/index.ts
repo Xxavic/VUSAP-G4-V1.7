@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!profile) return ok();
 
-    if (!profile.email || profile.email.endsWith("@vusap.internal")) {
+    if (!profile.email || profile.email.endsWith("@" + (Deno.env.get("AUTH_EMAIL_DOMAIN") ?? "vusap.internal"))) {
       console.warn(`request-password-reset: ${profile.id} has no real email on file`);
       return ok();
     }

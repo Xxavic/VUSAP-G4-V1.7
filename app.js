@@ -8,8 +8,14 @@
 // the project is reachable. Falls back to mock auth when offline.
 // ============================================================
 
-const SUPABASE_URL  = 'https://eumhlccvaembpqxcuaqf.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1bWhsY2N2YWVtYnBxeGN1YXFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NTA5ODEsImV4cCI6MjA5NDUyNjk4MX0.spQS7jBkRWLjOZamVAaEPDXkqQHCzWIaqBbldd_-B0E';
+// Per-client values come from client-config.js (loaded before this file).
+// If that file is missing or fails to load, these stay empty, the Supabase
+// client is never created, and the app falls back to offline/mock mode --
+// the same graceful path as a blocked CDN -- instead of crashing at boot.
+const QRAST_CLIENT = window.QRAST_CLIENT || {};
+if(!window.QRAST_CLIENT) console.warn('client-config.js did not load -- running in offline mode. Check that it is deployed next to app.js.');
+const SUPABASE_URL  = QRAST_CLIENT.supabaseUrl || '';
+const SUPABASE_ANON = QRAST_CLIENT.supabaseAnon || '';
 
 // Initialise the client. If the supabase global isn't loaded (e.g. network
 // blocked the CDN), SUPABASE_CLIENT stays null and every auth call
@@ -30,14 +36,14 @@ try {
 } catch(e) { /* storage unavailable — falls through to a fresh sign-in, same as today */ }
 
 try {
-  SUPABASE_CLIENT = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  SUPABASE_CLIENT = (SUPABASE_URL && SUPABASE_ANON) ? window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,        // picks up magic-link / OAuth tokens in URL
       storageKey: 'qrast-auth-token',  // localStorage key — namespaced so it doesn't
     },                                 // collide with other Supabase apps on the same origin
-  });
+  }) : null;
   LIVE_BACKEND = !!SUPABASE_CLIENT;
 } catch(e) {
   console.warn('Supabase client failed to initialise — running in offline mode:', e);
@@ -351,9 +357,23 @@ async function authProvisionAccount({ universityId, name, email, role, tempPassw
 }
 
 // Helper: map a university ID to a synthetic email for Supabase Auth.
-// e.g. "VU-LEC-101" → "VU-LEC-101@vusap.internal"
+// e.g. "VU-LEC-101" → "VU-LEC-101@<authEmailDomain from client-config.js>"
+const AUTH_EMAIL_DOMAIN = QRAST_CLIENT.authEmailDomain || 'vusap.internal';
 function universityIdToAuthEmail(universityId) {
-  return `${universityId}@vusap.internal`;
+  return `${universityId}@${AUTH_EMAIL_DOMAIN}`;
+}
+
+// University ID format helpers -- prefix and intake code come from
+// client-config.js so a new institution's IDs don't need code edits.
+const REG_ID_PREFIX = QRAST_CLIENT.idPrefix || 'VU';
+const REG_INTAKE_CODE = QRAST_CLIENT.regIntakeCode || '2601';
+function buildRegNo(programmeCodePrefix, counter, mode) {
+  return `${REG_ID_PREFIX}-${programmeCodePrefix}-${REG_INTAKE_CODE}-${String(counter).padStart(4,'0')}-${mode}`;
+}
+function regNoLikePattern() { return `${REG_ID_PREFIX}-%-${REG_INTAKE_CODE}-%`; }
+function regNoSeqRegex() {
+  const esc = x => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${esc(REG_ID_PREFIX)}-[A-Z0-9]+-${esc(REG_INTAKE_CODE)}-(\\d{4})-`);
 }
 
 // On page load: check if Supabase already has an active session
@@ -5923,7 +5943,7 @@ function renderEnrollFormBody(){
     <form id="enrollForm" onsubmit="return handleEnroll(event)" style="display:flex;flex-direction:column;gap:14px;">
       <div class="info-box">
         <div class="k">Registration No. (auto-generated)</div>
-        <div class="v" id="regNoPreview">VU-${escapeHtmlText(PROGRAMMES[0].codePrefix)}-2601-${String(regNoCounter).padStart(4,'0')}-DAY</div>
+        <div class="v" id="regNoPreview">${escapeHtmlText(buildRegNo(PROGRAMMES[0].codePrefix, regNoCounter, 'DAY'))}</div>
       </div>
       <div class="field">
         <label>Full Name <span class="req">*</span></label>
@@ -6258,11 +6278,11 @@ async function syncRegNoCounterFromSupabase(){
     const { data: rows, error } = await SUPABASE_CLIENT
       .from('users')
       .select('university_id')
-      .like('university_id', 'VU-%-2601-%');
+      .like('university_id', regNoLikePattern());
     if(error){ logError('Syncing registration counter', error); return; }
     let max = 0;
     (rows || []).forEach(r => {
-      const m = /^VU-[A-Z0-9]+-2601-(\d{4})-/.exec(r.university_id || '');
+      const m = regNoSeqRegex().exec(r.university_id || '');
       if(m) max = Math.max(max, parseInt(m[1], 10));
     });
     if(max + 1 > regNoCounter) regNoCounter = max + 1;
@@ -6277,7 +6297,7 @@ function updateRegPreview(){
   const dept = document.getElementById('enrollDept')?.value || PROGRAMMES[0].key;
   const mode = document.getElementById('enrollMode')?.value || 'DAY';
   const preview = document.getElementById('regNoPreview');
-  if(preview) preview.textContent = `VU-${deptMap[dept]}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
+  if(preview) preview.textContent = buildRegNo(deptMap[dept], regNoCounter, mode);
 }
 
 async function handleEnroll(e){
@@ -6301,7 +6321,7 @@ async function handleEnroll(e){
       return false;
     }
   }
-  const reg = `VU-${prog.codePrefix}-2601-${String(regNoCounter).padStart(4,'0')}-${mode}`;
+  const reg = buildRegNo(prog.codePrefix, regNoCounter, mode);
 
   // Generated once, up front, so the live Auth account (if LIVE_BACKEND is
   // on) and the local USERS mirror below both end up with the exact same
