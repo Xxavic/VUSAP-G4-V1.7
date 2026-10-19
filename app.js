@@ -13,6 +13,8 @@
 // client is never created, and the app falls back to offline/mock mode --
 // the same graceful path as a blocked CDN -- instead of crashing at boot.
 const QRAST_CLIENT = window.QRAST_CLIENT || {};
+// false = a real client: no fictional seed data is ever shown (see clearDemoSeedData()).
+const DEMO_DATA = QRAST_CLIENT.demoData !== false;
 if(!window.QRAST_CLIENT) console.warn('client-config.js did not load -- running in offline mode. Check that it is deployed next to app.js.');
 const SUPABASE_URL  = QRAST_CLIENT.supabaseUrl || '';
 const SUPABASE_ANON = QRAST_CLIENT.supabaseAnon || '';
@@ -1581,7 +1583,8 @@ async function loadFacultiesAndProgrammesFromSupabase(){
       .select('*, faculties(key, name)')
       .order('name');
 
-    if(fErr || pErr || !facultyRows || !programmeRows || facultyRows.length === 0 || programmeRows.length === 0){
+    const fetchFailed = fErr || pErr || !facultyRows || !programmeRows;
+    if(fetchFailed || (DEMO_DATA && (facultyRows.length === 0 || programmeRows.length === 0))){
       // A successful-but-empty result (an unseeded `faculties`/`programmes`
       // table) is not safe to treat as authoritative: it would null out
       // every programme's facultyKey via the `faculties(key, name)` embed,
@@ -3901,6 +3904,20 @@ function buildInitialCourseCatalog(){
 
 const COURSES = buildInitialCourseCatalog();
 
+// With demoData off, every seed starts empty, so the live loaders' "keep mock
+// on empty/failed fetch" and merge-into-mock paths have nothing to keep.
+function clearDemoSeedData(){
+  FACULTIES = [];
+  PROGRAMMES = [];
+  [STUDENTS, SCHEDULE, RECORDS, STUDENT_COURSES, ANNOUNCEMENTS, LECTURERS, REGISTRARS,
+   ADMINISTRATORS, ATTENDANCE_APPEALS, SUPPORT_TICKETS, SUSPICION_LOG, AUDIT_LOG,
+   NOTIFICATIONS, COURSES].forEach(arr => { arr.length = 0; });
+  Object.keys(USERS).forEach(id => { delete USERS[id]; });
+  Object.assign(LIVE_SESSION, { active: false, courseCode: '', courseName: '', room: '' });
+  recomputeFacultyProgrammeDerivedData();
+}
+if(!DEMO_DATA) clearDemoSeedData();
+
 function courseHasDependents(code){
   const inSchedule = SCHEDULE.some(day => day.lectures.some(l => l.code === code));
   const inRecords = RECORDS.some(r => r.code === code);
@@ -5935,9 +5952,12 @@ function filterSchedule(){
 // etc, kept below) has been defined.
 // ============================================================
 
-let regNoCounter = 522;
+let regNoCounter = DEMO_DATA ? 522 : 1;
 
 function renderEnrollFormBody(){
+  if(PROGRAMMES.length === 0){
+    return `<div class="info-box"><div class="v">No programmes yet. Add a faculty and a programme under Faculties &amp; Programmes before enrolling students.</div></div>`;
+  }
   return `
     <div style="font-size:12px;color:var(--ink-soft);margin:-8px 0 16px;">Fill in the student details below</div>
     <form id="enrollForm" onsubmit="return handleEnroll(event)" style="display:flex;flex-direction:column;gap:14px;">
@@ -6294,7 +6314,7 @@ async function syncRegNoCounterFromSupabase(){
 function updateRegPreview(){
   const deptMap = {};
   PROGRAMMES.forEach(p => deptMap[p.key] = p.codePrefix);
-  const dept = document.getElementById('enrollDept')?.value || PROGRAMMES[0].key;
+  const dept = document.getElementById('enrollDept')?.value || PROGRAMMES[0]?.key;
   const mode = document.getElementById('enrollMode')?.value || 'DAY';
   const preview = document.getElementById('regNoPreview');
   if(preview) preview.textContent = buildRegNo(deptMap[dept], regNoCounter, mode);

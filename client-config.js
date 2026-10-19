@@ -22,4 +22,9 @@ window.QRAST_CLIENT = {
   // University ID format: <idPrefix>-<programme code>-<regIntakeCode>-<nnnn>-<DAY|EVE>
   idPrefix:       'VU',
   regIntakeCode:  '2601',
+
+  // true = ship the built-in Victoria demo seed (fictional students, staff,
+  // courses, timetable) and fall back to it when the database is empty.
+  // false = a real client: every list starts empty and shows only database rows.
+  demoData: true,
 };
