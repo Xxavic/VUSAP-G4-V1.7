@@ -18,9 +18,9 @@
 create table if not exists public.system_settings (
   id int primary key default 1,
   system_name text not null default 'QRAST',
-  institution_name text not null default 'Victoria University',
-  portal_name text not null default 'Victoria University Smart Attendance Portal',
-  support_email text not null default 'support@vu.ac.ug',
+  institution_name text not null default 'Your Institution',
+  portal_name text not null default 'QR-code Realtime Attendance Scanning Technology',
+  support_email text not null default '',
   academic_year text not null default '2025/2026',
   auto_logout_minutes int not null default 30,
   require_email_verification boolean not null default true,
@@ -31,8 +31,13 @@ create table if not exists public.system_settings (
   constraint system_settings_singleton check (id = 1)
 );
 
-insert into public.system_settings (id)
-values (1)
+-- Values are spelled out (not left to the column defaults) because a new
+-- client's base schema may come from a pg_dump of Victoria's project, whose
+-- system_settings defaults still say "Victoria University". The Administrator
+-- sets the real name, portal name and crest in System Settings after first
+-- sign-in. On an existing project the row already exists and is untouched.
+insert into public.system_settings (id, institution_name, portal_name, support_email)
+values (1, 'Your Institution', 'QR-code Realtime Attendance Scanning Technology', '')
 on conflict (id) do nothing;
 
 alter table public.system_settings enable row level security;

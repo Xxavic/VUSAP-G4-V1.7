@@ -9,7 +9,7 @@ Edge Function secrets per client: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`,
 
 ## Runbook (target)
 1. Create the client's Supabase project (owned by the institution; add the developer as a member).
-2. Run the `migrate-*.sql` files; confirm RLS is on and there is no "Allow all" policy.
+2. Produce `schema-dump.sql` (see `SCHEMA-EXPORT-README.md`), run `node build-sql-bundle.mjs`, and paste `dist/qrast-setup.sql` into the new project's SQL Editor. Confirm RLS is on and there is no "Allow all" policy.
 3. Deploy the Edge Functions (`create-user`, `delete-user`, `email-login`, `notify-email`, `request-password-reset`) and set the secrets above.
 4. Create the first Administrator.
 5. Fill `client-config.js`, edit `manifest.json`/`<title>`, host it. Add the URL to Supabase Auth redirect URLs and narrow `notify-email` CORS (see `DOMAIN-MIGRATION.md`).
@@ -20,5 +20,5 @@ Edge Function secrets per client: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`,
 - `@vusap.internal` to `@qrast.internal` data migration (see `migrate-auth-emails-README.md`). Until then both `authEmailDomain` and `AUTH_EMAIL_DOMAIN` stay `vusap.internal`.
 - Fresh-empty-database test (`qrast-fresh-client-test-plan.md`) not yet run against a real empty project; `demoData: false` is only verified by a headless render of every screen.
 - `regIntakeCode` ('2601') is still a fixed value; it does not roll over by year.
-- Default crest and the `manifest.json` description are still Victoria's; default `system_settings` seed in `migrate-system-settings.sql` says "Victoria University".
-- No build script or ordered SQL bundle yet.
+- `schema-dump.sql` (the 13 dashboard-built tables) has not been exported yet, so `build-sql-bundle.mjs` cannot produce a bundle until it is.
+- The Victoria shield is still the default crest when `demoData: true`; with `demoData: false` and no uploaded crest, a neutral placeholder is shown.
