@@ -19,9 +19,12 @@ window.QRAST_CLIENT = {
   // (see migrate-auth-emails-README.md) -- changing it alone breaks logins.
   authEmailDomain: 'vusap.internal',
 
-  // University ID format: <idPrefix>-<programme code>-<regIntakeCode>-<nnnn>-<DAY|EVE>
-  idPrefix:       'VU',
-  regIntakeCode:  '2601',
+  // University ID format: <idPrefix>-<programme code>-<intake>-<nnnn>-<DAY|EVE>
+  // <intake> = last two digits of the enrollment year + regIntakeSuffix, so it
+  // rolls over every 1 January (2601 in 2026, 2701 in 2027) and <nnnn>
+  // restarts at 0001 for each new intake.
+  idPrefix:         'VU',
+  regIntakeSuffix:  '01',
 
   // true = ship the built-in Victoria demo seed (fictional students, staff,
   // courses, timetable) and fall back to it when the database is empty.

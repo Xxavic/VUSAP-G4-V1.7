@@ -39,7 +39,7 @@ So far this has only been checked by a headless render of every screen. This tes
 7. **Notifications, announcements, audit log, appeals, support tickets.** No seed rows.
 8. **Branding.** Login screen, boot splash and header show the neutral crest and "Your Institution". Nothing says "Victoria University" or shows the Victoria shield. Then upload a crest and set the name in System Settings; confirm both change everywhere and survive a reload.
 9. **Enroll form before any programme exists.** It explains that a programme is needed instead of crashing.
-10. **Create from scratch:** add a faculty, a programme, a course, then enroll one student. Any error? Generated ID looks like `VU-<programme>-2601-0001-DAY` (prefix comes from `idPrefix`).
+10. **Create from scratch:** add a faculty, a programme, a course, then enroll one student. Any error? Generated ID looks like `VU-<programme>-<YY>01-0001-DAY`, where YY is the current year (prefix from `idPrefix`, `01` from `regIntakeSuffix`).
 11. **Reload** after each step 10 creation. Data persists, no mock data returns.
 12. **Console check:** there should be no `console.warn` containing "keeping mock". Collect any that appear.
 

@@ -3,7 +3,7 @@
 Decision (Oct 2026): **one deployment per client** from this one template. Each institution owns its own Supabase project. Victoria University is client one on the same template.
 
 ## What differs per client
-Only `client-config.js` (Supabase URL + anon key, login-email domain, ID prefix and intake code, and `demoData` — set it to `false` for every new client), plus the client's `manifest.json` text/icons and `<title>`. Everything else is shared.
+Only `client-config.js` (Supabase URL + anon key, login-email domain, ID prefix and intake suffix, and `demoData` — set it to `false` for every new client), plus the client's `manifest.json` text/icons and `<title>`. Everything else is shared.
 
 Edge Function secrets per client: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL`, and `AUTH_EMAIL_DOMAIN` (must equal `authEmailDomain` in `client-config.js`; defaults to `vusap.internal`).
 
@@ -19,6 +19,5 @@ Edge Function secrets per client: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`,
 ## Known gaps (not yet done)
 - `@vusap.internal` to `@qrast.internal` data migration (see `migrate-auth-emails-README.md`). Until then both `authEmailDomain` and `AUTH_EMAIL_DOMAIN` stay `vusap.internal`.
 - Fresh-empty-database test (`qrast-fresh-client-test-plan.md`) not yet run against a real empty project; `demoData: false` is only verified by a headless render of every screen.
-- `regIntakeCode` ('2601') is still a fixed value; it does not roll over by year.
 - `schema-dump.sql` (the 13 dashboard-built tables) has not been exported yet, so `build-sql-bundle.mjs` cannot produce a bundle until it is.
 - The Victoria shield is still the default crest when `demoData: true`; with `demoData: false` and no uploaded crest, a neutral placeholder is shown.

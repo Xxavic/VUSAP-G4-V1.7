@@ -365,17 +365,25 @@ function universityIdToAuthEmail(universityId) {
   return `${universityId}@${AUTH_EMAIL_DOMAIN}`;
 }
 
-// University ID format helpers -- prefix and intake code come from
-// client-config.js so a new institution's IDs don't need code edits.
+// University ID format helpers -- prefix and intake suffix come from
+// client-config.js so a new institution's IDs don't need code edits. The
+// intake code is the enrollment year's last two digits + the suffix
+// ("2601" in 2026, "2701" in 2027), worked out at enrollment time so it rolls
+// over on 1 January without a config change. A client that still sets the
+// old fixed regIntakeCode keeps it as a pin.
 const REG_ID_PREFIX = QRAST_CLIENT.idPrefix || 'VU';
-const REG_INTAKE_CODE = QRAST_CLIENT.regIntakeCode || '2601';
-function buildRegNo(programmeCodePrefix, counter, mode) {
-  return `${REG_ID_PREFIX}-${programmeCodePrefix}-${REG_INTAKE_CODE}-${String(counter).padStart(4,'0')}-${mode}`;
+const REG_INTAKE_SUFFIX = QRAST_CLIENT.regIntakeSuffix || '01';
+function currentIntakeCode() {
+  if(QRAST_CLIENT.regIntakeCode) return QRAST_CLIENT.regIntakeCode;
+  return String(new Date().getFullYear()).slice(-2) + REG_INTAKE_SUFFIX;
 }
-function regNoLikePattern() { return `${REG_ID_PREFIX}-%-${REG_INTAKE_CODE}-%`; }
+function buildRegNo(programmeCodePrefix, counter, mode) {
+  return `${REG_ID_PREFIX}-${programmeCodePrefix}-${currentIntakeCode()}-${String(counter).padStart(4,'0')}-${mode}`;
+}
+function regNoLikePattern() { return `${REG_ID_PREFIX}-%-${currentIntakeCode()}-%`; }
 function regNoSeqRegex() {
   const esc = x => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${esc(REG_ID_PREFIX)}-[A-Z0-9]+-${esc(REG_INTAKE_CODE)}-(\\d{4})-`);
+  return new RegExp(`^${esc(REG_ID_PREFIX)}-[A-Z0-9]+-${esc(currentIntakeCode())}-(\\d{4})-`);
 }
 
 // On page load: check if Supabase already has an active session
@@ -5957,7 +5965,22 @@ function filterSchedule(){
 // etc, kept below) has been defined.
 // ============================================================
 
-let regNoCounter = DEMO_DATA ? 522 : 1;
+// 522 was the demo seed's starting number and only means anything for the
+// intake it was set for; every other intake starts at 1.
+const DEMO_SEED_INTAKE = '2601';
+let regNoCounter = DEMO_DATA && currentIntakeCode() === DEMO_SEED_INTAKE ? 522 : 1;
+// The intake regNoCounter is counting within. When the year rolls over while
+// the page is open the counter restarts at 1 for the new intake;
+// syncRegNoCounterFromSupabase() then raises it past any IDs already issued
+// in that intake.
+let regNoCounterIntake = currentIntakeCode();
+function resetRegNoCounterOnNewIntake(){
+  const intake = currentIntakeCode();
+  if(intake !== regNoCounterIntake){
+    regNoCounterIntake = intake;
+    regNoCounter = 1;
+  }
+}
 
 function renderEnrollFormBody(){
   if(PROGRAMMES.length === 0){
@@ -6298,6 +6321,7 @@ function openEnrollSheet(){
 // the create-user call then failed with "already registered". Raise the
 // counter to one past the highest number actually in the database.
 async function syncRegNoCounterFromSupabase(){
+  resetRegNoCounterOnNewIntake();
   if(!LIVE_BACKEND) return;
   try {
     const { data: rows, error } = await SUPABASE_CLIENT
