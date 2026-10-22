@@ -59,10 +59,10 @@ Option A's output.
    project for the next client (Option A's output already is one; Option
    B's needs assembling into `CREATE TABLE` / `CREATE POLICY` statements
    by hand or with help).
-3. Load it into that new project, then load the 15 existing
-   `migrate-*.sql` files on top in the order they were written (check
-   `git log --follow --oneline -- <file>` per file if the order isn't
-   obvious) so the new project ends up exactly where this one is today.
+3. Save Option A's output as `schema-dump.sql` in the repo root and run
+   `node build-sql-bundle.mjs`. It writes `dist/qrast-setup.sql`: the base
+   schema followed by every `migrate-*.sql` file in the order they were
+   applied here. Load that one file into the new project.
 4. Before any client data goes near it: sign in as each role (student,
    lecturer, coordinator, registrar, administrator) against the new
    project and confirm the same things are visible/editable as on the
