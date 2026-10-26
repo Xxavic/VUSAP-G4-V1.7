@@ -3505,12 +3505,35 @@ let LIVE_SESSION = {
   windowSeconds: 600, // session stays open 10 min — refreshed from policy on each new startSessionForLecture()
   pin: "482917".slice(0,6),
   tokenRotateSeconds: 30, // refreshed from policy on each new startSessionForLecture()
-  token: "QR-" + Math.random().toString(36).slice(2,10).toUpperCase(),
+  token: "QR-" + secureRandomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 8),
   coordinatorAuthorized: false, // Lecturer-granted: lets the class's Class Coordinator also display this session's QR — see toggleCoordinatorAuthorization()
 };
 
+// Unpredictable randomness for anything that gates access (QR token, session
+// PIN, temporary passwords). Math.random() is not designed to be
+// unpredictable; crypto.getRandomValues() is. Rejection sampling keeps every
+// character equally likely (no modulo bias).
+function secureRandomInt(maxExclusive){
+  const cryptoObj = (typeof window !== 'undefined' && window.crypto) || null;
+  if(!cryptoObj || !cryptoObj.getRandomValues) return Math.floor(Math.random() * maxExclusive); // very old browsers only
+  const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+  const buf = new Uint32Array(1);
+  do { cryptoObj.getRandomValues(buf); } while(buf[0] >= limit);
+  return buf[0] % maxExclusive;
+}
+function secureRandomString(alphabet, length){
+  let out = '';
+  for(let i = 0; i < length; i++) out += alphabet[secureRandomInt(alphabet.length)];
+  return out;
+}
 function regenerateSessionToken(){
-  LIVE_SESSION.token = "QR-" + Math.random().toString(36).slice(2,10).toUpperCase();
+  LIVE_SESSION.token = "QR-" + secureRandomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 8);
+}
+// The check-in PIN was a single constant ("482917") shared by every session
+// ever started. A fresh 6-digit PIN per NEW broadcast now; a resumed
+// broadcast keeps the PIN already stored on its row.
+function regenerateSessionPin(){
+  LIVE_SESSION.pin = secureRandomString("0123456789", 6);
 }
 
 // Sept 2026 handoff — shared "is a session genuinely running" check (gotcha:
@@ -3620,7 +3643,7 @@ const SYSTEM_SETTINGS = {
   systemName: 'QRAST',
   institutionName: 'Ugandan Academy',
   portalName: 'QR-code Realtime Attendance Scanning Technology', // shown under the system name on the login screen — different for every institution running this software
-  supportEmail: 'ajunachris01@gmail.com',
+  supportEmail: '', // set per institution in System Settings; never default to a personal address
   academicYear: '2025/2026',
   logoDataUri: null, // custom institute crest; null falls back to the VU shield (demoData) or a neutral crest
   // Anchor date for Lecturer Compliance's real "sessions expected"
@@ -4189,7 +4212,7 @@ function formatClockTime(date){
 // but not a real word — 2 letters, 4 digits, 2 letters, e.g. "Kp4821Qm".
 function generateTempPassword(){
   const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
-  const pick = (pool, n) => Array.from({length:n}, () => pool[Math.floor(Math.random()*pool.length)]).join('');
+  const pick = (pool, n) => secureRandomString(pool, n);
   return pick(letters, 2) + pick("0123456789", 4) + pick(letters, 2);
 }
 
@@ -5641,6 +5664,14 @@ function getLecturerTodayLectures(){
 function renderLecturerDashboard(){
   const todayLectures = getLecturerTodayLectures();
   const sessionActive = isLiveSessionActive();
+  // Real numbers for the two tiles below that used to be hardcoded (a fixed
+  // 10 / 3 / 2 donut and a constant "0" Records Today). Dates use the same UTC
+  // convention attendance rows are written with.
+  const todayISO = new Date().toISOString().slice(0,10);
+  const myCodes = new Set(getLecturerLectures().map(l => l.courseCode));
+  const myRecs = RECORDS.filter(r => myCodes.has(r.code));
+  const recordsToday = myRecs.filter(r => r.date === todayISO).length;
+  const tally = st => myRecs.filter(r => r.status === st).length;
   return `
   <div class="app-header">
     <div class="brand-row">
@@ -5697,17 +5728,17 @@ function renderLecturerDashboard(){
       <div class="stat-tile">
         <div class="top"><span class="label">Records Today</span>
           <span class="stat-icon" style="background:#f3e8ff; color:#9333ea;">${ICONS.check}</span></div>
-        <div class="value">0</div>
+        <div class="value">${recordsToday}</div>
       </div>
     </div>
 
     <div class="card section-card">
       <div class="section-title">${ICONS.chart} Attendance Overview</div>
-      ${donutChart([
-        {label:'Present', value:10, color:'#16a34a'},
-        {label:'Late', value:3, color:'#d97706'},
-        {label:'Absent', value:2, color:'#dc2626'},
-      ])}
+      ${myRecs.length ? donutChart([
+        {label:'Present', value:tally('present'), color:'#16a34a'},
+        {label:'Late', value:tally('late'), color:'#d97706'},
+        {label:'Absent', value:tally('absent'), color:'#dc2626'},
+      ]) : `<div class="empty-state"><div class="t">No attendance recorded yet</div></div>`}
     </div>
 
     <div class="card section-card">
@@ -9268,6 +9299,7 @@ async function startSessionForLecture(lecture){
     LIVE_SESSION.startedAt = Date.now();
     LIVE_SESSION.coordinatorAuthorized = false; // every new broadcast starts unauthorized — the Lecturer re-grants it per session, never inherited
     regenerateSessionToken();
+    regenerateSessionPin();
     if(LIVE_BACKEND){
       // Compliance classification must use the server-assigned started_at,
       // never this device's clock (see the "never send a client timestamp
@@ -9440,7 +9472,7 @@ function renderRegistrarDashboard(){
       <div class="stat-tile">
         <div class="top"><span class="label">Today's Records</span>
           <span class="stat-icon" style="background:#ffedd5; color:#c2410c;">${ICONS.clock}</span></div>
-        <div class="value">0</div>
+        <div class="value">${scopedRecords().filter(r => r.date === new Date().toISOString().slice(0,10)).length}</div>
       </div>
     </div>
 
@@ -10638,7 +10670,7 @@ function renderAdministratorDashboard(){
       <div class="stat-tile" onclick="navigate('roleAssignments')" style="cursor:pointer;">
         <div class="top"><span class="label">Active Roles</span>
           <span class="stat-icon" style="background:#f3e8ff; color:#7e22a3;">${ICONS.shield}</span></div>
-        <div class="value">4</div>
+        <div class="value">${Object.keys(ROLE_BADGE_META).length}</div>
       </div>
       <div class="stat-tile" onclick="navigate('facultiesProgrammes')" style="cursor:pointer;">
         <div class="top"><span class="label">Faculties</span>
@@ -10731,6 +10763,11 @@ function openSystemModule(moduleId){
 // ADMINISTRATOR: STAFF / PEOPLE DIRECTORY
 // ============================================================
 
+// Single registry of the roles the app knows about: label and colours for
+// badges everywhere, and the count on the Administrator's "Active Roles"
+// tile. Adding a role here updates that count. (A new role also needs its
+// own permissions in the database policies and its own screens -- this list
+// only describes it to the interface.)
 const ROLE_BADGE_META = {
   student:        { label:"Student",       color:"#1d4ed8", bg:"#dbeafe" },
   lecturer:       { label:"Lecturer",      color:"#0f766e", bg:"#ccfbf1" },
@@ -12454,7 +12491,7 @@ function renderSystemSettings(){
       </div>
       <div class="field" style="margin-top:14px;">
         <label>Support Email</label>
-        <input class="input" type="email" id="ssSupportEmail" value="${escapeHtmlText(s.supportEmail)}" />
+        <input class="input" type="email" id="ssSupportEmail" value="${escapeHtmlText(s.supportEmail)}" placeholder="e.g. support@yourinstitution.ac.ug" />
       </div>
       <div class="field" style="margin-top:14px;">
         <label>Academic Year</label>
@@ -12854,12 +12891,10 @@ function filterAuditLog(){
 // ============================================================
 
 function renderBackups(){
-  const snapshots = [
-    { label:'Auto-backup', timestamp:'2026-06-28 03:00', size:'4.2 MB', status:'complete' },
-    { label:'Auto-backup', timestamp:'2026-06-27 03:00', size:'4.1 MB', status:'complete' },
-    { label:'Manual snapshot', timestamp:'2026-06-26 14:32', size:'4.0 MB', status:'complete' },
-    { label:'Auto-backup', timestamp:'2026-06-26 03:00', size:'4.0 MB', status:'complete' },
-  ];
+  // Backups are not performed or scheduled by this app: they belong to the
+  // Supabase project behind it. This screen used to show invented backup
+  // history and "Enabled" schedule badges that the app had no way to know
+  // were true, so it now says only what is real.
   return `
   <div class="app-header">
     <div class="header-back">
@@ -12868,46 +12903,13 @@ function renderBackups(){
     </div>
   </div>
   <div class="content">
-    <div class="empty-state-sm" style="background:#fef3c7; border-radius:var(--radius-md); padding:14px; text-align:left; color:#92400e; font-size:12px; line-height:1.5; font-weight:500;">
-      ${ICONS.archive.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Requires backend:</strong> Scheduled backups, restore, and retention policies need Supabase point-in-time recovery or a pg_dump pipeline (Gates 4–7). The list below is illustrative — restore is deferred until then.
+    <div class="empty-state-sm" style="background:#fef3c7; border-radius:var(--radius-md); padding:14px; text-align:left; color:#92400e; font-size:12px; line-height:1.5; font-weight:600;">
+      ${ICONS.archive.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Managed outside this app.</strong> Scheduled backups and restores are handled by this institution's Supabase project (Dashboard &rarr; Database &rarr; Backups). Whether daily backups or point-in-time recovery are available, and how long they are kept, depends on that project's plan.
     </div>
-
     <div class="card card-pad" style="margin-top:14px;">
-      <div class="section-title">${ICONS.archive} Backup Schedule</div>
-
-      <div class="lecture-row" style="flex-direction:column;gap:4px;padding:12px 0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:13px;font-weight:700;">Automatic Daily Backup</div>
-            <div style="font-size:11px;color:var(--ink-faint);">Runs at 03:00 UTC — retained for 30 days</div>
-          </div>
-          <span class="badge dept" style="background:#dcfce7;color:#16a34a;">Enabled</span>
-        </div>
-      </div>
-
-      <div class="lecture-row" style="flex-direction:column;gap:4px;padding:12px 0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:13px;font-weight:700;">Point-in-time Recovery</div>
-            <div style="font-size:11px;color:var(--ink-faint);">Restore to any second in the last 7 days</div>
-          </div>
-          <span class="badge dept" style="background:#f1f5f9;color:#64748b;">Backend required</span>
-        </div>
-      </div>
-
-      <button class="btn btn-ghost" style="margin-top:10px;" onclick="exportSnapshot()">${ICONS.fileText} Export Current State (JSON)</button>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-title">${ICONS.clock} Recent Backups</div>
-      ${snapshots.map(s => `
-        <div class="lecture-row" style="padding:10px 0;">
-          <div style="flex:1;">
-            <div style="font-size:12.5px;font-weight:700;">${s.label}</div>
-            <div class="lecture-meta">${escapeHtmlText(s.timestamp)} · ${s.size}</div>
-          </div>
-          <span class="badge dept" style="background:#dcfce7;color:#16a34a;">${escapeHtmlText(s.status)}</span>
-        </div>`).join('')}
+      <div class="section-title">${ICONS.archive} Export</div>
+      <div class="lecture-meta" style="margin-bottom:10px;">Download what this device currently holds as a JSON file. This is not a database backup.</div>
+      <button class="btn btn-ghost" onclick="exportSnapshot()">${ICONS.fileText} Export Current State (JSON)</button>
     </div>
   </div>`;
 }
@@ -15137,7 +15139,7 @@ function navigate(screenId, opts){
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
   if(screenId === 'announcements' || screenId === 'home' || screenId === 'dashboard') loadAnnouncementsFromSupabase();
   if(screenId === 'courseRecords' || screenId === 'myAttendance') loadCourseAttendanceCapsFromSupabase();
-  if(screenId === 'records' || screenId === 'facultyRecordsCatalog' || screenId === 'courseRecords' || screenId === 'myAttendance' || screenId === 'database') loadRecordsFromSupabase();
+  if(screenId === 'records' || screenId === 'facultyRecordsCatalog' || screenId === 'courseRecords' || screenId === 'myAttendance' || screenId === 'database' || (screenId === 'dashboard' && (State.role === 'lecturer' || State.role === 'registrar'))) loadRecordsFromSupabase();
 
   if(!opts.fromPopstate){
     const state = { qrastScreen: screenId, qrastRole: State.role };
