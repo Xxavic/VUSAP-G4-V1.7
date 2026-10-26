@@ -6005,9 +6005,13 @@ function renderLecturerDashboard(){
 //   lecture's row is highlighted "Live"; every other row is visually
 //   disabled with no click handler, so a second course's session can't be
 //   started by accident while one is already running.
-// Which ONE row of `lectures` is the running session. Matching on code +
-// mode alone would light up both rows when a course has two same-mode slots
-// today; the session's start time picks the nearer slot.
+// Which ONE row of today's list is the lecture the Lecturer actually started?
+// (Oct 2026.) The old test was course code + mode only, so a course with two
+// slots on the same day (e.g. CSC3101 10:00 in LT5 and 14:00 in LT4, both Day)
+// showed BOTH rows as "Live" as soon as either was started. Now: candidates
+// are rows matching code + mode (+ room, when the broadcast carries one), and
+// if more than one remains, the row whose time window the session was
+// started in wins, else the one whose scheduled start is closest to it.
 // Returns an index into `lectures`, or -1 when no session is running.
 function liveLectureRowIndex(lectures, sessionActive){
   if(!sessionActive) return -1;
@@ -6033,9 +6037,9 @@ function pickLectureRow(lectures, code, mode, room, startedMs){
   for(const i of cands){
     const r = parseLectureTimeRange(lectures[i].time, new Date(t));
     if(!r) continue;
-    const gap = t < r.start.getTime() ? r.start.getTime() - t
-      : t > r.end.getTime() ? t - r.end.getTime() : 0;
-    if(gap < bestGap){ best = i; bestGap = gap; }
+    if(t >= r.start.getTime() && t <= r.end.getTime()) return i;
+    const gap = Math.abs(t - r.start.getTime());
+    if(gap < bestGap){ bestGap = gap; best = i; }
   }
   return best;
 }
