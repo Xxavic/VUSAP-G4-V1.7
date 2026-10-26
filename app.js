@@ -1084,6 +1084,11 @@ let pendingRecordCount = 0;      // this user's queued check-ins
 let pendingSessionEndCount = 0;  // this user's queued "End Session" writes
 let syncInProgress = false;
 let lecturerConnectionLost = false;
+// Lecturer home: which of today's lecture rows have actually been held (a
+// broadcast was started for them). heldSlotsLoaded = the database answered,
+// so a finished slot with no entry can honestly say "Not held".
+let heldSlotKeys = new Set();
+let heldSlotsLoaded = false;
 
 // Lost-connection errors as supabase-js surfaces them: postgrest returns an
 // error object (it doesn't throw) whose message is the browser's fetch
@@ -5542,6 +5547,8 @@ function logout(){
   pendingRecordCount = 0;
   pendingSessionEndCount = 0;
   lecturerConnectionLost = false;
+  heldSlotKeys = new Set();
+  heldSlotsLoaded = false;
   updateOfflineBanner();
   renderApp();
 }
@@ -5747,11 +5754,110 @@ function renderLecturerDashboard(){
 //   lecture's row is highlighted "Live"; every other row is visually
 //   disabled with no click handler, so a second course's session can't be
 //   started by accident while one is already running.
+// Which ONE row of `lectures` is the running session. Matching on code +
+// mode alone would light up both rows when a course has two same-mode slots
+// today; the session's start time picks the nearer slot.
+// Returns an index into `lectures`, or -1 when no session is running.
+function liveLectureRowIndex(lectures, sessionActive){
+  if(!sessionActive) return -1;
+  let t = LIVE_SESSION.serverStartedAt ? new Date(LIVE_SESSION.serverStartedAt).getTime() : NaN;
+  if(!isFinite(t)) t = LIVE_SESSION.startedAt || Date.now();
+  return pickLectureRow(lectures, LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.room, t);
+}
+
+// Maps a broadcast (course code, mode, room, start time) onto ONE row of a
+// lecture list. Shared by the Live badge and the Held / Not held labels so
+// both agree on which slot a session belongs to. -1 = no matching row.
+function pickLectureRow(lectures, code, mode, room, startedMs){
+  const cands = [];
+  lectures.forEach((l, i) => {
+    if(l.code !== code) return;
+    if((l.mode || null) !== (mode || null)) return;
+    if(room && l.room && l.room !== room) return;
+    cands.push(i);
+  });
+  if(cands.length <= 1) return cands.length ? cands[0] : -1;
+  const t = isFinite(startedMs) ? startedMs : Date.now();
+  let best = cands[0], bestGap = Infinity;
+  for(const i of cands){
+    const r = parseLectureTimeRange(lectures[i].time, new Date(t));
+    if(!r) continue;
+    const gap = t < r.start.getTime() ? r.start.getTime() - t
+      : t > r.end.getTime() ? t - r.end.getTime() : 0;
+    if(gap < bestGap){ best = i; bestGap = gap; }
+  }
+  return best;
+}
+
+function lectureSlotKey(l){ return `${l.code}|${l.mode || ''}|${l.room || ''}|${l.time}`; }
+
+// Reads today's broadcasts this Lecturer started (live_qr_sessions keeps one
+// row per broadcast, ended ones included) and marks the matching lecture
+// rows as held. started_at is the database's own clock; only the "since
+// midnight" cut-off uses this device's date, and only for a display label.
+async function loadHeldSlotsFromSupabase(){
+  if(!LIVE_BACKEND || State.role !== 'lecturer' || !State.user?.supabaseId) return;
+  try {
+    const midnight = new Date(); midnight.setHours(0,0,0,0);
+    const { data, error } = await SUPABASE_CLIENT
+      .from('live_qr_sessions')
+      .select('course_code, mode, room, started_at')
+      .eq('lecturer_id', State.user.supabaseId)
+      .gte('started_at', midnight.toISOString());
+    if(error){ console.warn('loadHeldSlotsFromSupabase failed, labels stay as Ended:', error); return; }
+    const lectures = getLecturerTodayLectures();
+    (data || []).forEach(row => {
+      const i = pickLectureRow(lectures, row.course_code, row.mode, row.room, new Date(row.started_at).getTime());
+      if(i >= 0) heldSlotKeys.add(lectureSlotKey(lectures[i]));
+    });
+    heldSlotsLoaded = true;
+    // Not rerenderCurrentScreen(): this runs from a navigate() hook.
+    if(State.role === 'lecturer' && currentScreen === 'dashboard') refreshScreenContentOnly();
+  } catch(e){
+    console.warn('loadHeldSlotsFromSupabase error, labels stay as Ended:', e);
+  }
+}
+
+// Badge for a lecture row that is not the one currently live. Nothing ever
+// starts a session on its own; these describe the slot relative to now:
+//   held earlier (a broadcast was started for it) -> "Held"
+//   before the start time                         -> "Upcoming"
+//   start reached, not yet ended                  -> "Pending Session" (a prompt to start)
+//   scheduled end passed, database confirms none  -> "Not held"
+//   scheduled end passed, not confirmed yet       -> "Ended" (neutral: never claims "Not held" without proof)
+function slotBadgeLabel(l){
+  if(heldSlotKeys.has(lectureSlotKey(l))) return 'Held';
+  const r = parseLectureTimeRange(l.time);
+  if(!r) return 'Pending';
+  const now = Date.now();
+  if(now < r.start.getTime()) return 'Upcoming';
+  if(now < r.end.getTime()) return 'Pending Session';
+  return heldSlotsLoaded ? 'Not held' : 'Ended';
+}
+function slotBadgeClass(label){
+  return label === 'Pending Session' ? ' pending-session'
+    : label === 'Ended' ? ' slot-ended'
+    : label === 'Not held' ? ' not-held'
+    : label === 'Held' ? ' slot-held' : '';
+}
+
+// Keeps those badges honest without a reload.
+function refreshPendingBadges(){
+  document.querySelectorAll('.badge[data-slot-key]').forEach(el => {
+    const l = { code:el.dataset.code, mode:el.dataset.mode, room:el.dataset.room, time:el.dataset.time };
+    const label = slotBadgeLabel(l);
+    if(el.textContent !== label) el.textContent = label;
+    el.className = 'badge pending' + slotBadgeClass(label);
+  });
+}
+setInterval(refreshPendingBadges, 20000);
+
 function lectureListMarkup(lectures, sessionActive, opts){
   opts = opts || {};
   if(!lectures.length) return `<div class="empty-state"><div class="t">No lectures today</div></div>`;
-  return lectures.map(l => {
-    const isLiveOne = sessionActive && l.code === LIVE_SESSION.courseCode && l.mode === LIVE_SESSION.mode;
+  const liveIdx = liveLectureRowIndex(lectures, sessionActive);
+  return lectures.map((l, idx) => {
+    const isLiveOne = idx === liveIdx;
     const isDisabled = sessionActive && !isLiveOne;
     const closeAttr = opts.sheetPicker ? "closeSheet('startSessionPickerSheet');" : '';
     // Sept 2026: was handleLectureRowTap('${l.code}') alone -- course code
@@ -5774,7 +5880,9 @@ function lectureListMarkup(lectures, sessionActive, opts){
           <div class="lecture-name">${escapeHtmlText(l.name)}</div>
           <div class="lecture-meta">${ICONS.clock}${escapeHtmlText(l.time)} · ${escapeHtmlText(l.room)}</div>
         </div>
-        <span class="badge ${isLiveOne ? 'today' : 'pending'}">${isLiveOne ? 'Live' : 'Pending'}</span>
+        ${isLiveOne
+          ? '<span class="badge today">Live</span>'
+          : `<span class="badge pending${slotBadgeClass(slotBadgeLabel(l))}" data-slot-key="1" data-code="${escapeHtmlText(l.code)}" data-mode="${escapeHtmlText(l.mode || '')}" data-room="${escapeHtmlText(l.room || '')}" data-time="${escapeHtmlText(l.time)}">${slotBadgeLabel(l)}</span>`}
       </div>`;
   }).join('');
 }
@@ -9016,6 +9124,11 @@ function finalizeSessionAttendance(){
 }
 
 function endSession(){
+  {
+    const lectures = getLecturerTodayLectures();
+    const i = pickLectureRow(lectures, LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.room, LIVE_SESSION.startedAt);
+    if(i >= 0) heldSlotKeys.add(lectureSlotKey(lectures[i]));
+  }
   LIVE_SESSION.active = false;
   stopSessionTicker();
   stopRosterPolling();
@@ -14978,7 +15091,7 @@ function navigate(screenId, opts){
   // a Lecturer who already has a session running and reloads (or navigates
   // back to Dashboard) would see "Start Live Session" instead of "Current
   // Session", since nothing re-checks reality on Dashboard entry.
-  if(screenId === 'dashboard' && State.role === 'lecturer') checkLecturerActiveSession();
+  if(screenId === 'dashboard' && State.role === 'lecturer'){ checkLecturerActiveSession(); loadHeldSlotsFromSupabase(); }
   if(screenId === 'register'){
     loadProvisionedAccountsFromSupabase(); loadStudentsFromSupabase(); loadStaffFromSupabase();
     // Reset before kicking off the fetch, not after -- this render (about to

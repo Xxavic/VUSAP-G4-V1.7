@@ -381,6 +381,12 @@ input,select,textarea{font-family:inherit;}
 .badge.pending{background:var(--late-bg); color:var(--late);}
 .badge.done{background:var(--present-bg); color:var(--present);}
 .badge.today{background:var(--theme-accent); color:#fff;}
+.badge.pending.slot-held{background:var(--present-bg); color:var(--present);}
+.badge.pending.not-held{background:var(--absent-bg); color:var(--absent);}
+.badge.pending.slot-ended{background:var(--unmarked-bg); color:var(--ink-soft);}
+.badge.pending.pending-session{background:var(--late); color:#fff; animation:pendingPulse 1.8s ease-in-out infinite;}
+@keyframes pendingPulse{0%,100%{opacity:1}50%{opacity:.65}}
+@media (prefers-reduced-motion: reduce){.badge.pending.pending-session{animation:none}}
 .badge.dept{background:#ede9fe; color:#6d28d9;}
 .badge.pal-0{background:#ede9fe; color:#6d28d9;}
 .badge.pal-1{background:#dbeafe; color:#1d4ed8;}
