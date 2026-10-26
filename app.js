@@ -15034,6 +15034,10 @@ function rerenderCurrentScreen(){
 // Notifications screen to flicker continuously — fixed by switching its
 // load function to this instead.)
 function refreshScreenContentOnly(){
+  // Signed out: the login screen is showing, and a background loader started
+  // at sign-in (loadStudentsFromSupabase() etc.) resolving after logout()
+  // must not paint the old account's screen id over it ("Screen not found").
+  if(!State.role) return;
   // Same gate as navigate() — see mustChangePasswordGate()'s comment for
   // why this needs its own explicit check rather than trusting navigate()
   // alone to cover every path.
