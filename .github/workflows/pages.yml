@@ -32,7 +32,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p dist
-          cp index.html app.js sw.js manifest.json qrcode.min.js jsQR.min.js chart.min.js supabase.min.js dist/
+          cp index.html app.js client-config.js sw.js manifest.json qrcode.min.js jsQR.min.js chart.min.js supabase.min.js dist/
           cp -r icons dist/
           touch dist/.nojekyll
 

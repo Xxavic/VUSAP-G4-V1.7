@@ -4,7 +4,7 @@
 # are never served from the live site.
 
 [build]
-  command = "mkdir -p dist && cp index.html app.js sw.js manifest.json qrcode.min.js jsQR.min.js chart.min.js supabase.min.js dist/ && cp -r icons dist/"
+  command = "mkdir -p dist && cp index.html app.js client-config.js sw.js manifest.json qrcode.min.js jsQR.min.js chart.min.js supabase.min.js dist/ && cp -r icons dist/"
   publish = "dist"
 
 # Security headers for every response. (The CSP <meta> tag in index.html
