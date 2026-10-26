@@ -16,6 +16,10 @@ Edge Function secrets per client: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`,
 6. Administrator signs in, uploads the crest, sets academic year and term dates, adds faculties and programmes.
 7. Smoke test: login, enroll one student, one timetable slot, one QR scan, one notification. Confirm no Victoria data appears.
 
+## Rules for changes that touch deployment
+- Any new file the app loads at run time (like `client-config.js`) must be added to **both** deploy lists (`.github/workflows/pages.yml` and `netlify.toml`) and to `CORE_ASSETS` in `sw.js`. Missing from the deploy list means a 404 on the live site, which showed up as "offline mode / wrong password" once.
+- Any new `migrate-*.sql` must be added to `MIGRATIONS` in `build-sql-bundle.mjs` (the script refuses to run otherwise). A new client runs both check-in migrations straight away: `migrate-server-side-checkin.sql` then `migrate-lock-direct-attendance-insert.sql` (see `SERVER-SIDE-CHECKIN-README.md`; the "test first" gap only matters for a client that already has live users).
+
 ## Known gaps (not yet done)
 - `@vusap.internal` to `@qrast.internal` data migration (see `migrate-auth-emails-README.md`). Until then both `authEmailDomain` and `AUTH_EMAIL_DOMAIN` stay `vusap.internal`.
 - Fresh-empty-database test (`qrast-fresh-client-test-plan.md`) not yet run against a real empty project; `demoData: false` is only verified by a headless render of every screen.

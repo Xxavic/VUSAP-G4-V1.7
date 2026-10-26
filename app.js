@@ -638,6 +638,7 @@ async function liveFindActiveSession(courseCode, mode, classId){
 // Apply a broadcast row (from initial fetch or a Realtime update) onto local LIVE_SESSION.
 function applyLiveSessionRow(row){
   if(!row) return;
+  const sameBroadcast = LIVE_SESSION.liveSessionId === row.id;
   LIVE_SESSION.liveSessionId = row.id;
   LIVE_SESSION.courseCode = row.course_code;
   LIVE_SESSION.courseName = row.course_name;
@@ -648,8 +649,13 @@ function applyLiveSessionRow(row){
   // consumer already treats null as "fall back to the old code-only lookup",
   // so this degrades safely either way. See resolveClassRow().
   LIVE_SESSION.classId = row.class_id || null;
-  LIVE_SESSION.pin = row.pin;
-  LIVE_SESSION.token = row.token;
+  // After migrate-server-side-checkin.sql the row carries NULL for both: a
+  // student's phone never holds the code (the server checks it), and the
+  // owning Lecturer / authorized Coordinator fetch it with loadBroadcastSecrets().
+  // Keep what this device already knows for the SAME broadcast; never carry
+  // one broadcast's secrets over to another.
+  LIVE_SESSION.pin = row.pin != null ? row.pin : (sameBroadcast ? LIVE_SESSION.pin : null);
+  LIVE_SESSION.token = row.token != null ? row.token : (sameBroadcast ? LIVE_SESSION.token : null);
   LIVE_SESSION.active = row.active;
   LIVE_SESSION.startedAt = new Date(row.started_at).getTime();
   LIVE_SESSION.serverStartedAt = row.started_at; // authoritative — see liveWriteSession()
@@ -703,8 +709,13 @@ function subscribeToLiveSession(courseCode){
         // "not authorized" empty state, both without the Coordinator
         // needing to manually refresh.
         if(currentScreen === 'coordinatorQrDisplay'){
-          refreshScreenContentOnly();
-          drawQrPlaceholder();
+          const redraw = () => {
+            if(currentScreen === 'coordinatorQrDisplay'){ refreshScreenContentOnly(); drawQrPlaceholder(); }
+          };
+          // The event carries no token any more (it is hidden from the row),
+          // so a Coordinator fetches the new one each time it rotates.
+          if(row.active && row.coordinator_authorized && row.token == null) loadBroadcastSecrets().then(redraw);
+          else redraw();
         }
       }
     })
@@ -771,6 +782,7 @@ async function checkLecturerActiveSession(){
     if(row){
       applyLiveSessionRow(row);
       subscribeToLiveSession(resumedCode);
+      await ensureOwnerSecrets();
       // applyLiveSessionRow() has no scheduling `sessions` row id to give us
       // (live_qr_sessions doesn't carry one) — without re-resolving it here,
       // updateLiveRoster()'s guard on LIVE_SESSION.schedulingSessionId stays
@@ -996,6 +1008,115 @@ function getDeviceId(){
   return id;
 }
 
+// ------------------------------------------------------------
+// SERVER-SIDE CHECK-IN (Oct 2026) — see migrate-server-side-checkin.sql.
+// The QR token and PIN used to be readable by every student and compared on
+// the student's own phone, so a technical student could check in from home.
+// After that migration the broadcast row no longer carries them (they come
+// back NULL), and the phone sends what the student scanned/typed to
+// check_in_to_broadcast(), which verifies it and writes the row. If the
+// migration has not been run yet, serverCheckIn() answers 'unavailable' and
+// every caller falls back to the old behaviour, so deploy order is safe.
+// ------------------------------------------------------------
+let serverCheckInAvailable = null; // null = not asked yet, then true/false
+
+function isMissingFunctionError(err){
+  return !!err && (err.code === 'PGRST202' || err.code === '42883'
+    || /could not find the function|function .* does not exist/i.test(err.message || ''));
+}
+
+function checkInReasonText(reason){
+  return ({
+    bad_code: "That code didn't match — scan the current QR code or re-enter the PIN",
+    locked: "Too many wrong codes. Wait a few minutes, or ask your lecturer",
+    ended: "This session has ended",
+    expired: "This check-in is too old to record automatically — please submit an appeal",
+    not_enrolled: "You're not enrolled in this course",
+    not_found: "That session no longer exists",
+    not_student: "Only students can check in",
+    not_signed_in: "Please sign in again",
+    already_checked_in: "You've already checked in to another session for this course today",
+  })[reason] || "Your check-in could not be recorded";
+}
+
+// Resolves to one of:
+//   { state:'ok', duplicate, upgraded, sessionId, markedAt }
+//   { state:'rejected', reason }       the server said no (see checkInReasonText)
+//   { state:'network' }                no connection
+//   { state:'error', message }         anything else unexpected
+//   { state:'unavailable' }            migration not run (or mock mode): use the old path
+async function serverCheckIn({ broadcastId, token, pin, offline }){
+  if(!LIVE_BACKEND || serverCheckInAvailable === false || !broadcastId || String(broadcastId).startsWith('mock-')){
+    return { state: 'unavailable' };
+  }
+  try {
+    const { data, error } = await SUPABASE_CLIENT.rpc('check_in_to_broadcast', {
+      p_broadcast_id: broadcastId,
+      p_token: token || null,
+      p_pin: pin || null,
+      p_device_id: getDeviceId(),
+      p_offline: !!offline,
+    });
+    if(error){
+      if(isMissingFunctionError(error)){ serverCheckInAvailable = false; return { state: 'unavailable' }; }
+      if(isNetworkError(error)) return { state: 'network' };
+      console.warn('serverCheckIn error:', error);
+      return { state: 'error', message: error.message };
+    }
+    serverCheckInAvailable = true;
+    if(data && data.ok){
+      return { state: 'ok', duplicate: !!data.duplicate, upgraded: !!data.upgraded, sessionId: data.session_id, markedAt: data.marked_at };
+    }
+    return { state: 'rejected', reason: (data && data.reason) || 'unknown' };
+  } catch(e){
+    if(isNetworkError(e)) return { state: 'network' };
+    console.warn('serverCheckIn failed:', e);
+    return { state: 'error', message: e.message };
+  }
+}
+
+// Lecturer (owner) or an authorized Class Coordinator: fetch the current
+// token and PIN, which the broadcast row no longer carries. Resolves true
+// when LIVE_SESSION now holds them.
+async function loadBroadcastSecrets(){
+  if(!LIVE_BACKEND || !LIVE_SESSION.liveSessionId || String(LIVE_SESSION.liveSessionId).startsWith('mock-')) return false;
+  try {
+    const { data, error } = await SUPABASE_CLIENT.rpc('get_broadcast_secrets', { p_broadcast_id: LIVE_SESSION.liveSessionId });
+    if(error){
+      if(!isMissingFunctionError(error)) console.warn('loadBroadcastSecrets failed:', error);
+      return false;
+    }
+    if(data && data.token){
+      LIVE_SESSION.token = data.token;
+      if(data.pin) LIVE_SESSION.pin = data.pin;
+      return true;
+    }
+  } catch(e){
+    console.warn('loadBroadcastSecrets error:', e);
+  }
+  return false;
+}
+
+// The Lecturer resumed their own broadcast (reload, or navigating back):
+// the row has no token/PIN any more, so fetch them. If that fails, mint new
+// ones and write them — the Lecturer owns the broadcast, and the QR rotates
+// anyway, so this only changes the PIN students are currently shown.
+async function ensureOwnerSecrets(){
+  if(LIVE_SESSION.token && LIVE_SESSION.pin) return;
+  if(await loadBroadcastSecrets()) return;
+  if(!LIVE_SESSION.token) regenerateSessionToken();
+  if(!LIVE_SESSION.pin) regenerateSessionPin();
+  liveWriteSession();
+}
+
+// Student side, after the server recorded the check-in.
+function afterServerCheckIn(result){
+  if(result.sessionId) LIVE_SESSION.schedulingSessionId = result.sessionId;
+  if(!result.duplicate && result.sessionId){
+    checkFraudSignals(result.sessionId, getDeviceId(), result.markedAt || new Date().toISOString());
+  }
+}
+
 async function liveWriteAttendance(){
   if(!LIVE_BACKEND || !State.user || !State.user.supabaseId) return;
   try {
@@ -1199,11 +1320,18 @@ async function refreshPendingCounts(){
 // Called from liveWriteAttendance() when the write failed for lack of a
 // connection. The student has already been shown "Checked in" by
 // completeCheckIn(); this makes that true once they're back online.
-async function queueOfflineCheckIn(sessionId){
+async function queueOfflineCheckIn(sessionId, secret){
   if(!State.user?.supabaseId) return false;
   try {
     const db = await initOfflineDB();
     if(!db){ console.warn('queueOfflineCheckIn: no IndexedDB — check-in not saved offline'); return false; }
+    // The lecture date comes from the broadcast's own server start time (set
+    // when the student's phone last heard from the server), never from this
+    // phone's clock — otherwise changing the clock back would back-date the
+    // record. The device clock is used only in mock mode, where no
+    // broadcast exists, and for the informational queued_at below.
+    const broadcastStartMs = LIVE_SESSION.serverStartedAt ? new Date(LIVE_SESSION.serverStartedAt).getTime() : NaN;
+    const hasBroadcastStart = Number.isFinite(broadcastStartMs);
     const rec = {
       student_id: State.user.supabaseId,
       student_name: State.user.name || null,
@@ -1212,7 +1340,12 @@ async function queueOfflineCheckIn(sessionId){
       class_id: LIVE_SESSION.classId || null,
       live_broadcast_id: LIVE_SESSION.liveSessionId || null,
       session_id: sessionId || null, // null = resolve at sync time from course/class/date
-      check_in_date: new Date().toISOString().slice(0,10), // same UTC-date convention as liveEnsureSchedulingSession()
+      check_in_date: (hasBroadcastStart ? new Date(broadcastStartMs) : new Date()).toISOString().slice(0,10), // UTC date, same convention as liveEnsureSchedulingSession()
+      broadcast_started_at: hasBroadcastStart ? new Date(broadcastStartMs).toISOString() : null,
+      // What the student scanned or typed. The server checks it when this
+      // syncs (migrate-server-side-checkin.sql); it stays on this phone only.
+      scan_token: (secret && secret.token) || null,
+      scan_pin: (secret && secret.pin) || null,
       device_id: getDeviceId(),
       queued_at: new Date().toISOString(),
       sync_status: 'pending',
@@ -1278,25 +1411,88 @@ async function markOfflineRetryOrFail(storeName, item, detail){
 // 'conflict' | 'failed' | 'network' ('network' stops the whole run).
 // resolveCheckInOutcome()'s checks failed open while offline, so the ones
 // that matter are re-applied here against what the server now holds.
+const OFFLINE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // a queued check-in older than this (measured from the broadcast's start) is not synced automatically
+
+// Replays a queued check-in through the server (migrate-server-side-checkin.sql).
+// Resolves to a sync result string, or null when the server check-in is not
+// available (migration not run) so the caller can use the old write.
+async function syncCheckInViaServer(rec){
+  const r = await serverCheckIn({ broadcastId: rec.live_broadcast_id, token: rec.scan_token, pin: rec.scan_pin, offline: true });
+  if(r.state === 'unavailable') return null;
+  if(r.state === 'network') return 'network';
+  if(r.state === 'ok'){
+    if(r.sessionId) rec.session_id = r.sessionId;
+    rec.sync_status = r.duplicate ? 'duplicate' : 'synced';
+    rec.synced_at = new Date().toISOString();
+    await idbPut('pending_records', rec);
+    if(!r.duplicate){
+      await logSyncEvent('record_synced', `${rec.course_code} ${rec.check_in_date}${r.upgraded ? ': upgraded auto-absent to present' : ''}`);
+      if(r.sessionId) checkSharedDeviceAfterSync(rec, r.sessionId);
+    }
+    return rec.sync_status;
+  }
+  if(r.state === 'rejected'){
+    // A busy lockout clears by itself; every other refusal is final.
+    if(r.reason === 'locked') return markOfflineRetryOrFail('pending_records', rec, checkInReasonText(r.reason));
+    return markOfflineConflict(rec, checkInReasonText(r.reason));
+  }
+  return markOfflineRetryOrFail('pending_records', rec, r.message || 'Server error');
+}
+
 async function syncOneOfflineCheckIn(rec){
   try {
-    let sessionId = rec.session_id;
-    if(!sessionId){
-      sessionId = await liveEnsureSchedulingSession(rec.course_code, rec.class_id, rec.check_in_date, rec.course_name);
-      if(!sessionId) return markOfflineRetryOrFail('pending_records', rec, 'Could not resolve the lecture session');
-      rec.session_id = sessionId;
+    // Nothing on this phone is trusted for WHICH lecture or WHEN: the
+    // record's own date and session id are editable in the browser. Both are
+    // re-derived here from the server's record of the broadcast it names.
+    if(!rec.live_broadcast_id || String(rec.live_broadcast_id).startsWith('mock-')){
+      return markOfflineConflict(rec, 'No session was recorded for this check-in');
     }
+    if(rec.broadcast_started_at && Date.now() - new Date(rec.broadcast_started_at).getTime() > OFFLINE_MAX_AGE_MS){
+      return markOfflineConflict(rec, 'Too old to sync automatically (over 24 hours)');
+    }
+    const { data: broadcast, error: bErr } = await SUPABASE_CLIENT
+      .from('live_qr_sessions')
+      .select('id, course_code, class_id, started_at')
+      .eq('id', rec.live_broadcast_id)
+      .maybeSingle();
+    if(bErr){
+      if(isNetworkError(bErr)) return 'network';
+      return markOfflineRetryOrFail('pending_records', rec, bErr.message);
+    }
+    if(!broadcast) return markOfflineConflict(rec, 'The session this check-in names no longer exists');
+    if(broadcast.course_code !== rec.course_code || (rec.class_id && broadcast.class_id && broadcast.class_id !== rec.class_id)){
+      return markOfflineConflict(rec, 'This check-in does not match the session it names');
+    }
+    const startedMs = new Date(broadcast.started_at).getTime();
+    if(Date.now() - startedMs > OFFLINE_MAX_AGE_MS){
+      return markOfflineConflict(rec, 'Too old to sync automatically (over 24 hours)');
+    }
+    rec.check_in_date = new Date(startedMs).toISOString().slice(0,10);
+    rec.broadcast_started_at = new Date(startedMs).toISOString();
+    rec.class_id = broadcast.class_id || rec.class_id;
+    rec.session_id = null;
+    const haveSecret = !!(rec.scan_token || rec.scan_pin);
 
-    const { data: existingRows, error: readErr } = await SUPABASE_CLIENT
-      .from('attendance')
-      .select('id, live_broadcast_id, device_id, status')
-      .eq('session_id', sessionId)
-      .eq('student_id', rec.student_id);
-    if(readErr){
-      if(isNetworkError(readErr)) return 'network';
-      return markOfflineRetryOrFail('pending_records', rec, readErr.message);
+    let sessionId = null;
+    sessionId = await liveEnsureSchedulingSession(rec.course_code, rec.class_id, rec.check_in_date, rec.course_name);
+    // A student's account cannot create the lecture's session row; the
+    // server-side check-in does it. Without that, we cannot continue.
+    if(!sessionId && !haveSecret) return markOfflineRetryOrFail('pending_records', rec, 'Could not resolve the lecture session');
+    rec.session_id = sessionId;
+
+    let rows = [];
+    if(sessionId){
+      const { data: existingRows, error: readErr } = await SUPABASE_CLIENT
+        .from('attendance')
+        .select('id, live_broadcast_id, device_id, status')
+        .eq('session_id', sessionId)
+        .eq('student_id', rec.student_id);
+      if(readErr){
+        if(isNetworkError(readErr)) return 'network';
+        return markOfflineRetryOrFail('pending_records', rec, readErr.message);
+      }
+      rows = existingRows || [];
     }
-    const rows = existingRows || [];
 
     // Already checked in to this exact broadcast (e.g. rescanned once back
     // online). Same device = the same student twice, nothing to flag. A
@@ -1323,6 +1519,10 @@ async function syncOneOfflineCheckIn(rec){
     // through to 'conflict' so they're told to appeal.
     const autoAbsent = rows.find(r => r.status === 'absent' && !r.device_id);
     if(autoAbsent){
+      if(haveSecret){
+        const viaServer = await syncCheckInViaServer(rec);
+        if(viaServer) return viaServer;
+      }
       const { data: upd, error: updErr } = await SUPABASE_CLIENT
         .from('attendance')
         .update({ status: 'present', device_id: rec.device_id, live_broadcast_id: rec.live_broadcast_id })
@@ -1351,6 +1551,12 @@ async function syncOneOfflineCheckIn(rec){
       await idbPut('pending_records', rec);
       return 'duplicate';
     }
+
+    if(haveSecret){
+      const viaServer = await syncCheckInViaServer(rec);
+      if(viaServer) return viaServer;
+    }
+    if(!sessionId) return markOfflineRetryOrFail('pending_records', rec, 'Could not resolve the lecture session');
 
     const { error: insErr } = await SUPABASE_CLIENT
       .from('attendance')
@@ -4095,6 +4301,7 @@ const State = {
   user: null,
   attendanceDraft: {}, // studentId -> 'p'|'l'|'a'
   hasCheckedInToday: false,
+  checkInSecret: null, // what the student scanned or typed, held only until completeCheckIn() hands it to the server
   checkInVerifying: false, // Sept 2026 handoff, Part 2 — true only while resolveCheckInOutcome() is in flight
   pinEntry: "",
   pendingUserId: null, // userId mid-flow during forced password change or password reset
@@ -8817,7 +9024,9 @@ function handleScannedQrPayload(raw){
     qrScanRafId = requestAnimationFrame(scanFrame);
     return;
   }
-  if(token !== LIVE_SESSION.token){
+  // LIVE_SESSION.token is null on a student's phone once
+  // migrate-server-side-checkin.sql has run: the server does the comparing.
+  if(LIVE_SESSION.token != null && token !== LIVE_SESSION.token){
     // Token has rotated since this QR was generated/captured — exactly the
     // screenshot-reuse case the rotating QR is designed to catch.
     showToast("This QR code has expired — ask your lecturer to refresh it");
@@ -8827,6 +9036,7 @@ function handleScannedQrPayload(raw){
   }
 
   stopQrScanner();
+  State.checkInSecret = { token };
   showToast("QR code recognized");
   setTimeout(()=>completeCheckIn(), 400);
 }
@@ -8900,7 +9110,10 @@ function pinBackspace(){
 }
 
 function verifyPin(){
-  if(State.pinEntry === LIVE_SESSION.pin){
+  // LIVE_SESSION.pin is null on a student's phone once
+  // migrate-server-side-checkin.sql has run: the server does the comparing.
+  if(LIVE_SESSION.pin == null || State.pinEntry === LIVE_SESSION.pin){
+    State.checkInSecret = { pin: State.pinEntry };
     completeCheckIn();
   } else {
     showToast("Incorrect code — check with your lecturer");
@@ -8921,6 +9134,16 @@ async function completeCheckIn(){
   State.checkInVerifying = true;
   rerenderCurrentScreen();
   const outcome = await resolveCheckInOutcome();
+  const secret = State.checkInSecret;
+  State.checkInSecret = null;
+
+  // Ask the server to verify the code and record the check-in. Only when we
+  // are online and nothing above already decided the outcome. 'unavailable'
+  // (migration not run yet) falls through to the old client-side write below.
+  let server = { state: 'unavailable' };
+  if(outcome.outcome === 'proceed' && !outcome.offline){
+    server = await serverCheckIn({ broadcastId: LIVE_SESSION.liveSessionId, token: secret && secret.token, pin: secret && secret.pin, offline: false });
+  }
   State.checkInVerifying = false;
 
   if(outcome.outcome === 'duplicate'){
@@ -8936,6 +9159,21 @@ async function completeCheckIn(){
     redirectToAppealFromCheckIn(outcome);
     return;
   }
+  if(server.state === 'rejected' && server.reason === 'already_checked_in'){
+    redirectToAppealFromCheckIn({ reason: `Checked into a second session for ${LIVE_SESSION.courseName || LIVE_SESSION.courseCode} today — please explain.` });
+    return;
+  }
+  if(server.state === 'rejected' || server.state === 'error'){
+    // Nothing was recorded and nothing is shown as checked in. Let them try again.
+    State.pinEntry = "";
+    showToast(server.state === 'rejected' ? checkInReasonText(server.reason) : "Couldn't record your check-in — please try again");
+    rerenderCurrentScreen();
+    if(checkinMethod === 'qr') startQrScanner();
+    return;
+  }
+  // The connection dropped between the pre-check and the server call:
+  // keep the scan and sync it later like any other offline check-in.
+  if(server.state === 'network') outcome.offline = true;
 
   State.hasCheckedInToday = true;
 
@@ -8956,8 +9194,10 @@ async function completeCheckIn(){
     source: 'scan', // Sept 2026 handoff, Part 5: locks this row against casual editing in Attendance Corrections — see canManuallyMark().
   });
 
-  // fire-and-forget — local check-in above already succeeded either way
-  if(outcome.offline) queueOfflineCheckIn(LIVE_SESSION.schedulingSessionId);
+  // The server already recorded it (ok), or it is queued for later (offline),
+  // or the server check-in is not available yet and the old write is used.
+  if(outcome.offline) queueOfflineCheckIn(LIVE_SESSION.schedulingSessionId, secret);
+  else if(server.state === 'ok') afterServerCheckIn(server);
   else liveWriteAttendance();
 
   rerenderCurrentScreen();
@@ -9013,7 +9253,7 @@ function renderStartSession(){
 
       <div class="live-hero-code-label">Or enter this code</div>
       <div class="session-pin-display">
-        ${LIVE_SESSION.pin.split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
+        ${String(LIVE_SESSION.pin || '').split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
       </div>
 
       <div class="live-hero-countdown">
@@ -9285,6 +9525,7 @@ async function startSessionForLecture(lecture){
   if(resumed){
     applyLiveSessionRow(resumed);
     subscribeToLiveSession(LIVE_SESSION.courseCode);
+    await ensureOwnerSecrets();
   } else {
     LIVE_SESSION.active = true;
     // liveSessionId must reflect "a session is genuinely running" in BOTH
@@ -13154,7 +13395,9 @@ function handleClassReportSubmit(e){
 // a display, never operating the session itself.
 function renderCoordinatorQrDisplay(){
   const enrolledInLiveCourse = STUDENT_COURSES.some(c => c.code === LIVE_SESSION.courseCode);
-  const authorized = isLiveSessionActive() && LIVE_SESSION.coordinatorAuthorized && enrolledInLiveCourse;
+  // Authorized AND holding the code: after migrate-server-side-checkin.sql the
+  // token is fetched from the server, so there is a brief moment with neither.
+  const authorized = isLiveSessionActive() && LIVE_SESSION.coordinatorAuthorized && enrolledInLiveCourse && !!LIVE_SESSION.token;
   return `
   <div class="app-header">
     <div class="header-back">
@@ -13180,7 +13423,7 @@ function renderCoordinatorQrDisplay(){
     <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:10px;">
       <div style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">OR STUDENTS CAN ENTER THIS CODE</div>
       <div class="session-pin-display">
-        ${LIVE_SESSION.pin.split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
+        ${String(LIVE_SESSION.pin || '').split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
       </div>
     </div>
     <button class="btn btn-ghost" onclick="navigate('home')">${ICONS.close} Stop Displaying</button>
@@ -15084,7 +15327,8 @@ function navigate(screenId, opts){
     // from scratch if this is the first live-session-aware screen visited
     // this session, then redraws once that resolves.
     drawQrPlaceholder();
-    startStudentLiveSessionSync().then(() => {
+    startStudentLiveSessionSync().then(async () => {
+      if(LIVE_SESSION.coordinatorAuthorized && !LIVE_SESSION.token) await loadBroadcastSecrets();
       if(currentScreen === 'coordinatorQrDisplay'){
         refreshScreenContentOnly();
         drawQrPlaceholder();
