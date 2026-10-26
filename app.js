@@ -3142,6 +3142,18 @@ const SCHEDULE = [
   ]},
 ];
 
+// Which weekday is "today" comes from the device clock, never from the seed
+// data: the mock SCHEDULE above is permanently flagged isToday on Wednesday,
+// which made every Lecturer/Student home show Wednesday's lectures (and a
+// "Wednesday" chip) on any other day. Called wherever a screen reads
+// isToday, so it also stays right across midnight without a reload. On a
+// weekend no day matches, so "today" is empty -- correct.
+function syncScheduleTodayFlags(){
+  const name = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  SCHEDULE.forEach(d => { d.isToday = d.day === name; });
+}
+syncScheduleTodayFlags();
+
 const RECORDS = [
   { date:"2026-06-23", reg:"VU-CSF-2401-0001-DAY", name:"Aisha Nakamya", prog:"Computer Science", code:"CSC3101", course:"Data Structures & Algorithms", venue:"LT1 - Main Building", status:"present" },
   { date:"2026-06-23", reg:"VU-CSF-2401-0002-DAY", name:"Brian Ssemwanga", prog:"Computer Science", code:"CSC3101", course:"Data Structures & Algorithms", venue:"LT1 - Main Building", status:"present" },
@@ -5620,6 +5632,7 @@ function renderStaffProfile(){
 // at it. It only ever coincidentally showed the right course because of
 // mock data ordering.
 function getLecturerTodayLectures(){
+  syncScheduleTodayFlags();
   const today = SCHEDULE.find(d=>d.isToday);
   if(!today || !State.user) return [];
   return today.lectures.filter(l => l.lecturer === State.user.name);
@@ -5644,11 +5657,11 @@ function renderLecturerDashboard(){
       </div>
     </div>
     <div class="header-greet">
-      <h2>Good evening, ${escapeHtmlText(firstName(State.user.name))}</h2>
+      <h2>${timeGreeting()}, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Manage your course sessions and attendance.</p>
       <div class="greeting-tags">
         <span class="tag-pill">${escapeHtmlText(State.user.id || 'VU-LEC-101')}</span>
-        <span class="tag-pill">Wednesday</span>
+        <span class="tag-pill">${escapeHtmlText(new Date().toLocaleDateString('en-US', { weekday: 'long' }))}</span>
       </div>
     </div>
   </div>
@@ -5923,6 +5936,7 @@ function donutChart(segments){
 // getSessionStudents(lecture) rosters by the lecture's own dept, same
 // fidelity SCHEDULE/STUDENTS already support elsewhere in this file.
 function getLecturerLectures(){
+  syncScheduleTodayFlags();
   const lecturerName = State.user?.name;
   const seen = new Set();
   const out = [];
@@ -6368,6 +6382,7 @@ function submitAttendance(){
 // ============================================================
 
 function renderSchedule(opts){
+  syncScheduleTodayFlags();
   opts = opts || {};
   const title = opts.title || "My Lecture Schedule";
   const subtitle = opts.subtitle || "Weekly timetable overview";
@@ -8041,6 +8056,7 @@ function filterLecturesForStudentMode(lectures){
 }
 
 function getStudentTodayLectures(){
+  syncScheduleTodayFlags();
   const today = SCHEDULE.find(d=>d.isToday);
   if(!today) return [];
   const myCourseCodes = STUDENT_COURSES.map(c=>c.code);
@@ -9393,7 +9409,7 @@ function renderRegistrarDashboard(){
       </div>
     </div>
     <div class="header-greet">
-      <h2>Good evening, ${escapeHtmlText(firstName(State.user.name))}</h2>
+      <h2>${timeGreeting()}, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Registrar's Attendance Management Dashboard</p>
       <div class="greeting-tags">
         <span class="tag-pill">${State.user.staffId || ''}</span>
@@ -10604,7 +10620,7 @@ function renderAdministratorDashboard(){
       </div>
     </div>
     <div class="header-greet">
-      <h2>Good evening, ${escapeHtmlText(firstName(State.user.name))}</h2>
+      <h2>${timeGreeting()}, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Full system access — users, roles, and platform configuration.</p>
       <div class="greeting-tags">
         <span class="tag-pill">${State.user.staffId || ''}</span>
