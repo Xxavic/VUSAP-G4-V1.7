@@ -497,8 +497,16 @@ async function liveDeactivateOtherSessions(courseCode, mode){
 }
 
 // Lecturer side: create/update the broadcast row to match local LIVE_SESSION state.
+// Resolves to 'ok', 'network' (no connection — see isNetworkError()), 'error'
+// (anything else), or 'skipped' (mock mode). Most callers ignore it; the
+// offline-sync code uses it to pause QR rotation and to queue a session end.
 async function liveWriteSession(){
-  if(!LIVE_BACKEND) return;
+  if(!LIVE_BACKEND) return 'skipped';
+  // Captured up front: endSession() clears LIVE_SESSION.liveSessionId right
+  // after calling this without awaiting, so reading it again after an await
+  // (the class_id retry below used to) would target `id = null` instead of
+  // the session actually being ended.
+  const sessionId = LIVE_SESSION.liveSessionId;
   const payload = {
     course_code: LIVE_SESSION.courseCode,
     course_name: LIVE_SESSION.courseName,
@@ -538,17 +546,20 @@ async function liveWriteSession(){
   // code-only lookup, same as pre-fix) until the migration catches up.
   const isMissingClassIdColumn = (err) => !!err && (err.code === '42703' || err.code === 'PGRST204' || /class_id/i.test(err.message || ''));
   try {
-    if(LIVE_SESSION.liveSessionId){
+    if(sessionId){
       let { error } = await SUPABASE_CLIENT
         .from('live_qr_sessions')
         .update(payload)
-        .eq('id', LIVE_SESSION.liveSessionId);
+        .eq('id', sessionId);
       if(error && isMissingClassIdColumn(error)){
         console.warn('liveWriteSession: class_id column missing — has migrate-live-sessions-class-id.sql been run? Retrying without it.');
         const { class_id, ...payloadNoClassId } = payload;
-        ({ error } = await SUPABASE_CLIENT.from('live_qr_sessions').update(payloadNoClassId).eq('id', LIVE_SESSION.liveSessionId));
+        ({ error } = await SUPABASE_CLIENT.from('live_qr_sessions').update(payloadNoClassId).eq('id', sessionId));
       }
-      if(error) console.warn('liveWriteSession update failed:', error);
+      if(error){
+        console.warn('liveWriteSession update failed:', error);
+        return isNetworkError(error) ? 'network' : 'error';
+      }
     } else {
       let { data, error } = await SUPABASE_CLIENT
         .from('live_qr_sessions')
@@ -560,14 +571,19 @@ async function liveWriteSession(){
         const { class_id, ...payloadNoClassId } = payload;
         ({ data, error } = await SUPABASE_CLIENT.from('live_qr_sessions').insert(payloadNoClassId).select().single());
       }
-      if(error) console.warn('liveWriteSession insert failed:', error);
-      else if(data){
+      if(error){
+        console.warn('liveWriteSession insert failed:', error);
+        return isNetworkError(error) ? 'network' : 'error';
+      }
+      if(data){
         LIVE_SESSION.liveSessionId = data.id;
         LIVE_SESSION.serverStartedAt = data.started_at; // authoritative — from the DB's own clock
       }
     }
+    return 'ok';
   } catch(e){
     console.warn('liveWriteSession error:', e);
+    return isNetworkError(e) ? 'network' : 'error';
   }
 }
 
@@ -769,7 +785,10 @@ async function checkLecturerActiveSession(){
         LIVE_SESSION.schedulingSessionId = id;
       });
       refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
-    } else if(LIVE_SESSION.active || LIVE_SESSION.liveSessionId){
+    } else if((LIVE_SESSION.active || LIVE_SESSION.liveSessionId) && await pingSupabase(3000)){
+      // (The ping: liveFindActiveSession() also returns null when the
+      // lookup itself failed for lack of a connection — that must not wipe a
+      // session that's still genuinely running. See OFFLINE SYNC.)
       // This is the fix for a real bug found in testing: endSession() sets
       // LIVE_SESSION.active = false and writes that to the database, but
       // never clears liveSessionId — so within the same browser session
@@ -802,6 +821,11 @@ async function startStudentLiveSessionSync(){
       applyLiveSessionRow(row);
       subscribeToLiveSession(c.code);
       await restoreCheckedInStateForBroadcast(row.id);
+      // A check-in still waiting in the offline queue counts too.
+      if(!State.hasCheckedInToday && await hasQueuedCheckIn(row.id)){
+        State.hasCheckedInToday = true;
+        refreshScreenContentOnly();
+      }
       return;
     }
   }
@@ -898,7 +922,10 @@ async function resolveClassRow(courseCode, classId){
   }
 }
 
-async function liveEnsureSchedulingSession(courseCode, classId){
+// dateISO/topic are only passed by the offline sync (syncOneOfflineCheckIn()),
+// which can run on a later day than the check-in it's replaying; every live
+// caller omits them and gets today + the current broadcast's course name.
+async function liveEnsureSchedulingSession(courseCode, classId, dateISO, topic){
   if(!LIVE_BACKEND) return null;
   try {
     const classRow = await resolveClassRow(courseCode, classId);
@@ -908,7 +935,7 @@ async function liveEnsureSchedulingSession(courseCode, classId){
       return null;
     }
 
-    const today = new Date().toISOString().slice(0,10); // `date` column — date-only, no time component
+    const today = dateISO || new Date().toISOString().slice(0,10); // `date` column — date-only, no time component
 
     const { data: existing, error: sErr } = await SUPABASE_CLIENT
       .from('sessions')
@@ -926,7 +953,7 @@ async function liveEnsureSchedulingSession(courseCode, classId){
       .insert({
         class_id: classRow.id,
         teacher_id: classRow.teacher_id,
-        topic: LIVE_SESSION.courseName,
+        topic: topic || LIVE_SESSION.courseName,
         date: today,
       })
       .select()
@@ -980,7 +1007,14 @@ async function liveWriteAttendance(){
       sessionId = await liveEnsureSchedulingSession(LIVE_SESSION.courseCode, LIVE_SESSION.classId);
       LIVE_SESSION.schedulingSessionId = sessionId;
     }
-    if(!sessionId) return; // no live classes/sessions row to attach to — stays local-only
+    if(!sessionId){
+      // liveEnsureSchedulingSession() returns null both for "no classes row"
+      // (stays local-only, as before) and for "the connection just dropped"
+      // — tell them apart with a direct ping, and queue the latter rather
+      // than losing a check-in the student was already shown as successful.
+      if(!(await pingSupabase())) await queueOfflineCheckIn(null);
+      return;
+    }
 
     const deviceId = getDeviceId();
 
@@ -1006,7 +1040,13 @@ async function liveWriteAttendance(){
       })
       .select()
       .single();
-    if(error){ console.warn('liveWriteAttendance insert failed:', error); return; }
+    if(error){
+      console.warn('liveWriteAttendance insert failed:', error);
+      // Only a lost connection is queued — a real rejection from Postgres
+      // (duplicate, RLS, bad column) would just fail the same way on retry.
+      if(isNetworkError(error)) await queueOfflineCheckIn(sessionId);
+      return;
+    }
     const markedAt = data?.marked_at || new Date().toISOString();
 
     // Fraud detection only runs after a confirmed successful write, using
@@ -1014,6 +1054,531 @@ async function liveWriteAttendance(){
     checkFraudSignals(sessionId, deviceId, markedAt);
   } catch(e){
     console.warn('liveWriteAttendance error:', e);
+    if(isNetworkError(e)) await queueOfflineCheckIn(LIVE_SESSION.schedulingSessionId);
+  }
+}
+
+// ------------------------------------------------------------
+// OFFLINE SYNC (Oct 2026). Check-ins are written by each STUDENT's own
+// phone (liveWriteAttendance() above), not the Lecturer's — so the offline
+// queue lives on the student side: a check-in whose write fails because the
+// connection dropped is saved in IndexedDB and replayed later by
+// syncOfflineQueue(). The Lecturer side has two smaller pieces: QR rotation
+// pauses while the broadcast can't reach the server (rotateSessionToken()),
+// and an "End Session" that couldn't reach the server is queued the same
+// way (queueOfflineSessionEnd()). Starting a session with no connection is
+// refused outright (startSessionForLecture()) — students learn the QR/PIN
+// from the server, so a session started offline could never be checked
+// into anyway.
+//
+// A queued check-in syncs with the server's own marked_at (the sync time),
+// so checkFraudSignals()'s late-window check deliberately doesn't run for
+// it — it would flag every offline check-in as late. The shared-device
+// check still runs, via checkSharedDeviceAfterSync().
+// ------------------------------------------------------------
+
+const OFFLINE_DB_NAME = 'qrast-offline';
+let offlineDB = null;
+let offlineDBReady = null;
+let pendingRecordCount = 0;      // this user's queued check-ins
+let pendingSessionEndCount = 0;  // this user's queued "End Session" writes
+let syncInProgress = false;
+let lecturerConnectionLost = false;
+
+// Lost-connection errors as supabase-js surfaces them: postgrest returns an
+// error object (it doesn't throw) whose message is the browser's fetch
+// failure ("Failed to fetch" in Chrome, "NetworkError…" in Firefox, "Load
+// failed" in Safari) with no Postgres code. Anything carrying a real code
+// (23505, 42501, PGRST…) is the server answering, so it's never a network error.
+function isNetworkError(err){
+  if(!err) return false;
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  if(err.code && !/^(ECONNRESET|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|20)$/.test(String(err.code))) return false;
+  return /failed to fetch|networkerror|network request failed|load failed|fetch failed|timeout|aborted/i.test(err.message || String(err));
+}
+
+// Cheap reachability check — Supabase's auth health endpoint, 5s cap. A
+// project that's down (5xx) counts as unreachable, same as no connection.
+async function pingSupabase(timeoutMs = 5000){
+  if(!SUPABASE_URL || !SUPABASE_ANON) return false;
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_ANON }, signal: ctrl.signal, cache: 'no-store' });
+    return res.ok;
+  } catch(e){
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Resolves to the IndexedDB handle, or null where IndexedDB isn't available
+// (some private-browsing modes) — every caller treats null as "no queue",
+// which degrades to exactly the pre-offline-sync behavior.
+function initOfflineDB(){
+  if(offlineDBReady) return offlineDBReady;
+  offlineDBReady = new Promise(resolve => {
+    let req;
+    try {
+      if(!window.indexedDB) return resolve(null);
+      req = indexedDB.open(OFFLINE_DB_NAME, 1);
+    } catch(e){
+      console.warn('initOfflineDB: IndexedDB unavailable:', e);
+      return resolve(null);
+    }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      const recs = db.createObjectStore('pending_records', { keyPath: 'local_id', autoIncrement: true });
+      recs.createIndex('sync_status', 'sync_status');
+      recs.createIndex('student_id', 'student_id');
+      const ends = db.createObjectStore('pending_session_ends', { keyPath: 'local_id', autoIncrement: true });
+      ends.createIndex('sync_status', 'sync_status');
+      db.createObjectStore('sync_log', { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = () => { offlineDB = req.result; resolve(offlineDB); };
+    req.onerror = () => { console.warn('initOfflineDB failed:', req.error); resolve(null); };
+  });
+  return offlineDBReady;
+}
+
+function idbRequest(req){
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGetAll(storeName, syncStatus){
+  const db = await initOfflineDB();
+  if(!db) return [];
+  const store = db.transaction(storeName, 'readonly').objectStore(storeName);
+  return idbRequest(syncStatus ? store.index('sync_status').getAll(syncStatus) : store.getAll());
+}
+
+async function idbPut(storeName, value){
+  const db = await initOfflineDB();
+  if(!db) return null;
+  return idbRequest(db.transaction(storeName, 'readwrite').objectStore(storeName).put(value));
+}
+
+async function idbDelete(storeName, key){
+  const db = await initOfflineDB();
+  if(!db) return;
+  return idbRequest(db.transaction(storeName, 'readwrite').objectStore(storeName).delete(key));
+}
+
+async function logSyncEvent(event, detail){
+  try {
+    await idbPut('sync_log', { event, detail, timestamp: new Date().toISOString() });
+  } catch(e){ console.warn('logSyncEvent failed:', e); }
+}
+
+// Counts only the signed-in user's items — a queued check-in can only be
+// synced by the student it belongs to (RLS ties attendance inserts to
+// auth.uid()), so another account's leftovers on a shared phone wait,
+// untouched, until that student signs in again.
+async function refreshPendingCounts(){
+  const uid = State.user?.supabaseId;
+  if(!uid){ pendingRecordCount = 0; pendingSessionEndCount = 0; return; }
+  try {
+    const [recs, ends] = await Promise.all([idbGetAll('pending_records', 'pending'), idbGetAll('pending_session_ends', 'pending')]);
+    pendingRecordCount = recs.filter(r => r.student_id === uid).length;
+    pendingSessionEndCount = ends.filter(e => e.lecturer_id === uid).length;
+  } catch(e){
+    console.warn('refreshPendingCounts failed:', e);
+  }
+}
+
+// Called from liveWriteAttendance() when the write failed for lack of a
+// connection. The student has already been shown "Checked in" by
+// completeCheckIn(); this makes that true once they're back online.
+async function queueOfflineCheckIn(sessionId){
+  if(!State.user?.supabaseId) return false;
+  try {
+    const db = await initOfflineDB();
+    if(!db){ console.warn('queueOfflineCheckIn: no IndexedDB — check-in not saved offline'); return false; }
+    const rec = {
+      student_id: State.user.supabaseId,
+      student_name: State.user.name || null,
+      course_code: LIVE_SESSION.courseCode,
+      course_name: LIVE_SESSION.courseName || null,
+      class_id: LIVE_SESSION.classId || null,
+      live_broadcast_id: LIVE_SESSION.liveSessionId || null,
+      session_id: sessionId || null, // null = resolve at sync time from course/class/date
+      check_in_date: new Date().toISOString().slice(0,10), // same UTC-date convention as liveEnsureSchedulingSession()
+      device_id: getDeviceId(),
+      queued_at: new Date().toISOString(),
+      sync_status: 'pending',
+      attempts: 0,
+    };
+    // One queued check-in per student per broadcast — a student re-scanning
+    // while still offline mustn't stack up copies.
+    const pending = await idbGetAll('pending_records', 'pending');
+    const already = pending.some(r => r.student_id === rec.student_id && r.course_code === rec.course_code
+      && r.live_broadcast_id === rec.live_broadcast_id && r.check_in_date === rec.check_in_date);
+    if(!already){
+      await idbPut('pending_records', rec);
+      showToast("No connection — check-in saved on this phone and will sync automatically");
+    }
+    await refreshPendingCounts();
+    updateOfflineBanner();
+    return true;
+  } catch(e){
+    console.warn('queueOfflineCheckIn failed:', e);
+    return false;
+  }
+}
+
+// Student side: a queued (not yet synced) check-in for this broadcast still
+// counts as "checked in" — otherwise a reload while offline-queued would put
+// the scanner back in front of them. See startStudentLiveSessionSync().
+async function hasQueuedCheckIn(broadcastId){
+  if(!broadcastId || !State.user?.supabaseId) return false;
+  try {
+    const pending = await idbGetAll('pending_records', 'pending');
+    return pending.some(r => r.student_id === State.user.supabaseId && r.live_broadcast_id === broadcastId);
+  } catch(e){ return false; }
+}
+
+// Lecturer side: endSession()'s broadcast write failed for lack of a
+// connection — without this the broadcast row stays active:true forever and
+// the no-show sweep never runs on the server.
+async function queueOfflineSessionEnd(job){
+  try {
+    await idbPut('pending_session_ends', { ...job, sync_status: 'pending', attempts: 0, queued_at: new Date().toISOString() });
+    await refreshPendingCounts();
+    updateOfflineBanner();
+    showToast("No connection — session end saved and will sync automatically");
+  } catch(e){
+    console.warn('queueOfflineSessionEnd failed:', e);
+  }
+}
+
+// A retryable failure (server answered, but not with success) — give up
+// after a few attempts rather than retrying a permanently-bad row forever.
+async function markOfflineRetryOrFail(storeName, item, detail){
+  item.attempts = (item.attempts || 0) + 1;
+  item.last_error = detail || null;
+  if(item.attempts >= 5){
+    item.sync_status = 'failed';
+    await logSyncEvent('sync_failed', `${storeName} #${item.local_id}: ${detail || 'unknown error'}`);
+  }
+  await idbPut(storeName, item);
+  return 'failed';
+}
+
+// Replays one queued check-in. Resolves to 'synced' | 'duplicate' |
+// 'conflict' | 'failed' | 'network' ('network' stops the whole run).
+// resolveCheckInOutcome()'s checks failed open while offline, so the ones
+// that matter are re-applied here against what the server now holds.
+async function syncOneOfflineCheckIn(rec){
+  try {
+    let sessionId = rec.session_id;
+    if(!sessionId){
+      sessionId = await liveEnsureSchedulingSession(rec.course_code, rec.class_id, rec.check_in_date, rec.course_name);
+      if(!sessionId) return markOfflineRetryOrFail('pending_records', rec, 'Could not resolve the lecture session');
+      rec.session_id = sessionId;
+    }
+
+    const { data: existingRows, error: readErr } = await SUPABASE_CLIENT
+      .from('attendance')
+      .select('id, live_broadcast_id, device_id, status')
+      .eq('session_id', sessionId)
+      .eq('student_id', rec.student_id);
+    if(readErr){
+      if(isNetworkError(readErr)) return 'network';
+      return markOfflineRetryOrFail('pending_records', rec, readErr.message);
+    }
+    const rows = existingRows || [];
+
+    // Already checked in to this exact broadcast (e.g. rescanned once back
+    // online). Same device = the same student twice, nothing to flag. A
+    // DIFFERENT device = this account checked in from two phones for one
+    // session — the "two devices claim the same student" case.
+    const sameBroadcast = rec.live_broadcast_id ? rows.find(r => r.live_broadcast_id === rec.live_broadcast_id) : null;
+    if(sameBroadcast){
+      if(sameBroadcast.device_id && sameBroadcast.device_id !== rec.device_id){
+        liveWriteSuspicion(rec.student_name || 'Unknown student',
+          'Checked in from two different devices for the same session (found during offline sync)',
+          'medium', rec.course_code, rec.device_id);
+        await logSyncEvent('conflict', `${rec.course_code} ${rec.check_in_date}: second device ${rec.device_id}`);
+      }
+      rec.sync_status = 'duplicate';
+      await idbPut('pending_records', rec);
+      return 'duplicate';
+    }
+
+    // The Lecturer's no-show sweep (liveFinalizeSessionAttendance()) can run
+    // before this check-in syncs, leaving an auto-'absent' row (no
+    // device_id — staff/system rows never carry one). The student really did
+    // scan a valid code during the session, so upgrade it rather than
+    // leaving them absent. If RLS doesn't let a student update it, fall
+    // through to 'conflict' so they're told to appeal.
+    const autoAbsent = rows.find(r => r.status === 'absent' && !r.device_id);
+    if(autoAbsent){
+      const { data: upd, error: updErr } = await SUPABASE_CLIENT
+        .from('attendance')
+        .update({ status: 'present', device_id: rec.device_id, live_broadcast_id: rec.live_broadcast_id })
+        .eq('id', autoAbsent.id)
+        .select();
+      if(updErr && isNetworkError(updErr)) return 'network';
+      if(!updErr && upd && upd.length){
+        rec.sync_status = 'synced';
+        rec.synced_at = new Date().toISOString();
+        await idbPut('pending_records', rec);
+        await logSyncEvent('record_synced', `${rec.course_code} ${rec.check_in_date}: upgraded auto-absent to present`);
+        checkSharedDeviceAfterSync(rec, sessionId);
+        return 'synced';
+      }
+      return markOfflineConflict(rec, 'Marked absent before this check-in synced');
+    }
+
+    // A real scan from a DIFFERENT broadcast the same day — online, this is
+    // exactly what resolveCheckInOutcome() sends to Submit Appeal.
+    if(rows.some(r => r.device_id)){
+      return markOfflineConflict(rec, 'Already checked in to another session for this course today');
+    }
+    // Staff already marked them (a correction) — theirs stands.
+    if(rows.length){
+      rec.sync_status = 'duplicate';
+      await idbPut('pending_records', rec);
+      return 'duplicate';
+    }
+
+    const { error: insErr } = await SUPABASE_CLIENT
+      .from('attendance')
+      .insert({
+        session_id: sessionId,
+        live_broadcast_id: rec.live_broadcast_id,
+        student_id: rec.student_id,
+        student_name: rec.student_name,
+        status: 'present',
+        device_id: rec.device_id,
+      });
+    if(insErr){
+      if(insErr.code === '23505'){ // raced with another write — the row exists, which is what we wanted
+        rec.sync_status = 'duplicate';
+        await idbPut('pending_records', rec);
+        return 'duplicate';
+      }
+      if(isNetworkError(insErr)) return 'network';
+      return markOfflineRetryOrFail('pending_records', rec, insErr.message);
+    }
+    rec.sync_status = 'synced';
+    rec.synced_at = new Date().toISOString();
+    await idbPut('pending_records', rec);
+    await logSyncEvent('record_synced', `${rec.course_code} ${rec.check_in_date}`);
+    checkSharedDeviceAfterSync(rec, sessionId);
+    return 'synced';
+  } catch(e){
+    if(isNetworkError(e)) return 'network';
+    return markOfflineRetryOrFail('pending_records', rec, e.message);
+  }
+}
+
+async function markOfflineConflict(rec, detail){
+  rec.sync_status = 'conflict';
+  rec.last_error = detail;
+  await idbPut('pending_records', rec);
+  await logSyncEvent('conflict', `${rec.course_code} ${rec.check_in_date}: ${detail}`);
+  return 'conflict';
+}
+
+// checkFraudSignals()'s shared-device half, for a check-in replayed from the
+// offline queue. No time window: marked_at on a synced row is the sync time,
+// not the scan time, so "within N minutes" can't be judged — any other
+// student checked in from this same device in the same session is flagged.
+// The threshold still acts as the on/off switch, same as the live check.
+async function checkSharedDeviceAfterSync(rec, sessionId){
+  if(!(FRAUD_THRESHOLDS.sharedDeviceWindowMinutes > 0) || !rec.device_id) return;
+  try {
+    const { data: others, error } = await SUPABASE_CLIENT
+      .from('attendance')
+      .select('student_id')
+      .eq('session_id', sessionId)
+      .eq('device_id', rec.device_id)
+      .neq('student_id', rec.student_id)
+      .limit(5);
+    if(!error && others && others.length){
+      logSuspicion(
+        rec.student_name || 'Unknown student',
+        `Same device used for ${others.length + 1} students in one session (found during offline sync)`,
+        'high',
+        rec.course_code,
+        rec.device_id
+      );
+    }
+  } catch(e){
+    console.warn('checkSharedDeviceAfterSync error:', e);
+  }
+}
+
+async function syncOneOfflineSessionEnd(job){
+  try {
+    const { error } = await SUPABASE_CLIENT
+      .from('live_qr_sessions')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('id', job.live_session_id);
+    if(error){
+      if(isNetworkError(error)) return 'network';
+      return markOfflineRetryOrFail('pending_session_ends', job, error.message);
+    }
+    // The no-show sweep endSession() couldn't run on the server — idempotent
+    // (it skips anyone who already has a row), so safe even if it partly ran.
+    await liveFinalizeSessionAttendance(job.course_code, job.class_id, job.date);
+    job.sync_status = 'synced';
+    job.synced_at = new Date().toISOString();
+    await idbPut('pending_session_ends', job);
+    await logSyncEvent('session_synced', `${job.course_code} ${job.date}: session ended`);
+    return 'synced';
+  } catch(e){
+    if(isNetworkError(e)) return 'network';
+    return markOfflineRetryOrFail('pending_session_ends', job, e.message);
+  }
+}
+
+// Keeps the queue from growing forever: finished items older than a week,
+// and all but the newest 200 log entries.
+async function pruneOfflineQueue(){
+  try {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for(const storeName of ['pending_records', 'pending_session_ends']){
+      for(const item of await idbGetAll(storeName)){
+        if(item.sync_status !== 'pending' && new Date(item.synced_at || item.queued_at).getTime() < cutoff){
+          await idbDelete(storeName, item.local_id);
+        }
+      }
+    }
+    const log = await idbGetAll('sync_log');
+    for(const entry of log.slice(0, Math.max(0, log.length - 200))) await idbDelete('sync_log', entry.id);
+  } catch(e){
+    console.warn('pruneOfflineQueue failed:', e);
+  }
+}
+
+async function syncOfflineQueue(){
+  if(syncInProgress) return;
+  syncInProgress = true;
+  try {
+    if(!LIVE_BACKEND || !(await initOfflineDB())) return;
+    const uid = State.user?.supabaseId;
+    if(!uid) return;
+    const [recs, ends] = await Promise.all([idbGetAll('pending_records', 'pending'), idbGetAll('pending_session_ends', 'pending')]);
+    const myRecs = recs.filter(r => r.student_id === uid);
+    const myEnds = ends.filter(e => e.lecturer_id === uid);
+    if(!myRecs.length && !myEnds.length){
+      await refreshPendingCounts();
+      updateOfflineBanner();
+      return;
+    }
+    if(!(await pingSupabase())){ updateOfflineBanner(); return; }
+
+    let networkLost = false;
+    for(const job of myEnds){
+      if(await syncOneOfflineSessionEnd(job) === 'network'){ networkLost = true; break; }
+    }
+    let synced = 0;
+    const conflicts = [];
+    if(!networkLost){
+      for(const rec of myRecs){
+        const result = await syncOneOfflineCheckIn(rec);
+        if(result === 'network') break;
+        if(result === 'synced' || result === 'duplicate') synced++;
+        if(result === 'conflict') conflicts.push(rec);
+      }
+    }
+
+    await refreshPendingCounts();
+    if(synced) showSyncedBanner(synced);
+    else updateOfflineBanner();
+    if(conflicts.length){
+      const courses = [...new Set(conflicts.map(c => c.course_code))].join(', ');
+      showToast(`${conflicts.length} offline check-in${conflicts.length !== 1 ? 's' : ''} (${courses}) couldn't be recorded — please submit an appeal`);
+    }
+    pruneOfflineQueue();
+  } catch(e){
+    console.warn('syncOfflineQueue error:', e);
+  } finally {
+    syncInProgress = false;
+  }
+}
+
+// ---------- Offline banner ----------
+function showOfflineBanner(text){
+  const b = document.getElementById('offlineBanner');
+  if(!b) return;
+  clearTimeout(b._timer);
+  b.className = 'is-offline';
+  b.textContent = text;
+}
+
+function showSyncedBanner(syncedCount){
+  const b = document.getElementById('offlineBanner');
+  if(!b) return;
+  clearTimeout(b._timer);
+  b.className = 'is-synced';
+  b.textContent = `✓ Synced ${syncedCount} offline check-in${syncedCount !== 1 ? 's' : ''}`;
+  b._timer = setTimeout(() => { b.className = ''; updateOfflineBanner(); }, 3000);
+}
+
+function updateOfflineBanner(){
+  const b = document.getElementById('offlineBanner');
+  if(!b) return;
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if(lecturerConnectionLost && isLiveSessionActive()){
+    showOfflineBanner('⚠ No connection — QR code paused so students can keep checking in');
+  } else if(pendingSessionEndCount > 0){
+    showOfflineBanner(offline ? '⚠ No connection — session end saved, will sync automatically' : '⏳ Session end waiting to sync');
+  } else if(pendingRecordCount > 0){
+    const n = `${pendingRecordCount} check-in${pendingRecordCount !== 1 ? 's' : ''}`;
+    showOfflineBanner(offline ? `⚠ No connection — ${n} saved on this phone, will sync automatically` : `⏳ ${n} waiting to sync`);
+  } else if(offline && State.role){
+    showOfflineBanner('⚠ No connection — some information may be out of date');
+  } else if(b.className !== 'is-synced'){
+    b.className = '';
+  }
+}
+
+// ---------- Lecturer: QR rotation while the connection is down ----------
+function setLecturerConnectionLost(lost){
+  if(lecturerConnectionLost === lost) return;
+  lecturerConnectionLost = lost;
+  updateOfflineBanner();
+  if(!lost) showToast('Back online — QR code rotating again');
+}
+
+// Replaces the plain regenerate+write the session ticker used to do. While
+// the broadcast can't reach the server, students' phones keep holding the
+// last token that DID reach it — rotating on the Lecturer's screen anyway
+// would make every QR scan fail as "expired". So: keep showing that token,
+// and use each would-be rotation as a reconnect probe instead.
+let rotationInFlight = false;
+async function rotateSessionToken(){
+  if(!LIVE_BACKEND){
+    regenerateSessionToken();
+    drawQrPlaceholder();
+    liveWriteSession();
+    return;
+  }
+  if(rotationInFlight) return;
+  rotationInFlight = true;
+  try {
+    if(lecturerConnectionLost){
+      if(await liveWriteSession() === 'ok') setLecturerConnectionLost(false);
+      return;
+    }
+    const prevToken = LIVE_SESSION.token;
+    regenerateSessionToken();
+    drawQrPlaceholder();
+    if(await liveWriteSession() === 'network'){
+      LIVE_SESSION.token = prevToken;
+      drawQrPlaceholder();
+      setLecturerConnectionLost(true);
+    }
+  } finally {
+    rotationInFlight = false;
   }
 }
 
@@ -1371,6 +1936,13 @@ async function resolveCheckInOutcome(){
   const courseCode = LIVE_SESSION.courseCode;
   const courseName = LIVE_SESSION.courseName;
   const broadcastId = LIVE_SESSION.liveSessionId;
+
+  // No connection: every lookup below would fail anyway, but only after
+  // supabase-js's own retries (1s+2s+4s per GET, four GETs) — ~30s of
+  // "Verifying…" before failing open. One short ping skips straight to
+  // 'proceed', and `offline` tells completeCheckIn() to queue the write
+  // (see OFFLINE SYNC) rather than sit through the same retries again.
+  if(!(await pingSupabase(3000))) return { outcome: 'proceed', offline: true };
 
   try {
     // Step 1 — already checked in to this exact broadcast.
@@ -4965,6 +5537,12 @@ function logout(){
   // have access to.
   _recordsCatalogFacultyKey = null;
   _recordsCatalogCourseCode = null;
+  // The queue itself stays on the phone for its owner's next sign-in; only
+  // the counts/banner are per-account.
+  pendingRecordCount = 0;
+  pendingSessionEndCount = 0;
+  lecturerConnectionLost = false;
+  updateOfflineBanner();
   renderApp();
 }
 
@@ -8223,7 +8801,9 @@ async function completeCheckIn(){
     source: 'scan', // Sept 2026 handoff, Part 5: locks this row against casual editing in Attendance Corrections — see canManuallyMark().
   });
 
-  liveWriteAttendance(); // fire-and-forget — local check-in above already succeeded either way
+  // fire-and-forget — local check-in above already succeeded either way
+  if(outcome.offline) queueOfflineCheckIn(LIVE_SESSION.schedulingSessionId);
+  else liveWriteAttendance();
 
   rerenderCurrentScreen();
   fireConfetti();
@@ -8349,9 +8929,7 @@ function startSessionTicker(){
     if(rotateLabel) rotateLabel.textContent = `Refreshes in ${Math.max(0, secondsUntilRotate)}s`;
 
     if(secondsUntilRotate <= 0){
-      regenerateSessionToken();
-      drawQrPlaceholder();
-      liveWriteSession();
+      rotateSessionToken(); // pauses on the current token while offline — see its comment
       secondsUntilRotate = LIVE_SESSION.tokenRotateSeconds;
     }
 
@@ -8447,10 +9025,23 @@ function endSession(){
   // it would incorrectly insert a new row instead of marking the real one
   // inactive, leaving the actual session permanently stuck as active in
   // the database (the exact class of bug this whole fix is closing).
-  liveWriteSession();
+  const endedSession = {
+    live_session_id: LIVE_SESSION.liveSessionId,
+    lecturer_id: State.user?.supabaseId || null,
+    course_code: LIVE_SESSION.courseCode,
+    class_id: LIVE_SESSION.classId || null,
+    date: new Date().toISOString().slice(0,10),
+  };
+  liveWriteSession().then(result => {
+    // No connection: queue the end so the broadcast doesn't stay active on
+    // the server forever — see queueOfflineSessionEnd().
+    if(result === 'network' && endedSession.live_session_id && endedSession.lecturer_id) queueOfflineSessionEnd(endedSession);
+  });
   LIVE_SESSION.liveSessionId = null;
   LIVE_SESSION.serverStartedAt = null;
   LIVE_SESSION.mode = null;
+  lecturerConnectionLost = false;
+  updateOfflineBanner();
   showToast("Session ended");
   navigate('dashboard');
 }
@@ -8492,6 +9083,13 @@ function handleLectureRowTap(code, time){
 }
 
 async function startSessionForLecture(lecture){
+  // Students learn the QR/PIN from the server, so a session started with no
+  // connection could never be checked into — refuse it clearly instead of
+  // showing a QR code nobody's phone can match (see OFFLINE SYNC).
+  if(LIVE_BACKEND && !(await pingSupabase())){
+    showToast("You're offline — students can't receive the code until you reconnect");
+    return;
+  }
   LIVE_SESSION.windowSeconds = ATTENDANCE_POLICIES.sessionWindowMinutes * 60;
   LIVE_SESSION.tokenRotateSeconds = ATTENDANCE_POLICIES.qrRotateSeconds;
   // Sept 2026 handoff, Part 1: this is the fix for the session always being
@@ -14591,6 +15189,8 @@ function boot(){
   }
   renderApp();
   showToast(`Welcome, ${firstName(State.user.name)}`);
+  // Anything this account queued offline earlier (on this phone) syncs now.
+  refreshPendingCounts().then(() => { updateOfflineBanner(); syncOfflineQueue(); });
   resetAutoLogoutTimer();
   ['click','keydown','touchstart'].forEach(ev => {
     document.addEventListener(ev, resetAutoLogoutTimer, { passive: true });
@@ -14726,9 +15326,34 @@ document.addEventListener('DOMContentLoaded', ()=>{
   resumeSupabaseSession().then(() => {
     if(!State.role) renderApp(); // no session found — show login
   });
+  initOfflineDB(); // the offline check-in queue — see OFFLINE SYNC; boot() kicks off its first sync
+  updateOfflineBanner();
   registerServiceWorker();
   setupInstallPrompt();
 });
+
+// Offline sync triggers — see OFFLINE SYNC. The short delay on 'online'
+// gives the connection a moment to actually carry traffic.
+window.addEventListener('online', () => {
+  setTimeout(() => {
+    updateOfflineBanner();
+    syncOfflineQueue();
+    // A Lecturer mid-session: push the current state now rather than
+    // waiting up to a full rotation for the reconnect probe.
+    if(lecturerConnectionLost && isLiveSessionActive()){
+      liveWriteSession().then(result => { if(result === 'ok') setLecturerConnectionLost(false); });
+    }
+  }, 1500);
+});
+window.addEventListener('offline', () => {
+  if(LIVE_BACKEND && isLiveSessionActive() && State.role === 'lecturer') setLecturerConnectionLost(true);
+  updateOfflineBanner();
+});
+// Backstop for networks that come back without firing 'online' (captive
+// Wi-Fi, flaky mobile data) — cheap when there's nothing queued.
+setInterval(() => {
+  if(pendingRecordCount > 0 || pendingSessionEndCount > 0) syncOfflineQueue();
+}, 30000);
 
 // ============================================================
 // PWA: SERVICE WORKER + INSTALL PROMPT
