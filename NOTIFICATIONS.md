@@ -78,3 +78,35 @@ that file.
   edit that call site's `recipientId` argument — `null` means "everyone
   with this role"; a specific id (often via `registrarIdForFacultyKey()`)
   scopes it to one person.
+
+
+## System messages and quick messages (Oct 2026)
+
+The wording for QRAST's own messages lives in `NOTIFICATION_TEMPLATES` and is
+edited on the admin's Notification Templates screen. `templateMessage(key, vars)`
+fills the `{fields}`; a template switched off is not sent. Where each one is used:
+
+| Template | Sent when | By |
+|---|---|---|
+| `fraudFlagged` | a high-severity flag is raised | automatically, to registrars |
+| `appealResolved` | a registrar approves or rejects an appeal | automatically, to that student (demo appeals with no student id are skipped) |
+| `sessionStarted` | a lecturer opens a **new** session (not a resume) | automatically, to the class; `{studentName}` reads "student" |
+| `lowAttendanceWarning` | a registrar taps "Send warning" on the At-Risk list | manually, once a day per student |
+| `accountProvisioned` | account creation | by the `create-user` server function, not the app |
+
+Quick messages (`QUICK_MESSAGES`) are separate: broadcast wording with
+`[bracketed]` parts that the sender fills in on the Send screen. They are held
+in memory only.
+
+## Replies and conversations
+
+A reply is a normal notification (`type: 'reply'`) addressed to the person who
+wrote the message, with `thread_id` (first message of the conversation) and
+`reply_to_id`. Only person-written messages (`general`, `announcement`, `reply`)
+can be replied to, never system messages. On a broadcast each reader's reply
+goes only to the sender, so readers never see each other's replies.
+
+Needs `migrate-notification-threads.sql` (three nullable columns). Before it is
+run, messages still save but replies are not grouped. Students must also be
+allowed to INSERT into `notifications`; the migration file explains how to
+check, because those policies are not in version control.

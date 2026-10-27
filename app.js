@@ -2097,9 +2097,10 @@ function logSuspicion(student, reason, severity, course, deviceId){
     // escalation channel needed. Broadcast to the Registrar role broadly
     // rather than trying to resolve "the registrar for this student's
     // faculty," since there's no clean resolver for that wired up yet.
-    pushNotification({
+    const msg = templateMessage('fraudFlagged', { studentName: student, courseName: course, reason, date: new Date().toISOString().slice(0,10) });
+    if(msg) pushNotification({
       recipientRole: 'registrar', recipientId: null, type: 'fraudFlagged',
-      title: 'High-severity fraud flag', body: `${student}: ${reason}`,
+      title: msg.title, body: msg.body,
       from: 'System', fromId: 'system',
     });
   }
@@ -3767,15 +3768,17 @@ const FRAUD_THRESHOLDS = {
 // ============================================================
 // NOTIFICATION TEMPLATES
 // ============================================================
-// These template bodies/subjects are shown in the admin-facing
-// "Notification Templates" editor (renderNotifTemplates / openNotifEditSheet
-// / saveNotifTemplate below) so an admin can review/edit wording. They are
-// NOT wired to any token-substitution engine — the real pushNotification()
-// call sites elsewhere in this file build their message text inline and
-// never read from this object. {institutionName} here is written in the
-// same {token} style as the other placeholders for consistency and to be
-// ready if/when this object is actually wired up, but today it is literal
-// text unless whoever edits it via the admin UI swaps it in by hand.
+// The wording an admin edits on the Notification Templates screen. Messages
+// are built from these by templateMessage() below:
+//   fraudFlagged       sent automatically when a high-severity flag is raised
+//   appealResolved     sent automatically when a Registrar decides an appeal
+//   sessionStarted     sent automatically when a lecturer opens a new session
+//   lowAttendanceWarning  sent by a Registrar from the At-Risk list (no trigger
+//                      fires it on its own)
+//   accountProvisioned  NOT used here: that email is built on the server by the
+//                      create-user function so the temporary password never
+//                      passes through the app. It is listed for reference only.
+// A template switched off (enabled:false) is simply not sent.
 const NOTIFICATION_TEMPLATES = {
   lowAttendanceWarning: {
     label: 'Low Attendance Warning',
@@ -3813,6 +3816,19 @@ const NOTIFICATION_TEMPLATES = {
     enabled: true,
   },
 };
+
+// {token} -> value. A token with no value becomes empty text rather than
+// leaving a raw "{x}" in front of a student.
+function fillTemplate(str, vars){
+  return String(str).replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined && vars[k] !== null) ? String(vars[k]) : '');
+}
+// Returns { title, body } for a template, or null when it is switched off.
+function templateMessage(key, vars){
+  const t = NOTIFICATION_TEMPLATES[key];
+  if(!t || !t.enabled) return null;
+  const v = { institutionName: SYSTEM_SETTINGS.institutionName, minPct: ATTENDANCE_POLICIES.minAttendancePct, ...vars };
+  return { title: fillTemplate(t.subject, v), body: fillTemplate(t.body, v) };
+}
 
 // ============================================================
 // QUICK MESSAGES: reusable wording for the Send screen. Unlike the automatic
@@ -3999,13 +4015,19 @@ const NOTIFICATIONS = [
 ];
 let notifNextId = NOTIFICATIONS.length + 1;
 
-function pushNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId }){
+function pushNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId, fromRole, threadId, replyToId }){
   const createdAt = new Date().toISOString();
+  const id = notifNextId++;
+  // A message written by a person carries their role, which is what lets the
+  // recipient reply to them. System messages carry none and cannot be replied to.
+  fromRole = fromRole || ((fromId && fromId !== 'system') ? State.role : null);
   NOTIFICATIONS.unshift({
-    id: notifNextId++,
+    id,
     recipientRole, recipientId, type, title, body,
     courseCode: courseCode || null,
     from: from || null,
+    fromId: fromId || null, fromRole: fromRole || null,
+    threadId: threadId || null, replyToId: replyToId || null,
     date: createdAt.slice(0,10),
     createdAt,
     read: false,
@@ -4013,18 +4035,23 @@ function pushNotification({ recipientRole, recipientId, type, title, body, cours
   // Track a copy in the sender's own "Sent" history, immediately and
   // locally (independent of whether the live write below succeeds), so the
   // sender always sees confirmation of what they sent, same session or not.
+  // Same id as the recipient's copy, so a reply can point at either.
   if(from && fromId){
     SENT_NOTIFICATIONS.unshift({
-      id: sentNotifNextId++,
-      fromId, from,
+      id,
+      fromId, from, fromRole: fromRole || null, type,
+      threadId: threadId || null, replyToId: replyToId || null,
       recipientRole, recipientId, courseCode: courseCode || null,
       title, body,
       date: createdAt.slice(0,10),
       createdAt,
     });
   }
-  liveWriteNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId }); // fire-and-forget — local push above already succeeded either way
+  // fire-and-forget for ordinary callers (the local push above already
+  // succeeded either way); a reply awaits the result to tell the sender.
+  const saved = liveWriteNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId, fromRole, threadId, replyToId });
   liveSendEmailNotification({ recipientRole, recipientId, title, body }); // fire-and-forget — see its own comment for why this only fires for Registrar/Administrator
+  return saved;
 }
 
 // Hands a notification off to email for the two roles institutional staff
@@ -4102,24 +4129,45 @@ async function liveSyncCoordinatorStatus(universityId, { isCoordinator, programm
   }
 }
 
-async function liveWriteNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId }){
-  if(!LIVE_BACKEND) return;
+// Set false the first time the database turns out not to have the thread
+// columns yet (migrate-notification-threads.sql not run), so messages keep
+// saving without them instead of failing.
+let NOTIF_THREAD_COLUMNS = true;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Resolves true (saved), 'unthreaded' (saved without the thread columns) or
+// false (not saved). Offline/mock mode counts as saved.
+async function liveWriteNotification({ recipientRole, recipientId, type, title, body, courseCode, from, fromId, fromRole, threadId, replyToId }){
+  if(!LIVE_BACKEND) return true;
+  const row = {
+    recipient_role: recipientRole,
+    recipient_id: recipientId,
+    type, title, body,
+    course_code: courseCode || null,
+    from_name: from || null,
+    from_id: fromId || null,
+    date: new Date().toISOString().slice(0,10),
+    read: false,
+  };
+  const extras = {
+    from_role: fromRole || null,
+    thread_id: UUID_RE.test(threadId || '') ? threadId : null,
+    reply_to_id: UUID_RE.test(replyToId || '') ? replyToId : null,
+  };
+  const wantsExtras = NOTIF_THREAD_COLUMNS && (extras.from_role || extras.thread_id || extras.reply_to_id);
   try {
-    const { error } = await SUPABASE_CLIENT
-      .from('notifications')
-      .insert({
-        recipient_role: recipientRole,
-        recipient_id: recipientId,
-        type, title, body,
-        course_code: courseCode || null,
-        from_name: from || null,
-        from_id: fromId || null,
-        date: new Date().toISOString().slice(0,10),
-        read: false,
-      });
-    if(error) console.warn('liveWriteNotification failed:', error);
+    let { error } = await SUPABASE_CLIENT.from('notifications').insert(wantsExtras ? { ...row, ...extras } : row);
+    let unthreaded = false;
+    if(error && wantsExtras && /column|PGRST204|42703/i.test(`${error.code || ''} ${error.message || ''}`)){
+      NOTIF_THREAD_COLUMNS = false;
+      unthreaded = !!(extras.thread_id || extras.reply_to_id);
+      ({ error } = await SUPABASE_CLIENT.from('notifications').insert(row));
+    }
+    if(error){ console.warn('liveWriteNotification failed:', error); return false; }
+    return unthreaded ? 'unthreaded' : true;
   } catch(e){
     console.warn('liveWriteNotification error:', e);
+    return false;
   }
 }
 
@@ -4130,7 +4178,6 @@ async function liveWriteNotification({ recipientRole, recipientId, type, title, 
 // immediately; a live fetch (keyed by from_id) fills in anything sent from
 // other sessions/devices, deduped by id.
 let SENT_NOTIFICATIONS = [];
-let sentNotifNextId = 1;
 
 async function loadSentNotificationsFromSupabase(){
   if(!LIVE_BACKEND || !State.user) return;
@@ -4148,7 +4195,8 @@ async function loadSentNotificationsFromSupabase(){
 
     const fetched = rows.map(r => ({
       id: r.id,
-      fromId: r.from_id, from: r.from_name,
+      fromId: r.from_id, from: r.from_name, fromRole: r.from_role || null, type: r.type,
+      threadId: r.thread_id || null, replyToId: r.reply_to_id || null,
       recipientRole: r.recipient_role, recipientId: r.recipient_id, courseCode: r.course_code,
       title: r.title, body: r.body, date: r.date,
       createdAt: r.created_at,
@@ -4214,6 +4262,10 @@ async function loadNotificationsFromSupabase(){
       body: r.body,
       courseCode: r.course_code || null,
       from: r.from_name || null,
+      fromId: r.from_id || null,
+      fromRole: r.from_role || null,
+      threadId: r.thread_id || null,
+      replyToId: r.reply_to_id || null,
       date: r.date,
       createdAt: r.created_at,
       read: r.read,
@@ -9806,6 +9858,18 @@ async function startSessionForLecture(lecture){
     LIVE_SESSION.coordinatorAuthorized = false; // every new broadcast starts unauthorized — the Lecturer re-grants it per session, never inherited
     regenerateSessionToken();
     regenerateSessionPin();
+    // One message for the whole class (a course-scoped broadcast), only when a
+    // genuinely new session starts, not when a lecturer resumes one. In a class
+    // message {studentName} reads "student".
+    const startedMsg = templateMessage('sessionStarted', {
+      studentName: 'student', lecturerName: State.user?.name || 'Your lecturer',
+      courseName: lecture.name, windowMinutes: ATTENDANCE_POLICIES.sessionWindowMinutes,
+    });
+    if(startedMsg) pushNotification({
+      recipientRole: 'student', recipientId: null, type: 'sessionStarted', courseCode: lecture.code,
+      title: startedMsg.title, body: startedMsg.body,
+      from: 'System', fromId: 'system',
+    });
     if(LIVE_BACKEND){
       // Compliance classification must use the server-assigned started_at,
       // never this device's clock (see the "never send a client timestamp
@@ -10486,6 +10550,30 @@ function riskBadge(state){
   return `<span style="font-size:11px;font-weight:700;color:${col};border:1px solid ${col};border-radius:999px;padding:2px 8px;white-space:nowrap">${RISK_LABEL[state]}</span>`;
 }
 
+// Sends the "Low Attendance Warning" template to one student. Two taps (the
+// first arms the button), and once a day per student and course filter.
+let _warnArmed = null;
+const _warnedKeys = new Set();
+const warnKey = reg => `${reg}|${_riskCourse || 'all'}|${new Date().toISOString().slice(0,10)}`;
+function sendLowAttendanceWarning(reg){
+  if(_warnedKeys.has(warnKey(reg))) return;
+  if(_warnArmed !== reg){ _warnArmed = reg; refreshScreenContentOnly(); return; }
+  _warnArmed = null;
+  const a = computeAtRiskList(scopedRecords(), _riskCourse).find(x => x.reg === reg);
+  if(!a || a.pct === null) return;
+  const courseName = _riskCourse ? (COURSES.find(c => c.code === _riskCourse)?.name || _riskCourse) : 'all your courses';
+  const msg = templateMessage('lowAttendanceWarning', { studentName: a.name, courseName, attendancePct: a.pct });
+  if(!msg){ showToast('This warning is switched off in Notification Templates'); return; }
+  pushNotification({
+    recipientRole: 'student', recipientId: reg, type: 'lowAttendanceWarning',
+    title: msg.title, body: msg.body, from: 'System', fromId: 'system',
+  });
+  _warnedKeys.add(warnKey(reg));
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Low attendance warning sent', reg, `${a.name}: ${a.pct}% ${_riskCourse || 'all courses'}`);
+  showToast(`Warning sent to ${a.name}`);
+  refreshScreenContentOnly();
+}
+
 function renderAtRiskAnalytics(){
   const cutoff = ATTENDANCE_POLICIES.minAttendancePct;
   const records = scopedRecords();
@@ -10495,6 +10583,7 @@ function renderAtRiskAnalytics(){
   const courses = [...new Map(records.map(r => [r.code, r.course || r.code])).entries()].sort((a, b) => a[0].localeCompare(b[0]));
   const chip = (key, label, n) => `<button class="status-chip selectable ${_riskFilter === key ? 'chip-active' : ''}" onclick="setRiskFilter('${key}')" style="padding:8px 4px;text-align:center"><div class="n">${n}</div><div class="l">${label}</div></button>`;
   const trendMark = t => t === 'down' ? '↓' : t === 'up' ? '↑' : t === 'flat' ? '→' : '–';
+  const canWarn = State.role === 'registrar' && !!NOTIFICATION_TEMPLATES.lowAttendanceWarning?.enabled;
   const body = all.length === 0
     ? `<div class="card section-card"><div style="font-size:14px;line-height:21px">No attendance records yet, so there is nothing to assess.</div></div>`
     : rows.length === 0
@@ -10511,6 +10600,9 @@ function renderAtRiskAnalytics(){
           ${s.recentPct !== null ? ` · last ${RISK_TREND_WINDOW}: <b>${s.recentPct}%</b> ${trendMark(s.trend)}` : ''}
           ${s.needNext ? `<div>Needs <b>${s.needNext}</b> full-attendance lecture${s.needNext === 1 ? '' : 's'} in a row to reach ${cutoff}%.</div>` : ''}
         </div>
+        ${canWarn && (s.state === 'critical' || s.state === 'atRisk') ? `<div style="margin-top:8px;text-align:right">${
+          _warnedKeys.has(warnKey(s.reg)) ? `<span style="font-size:12px;color:var(--ink-soft)">Warning sent today</span>`
+          : `<button class="link-mini" onclick="sendLowAttendanceWarning('${jsAttr(s.reg)}')">${_warnArmed === s.reg ? 'Tap again to send' : 'Send warning'}</button>`}</div>` : ''}
       </div>`).join('');
   return `
   <div class="app-header">
@@ -13419,9 +13511,9 @@ function renderNotifTemplates(){
     </div>`).join('') || '<div class="empty-state-sm">No quick messages yet</div>'}
     <button class="btn btn-ghost" style="margin-top:12px;" onclick="openQuickMessageSheet(null)">${ICONS.plus} Add a quick message</button>
 
-    <div class="section-title" style="margin:26px 0 0;">${ICONS.settings} Automatic messages</div>
+    <div class="section-title" style="margin:26px 0 0;">${ICONS.settings} System messages</div>
     <div style="font-size:12px;line-height:1.5;color:var(--ink-soft);margin-top:8px;">
-      These are the wordings planned for messages QRAST sends by itself. They are not connected yet: changing or switching them off here does not change what students and staff receive today.
+      The wording QRAST uses when it sends a message by itself. Changes apply to messages sent from now on. Switched off means that message is not sent at all.
     </div>
     ${templates.map(([key, t]) => notifTemplateCard(key, t)).join('')}
   </div>
@@ -13436,22 +13528,31 @@ function renderNotifTemplates(){
   </div>`;
 }
 
+const TEMPLATE_USE = {
+  fraudFlagged: 'Sent to registrars automatically when a high-severity flag is raised.',
+  appealResolved: 'Sent to the student automatically when a registrar approves or rejects an appeal.',
+  sessionStarted: 'Sent to the class automatically when a lecturer opens a new session. {studentName} reads "student" here, since one message goes to everyone.',
+  lowAttendanceWarning: 'Sent by a registrar from the At-Risk list with "Send warning". It never sends on its own.',
+  accountProvisioned: 'Built on the server with the welcome email, so the temporary password never passes through the app. It cannot be edited here.',
+};
 function notifTemplateCard(key, t){
+  const serverBuilt = key === 'accountProvisioned';
   return `
   <div class="card card-pad" style="margin-top:12px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-      <div style="flex:1;">
+      <div style="flex:1;min-width:0;">
         <div style="font-weight:800;font-size:13px;">${t.label}</div>
-        <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px;">${escapeHtmlText(t.description)}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;font-style:italic;">"${escapeHtmlText(t.subject)}"</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${escapeHtmlText(TEMPLATE_USE[key] || t.description)}</div>
+        ${serverBuilt ? '' : `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;font-style:italic;">"${escapeHtmlText(t.subject)}"</div>`}
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+      ${serverBuilt ? '' : `
+      <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
         <label class="toggle-wrap" style="margin:0;">
           <input type="checkbox" ${t.enabled?'checked':''} onchange="toggleNotifTemplate('${jsAttr(key)}',this.checked)" />
           <span class="toggle-slider"></span>
         </label>
         <button class="link-mini" onclick="openNotifEditSheet('${jsAttr(key)}')">Edit</button>
-      </div>
+      </div>`}
     </div>
   </div>`;
 }
@@ -13491,10 +13592,8 @@ function openNotifEditSheet(key){
 }
 
 function getTemplateTokens(key){
-  // {institutionName} added to these three (Sept 2026) alongside the branding
-  // fix above — same disconnected-stub caveat: shown here as an available
-  // token for an admin editing the template text, not substituted by any
-  // live code path (see comment above NOTIFICATION_TEMPLATES).
+  // The fields each template can use. templateMessage() fills these when the
+  // message is sent; saveNotifTemplate() rejects any other {field}.
   const tokens = {
     lowAttendanceWarning: ['{studentName}','{courseName}','{attendancePct}','{minPct}','{institutionName}'],
     sessionStarted: ['{studentName}','{lecturerName}','{courseName}','{windowMinutes}'],
@@ -13551,8 +13650,15 @@ function deleteQuickMessage(id){
 function saveNotifTemplate(key){
   const t = NOTIFICATION_TEMPLATES[key];
   if(!t) return;
-  t.subject = document.getElementById('notifSubject')?.value || t.subject;
-  t.body = document.getElementById('notifBody')?.value || t.body;
+  const subject = (document.getElementById('notifSubject')?.value || '').trim();
+  const body = (document.getElementById('notifBody')?.value || '').trim();
+  if(!subject || !body){ showToast('Subject and message cannot be empty'); return; }
+  // A field name that is not on the list would be sent as blank text, so stop it here.
+  const allowed = getTemplateTokens(key);
+  const unknown = [...new Set([...(subject + ' ' + body).matchAll(/\{(\w+)\}/g)].map(m => '{' + m[1] + '}'))].filter(x => !allowed.includes(x));
+  if(unknown.length){ showToast(`Unknown field ${unknown[0]}. Use only the fields listed`); return; }
+  t.subject = subject;
+  t.body = body;
   closeSheet('notifEditSheet');
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Notification template updated', key, t.label);
   showToast(`${t.label} saved`);
@@ -13880,6 +13986,130 @@ function sortNotifications(list, mode){
   }
 }
 
+// ------------------------------------------------------------
+// REPLIES AND CONVERSATIONS
+// A reply is an ordinary notification addressed to whoever wrote the message,
+// carrying threadId (the first message of the conversation) and replyToId.
+// A conversation is one thread with one other person, so on a broadcast each
+// reader's reply goes only to the sender and readers never see each other's.
+// ------------------------------------------------------------
+const REPLY_TYPES = ['general', 'announcement', 'reply'];
+let _thread = { rootId: null, withId: null };
+
+function myNotifId(){ return State.user?.id || State.user?.reg || State.user?.staffId || null; }
+
+function personLookup(id){
+  if(!id || id === 'system') return null;
+  const lists = [['student', STUDENTS], ['lecturer', LECTURERS], ['registrar', REGISTRARS], ['administrator', ADMINISTRATORS]];
+  for(const [role, list] of lists){
+    const p = list.find(x => (x.reg || x.id) === id);
+    if(p) return { role, name: p.name };
+  }
+  return null;
+}
+function senderRole(n){ return n.fromRole || personLookup(n.fromId)?.role || null; }
+
+// Can the current user reply to this message? Only to a person's own message,
+// never to the system or to themselves.
+function canReplyTo(n){
+  return !!(n.fromId && n.fromId !== 'system' && n.fromId !== myNotifId() && REPLY_TYPES.includes(n.type) && senderRole(n));
+}
+
+function conversationKey(n){
+  const other = n.fromId === myNotifId() ? n.recipientId : n.fromId;
+  return `${n.threadId || n.id}|${other || ''}`;
+}
+
+// Every message in one conversation, oldest first: the thread's first message
+// (whoever sent it) plus the messages exchanged with withId.
+function conversationMessages(rootId, withId){
+  const me = myNotifId();
+  const seen = new Set();
+  const out = [];
+  // Only the user's own sent copies: this array can still hold another account's
+  // messages if two people used the same device in one session.
+  [...notificationsForCurrentUser(), ...SENT_NOTIFICATIONS.filter(m => m.fromId === me)].forEach(m => {
+    if(String(m.threadId || m.id) !== String(rootId)) return;
+    const isRoot = !m.threadId;
+    const other = m.fromId === me ? m.recipientId : m.fromId;
+    if(!isRoot && other !== withId) return;
+    const k = `${m.fromId}|${m.createdAt}|${m.body}`;
+    if(seen.has(k)) return;
+    seen.add(k);
+    out.push(m);
+  });
+  return out.sort((a, b) => String(a.createdAt || a.date).localeCompare(String(b.createdAt || b.date)));
+}
+
+function openMessageThread(rootId, withId){
+  _thread = { rootId: String(rootId), withId };
+  navigate('messageThread');
+}
+
+function renderMessageThread(){
+  const me = myNotifId();
+  const msgs = conversationMessages(_thread.rootId, _thread.withId);
+  const root = msgs.find(m => !m.threadId) || msgs[0];
+  const other = personLookup(_thread.withId);
+  const otherName = other?.name || msgs.find(m => m.fromId === _thread.withId)?.from || 'Conversation';
+  const subject = root ? String(root.title || '').replace(/^(Re:\s*)+/i, '') : '';
+  const bubbles = msgs.map(m => {
+    const mine = m.fromId === me;
+    return `
+    <div style="display:flex;justify-content:${mine ? 'flex-end' : 'flex-start'};margin:10px 0;">
+      <div style="max-width:85%;background:${mine ? 'var(--theme-primary)' : 'var(--card-alt, rgba(127,127,127,.14))'};color:${mine ? '#fff' : 'inherit'};border-radius:14px;padding:9px 12px;">
+        ${!mine && m.from ? `<div style="font-size:11px;font-weight:800;margin-bottom:2px;opacity:.85;">${escapeHtmlText(m.from)}</div>` : ''}
+        <div style="font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word;">${escapeHtmlText(m.body)}</div>
+        <div style="font-size:10.5px;margin-top:4px;opacity:.7;text-align:right;">${formatNotifTimestamp(m)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const role = msgs.find(m => m.fromId === _thread.withId)?.fromRole || other?.role || msgs.find(m => m.fromId === me && m.recipientId === _thread.withId)?.recipientRole;
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('notifications')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${escapeHtmlText(otherName)}</div>
+    </div>
+  </div>
+  <div class="content" style="padding-bottom:150px;">
+    ${subject ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:4px;">${ICONS.bell.replace(/<svg /,'<svg style="width:12px;height:12px;vertical-align:-2px;" ')} ${escapeHtmlText(subject)}</div>` : ''}
+    ${bubbles || '<div class="empty-state-sm">This conversation is empty</div>'}
+  </div>
+  ${role ? `
+  <div class="sticky-footer">
+    <div class="sticky-footer-inner" style="padding:8px;display:flex;gap:8px;align-items:flex-end;">
+      <textarea class="input" id="threadReplyBody" rows="2" maxlength="1000" placeholder="Write a reply to ${escapeHtmlText(otherName)}..." style="height:auto;resize:none;flex:1;"></textarea>
+      <button class="btn btn-primary" style="width:auto;padding:0 18px;align-self:stretch;" onclick="sendThreadReply()">Send</button>
+    </div>
+  </div>` : ''}`;
+}
+
+async function sendThreadReply(){
+  const el = document.getElementById('threadReplyBody');
+  const body = (el?.value || '').trim();
+  if(!body){ showToast('Write a reply first'); return; }
+  const me = myNotifId();
+  const msgs = conversationMessages(_thread.rootId, _thread.withId);
+  const root = msgs.find(m => !m.threadId) || msgs[0];
+  const last = [...msgs].reverse().find(m => m.fromId === _thread.withId) || root;
+  const role = msgs.find(m => m.fromId === _thread.withId)?.fromRole || personLookup(_thread.withId)?.role
+    || msgs.find(m => m.fromId === me && m.recipientId === _thread.withId)?.recipientRole;
+  if(!role || !last){ showToast("Can't tell who to send this to"); return; }
+  const saved = pushNotification({
+    recipientRole: role, recipientId: _thread.withId, type: 'reply',
+    title: 'Re: ' + String(root?.title || 'Message').replace(/^(Re:\s*)+/i, ''),
+    body, from: State.user?.name || 'Unknown', fromId: me, fromRole: State.role,
+    threadId: String(_thread.rootId), replyToId: String(last.id),
+  });
+  if(el) el.value = '';
+  refreshScreenContentOnly();
+  const result = await saved;
+  if(result === false) showToast('Reply not saved to the server. Check your connection and try again');
+  else if(result === 'unthreaded') showToast('Sent, but it will not appear as a conversation until the database update is applied');
+  else showToast('Reply sent');
+}
+
 function renderNotifications(){
   const notifs = sortNotifications(notificationsForCurrentUser(), inboxSortMode);
   const backTarget = State.role === 'student' ? 'home' : 'dashboard';
@@ -13891,6 +14121,17 @@ function renderNotifications(){
   // inbox was opened" actually means, and is what should drive the bold/dot
   // styling below — not the live (now-mutated) n.read value.
   const wasUnread = new Set(notifs.filter(n => !n.read).map(n => n.id));
+  // One row per conversation. A message nobody has replied to stays a single
+  // expandable row; a conversation shows its latest message and opens on tap.
+  const groups = new Map();
+  notifs.forEach(n => { const k = conversationKey(n); if(!groups.has(k)) groups.set(k, []); groups.get(k).push(n); });
+  const entries = [...groups.values()].map(list => {
+    const n = list[0];
+    const rootId = n.threadId || n.id;
+    const withId = n.fromId === myNotifId() ? n.recipientId : n.fromId;
+    const msgs = withId ? conversationMessages(rootId, withId) : [];
+    return { n, list, rootId, withId, msgs, isThread: msgs.length > 1 };
+  });
   markAllNotifsRead();
   // Re-render the bell badge after marking all read
   setTimeout(() => {
@@ -13904,6 +14145,7 @@ function renderNotifications(){
     fraudFlagged: ICONS.flag,
     accountProvisioned: ICONS.users,
     general: ICONS.bell,
+    reply: ICONS.mail,
     announcement: ICONS.megaphone,
   };
   const typeColor = {
@@ -13913,6 +14155,7 @@ function renderNotifications(){
     fraudFlagged: 'var(--absent)',
     accountProvisioned: 'var(--theme-primary)',
     general: 'var(--theme-primary)',
+    reply: 'var(--theme-primary)',
     announcement: '#b45309',
   };
 
@@ -13943,25 +14186,30 @@ function renderNotifications(){
       </div>
       <div class="card card-pad">
         <div style="display:flex;flex-direction:column;gap:0;">
-          ${notifs.map(n => {
+          ${entries.map(e => {
+            const n = e.isThread ? e.msgs[e.msgs.length - 1] : e.n;
             const color = typeColor[n.type] || 'var(--ink-soft)';
-            const preview = n.body.length > 60 ? n.body.slice(0, 60) + '…' : n.body;
-            const unread = wasUnread.has(n.id);
+            const lead = e.isThread && n.fromId === myNotifId() ? 'You: ' : '';
+            const preview = lead + (n.body.length > 60 ? n.body.slice(0, 60) + '…' : n.body);
+            const unread = e.list.some(x => wasUnread.has(x.id));
+            const threadTitle = e.isThread ? String((e.msgs.find(m => !m.threadId) || e.msgs[0]).title || n.title).replace(/^(Re:\s*)+/i, '') : n.title;
+            const rowClick = e.isThread ? `openMessageThread('${jsAttr(e.rootId)}','${jsAttr(e.withId)}')` : `toggleNotifExpand('${jsAttr(n.id)}')`;
             return `
-          <div class="notif-row" data-id="${escapeHtmlText(n.id)}" onclick="toggleNotifExpand('${jsAttr(n.id)}')" style="cursor:pointer;align-items:flex-start;gap:12px;display:flex;${unread?'background:#eef2ff; background:color-mix(in srgb, var(--theme-primary) 10%, white);':''}border-radius:var(--radius-md);padding:12px;margin-bottom:6px;">
+          <div class="notif-row" data-id="${escapeHtmlText(n.id)}" onclick="${rowClick}" style="cursor:pointer;align-items:flex-start;gap:12px;display:flex;${unread?'background:rgba(99,102,241,.16);':''}border-radius:var(--radius-md);padding:12px;margin-bottom:6px;">
             <div style="width:36px;height:36px;border-radius:50%;background:${color}22;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
               <div style="color:${color};display:flex;">${(typeIcon[n.type]||ICONS.bell).replace(/<svg /,'<svg style="width:16px;height:16px;" ')}</div>
             </div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 ${unread ? `<span style="width:7px;height:7px;border-radius:50%;background:var(--theme-primary);flex-shrink:0;"></span>` : ''}
-                <div style="font-size:13px;font-weight:${unread?'800':'500'};">${escapeHtmlText(n.title)}</div>
+                <div style="font-size:13px;font-weight:${unread?'800':'500'};">${escapeHtmlText(threadTitle)}</div>
+                ${e.isThread ? `<span class="tag-mini" style="background:rgba(99,102,241,.28);color:inherit;">${e.msgs.length} messages</span>` : ''}
                 ${n.type === 'announcement' ? `<span class="tag-mini" style="background:#fef3c7;color:#b45309;">Announcement</span>` : ''}
                 ${n.courseCode ? `<span class="tag-mini">${escapeHtmlText(n.courseCode)}</span>` : ''}
               </div>
               <div class="notif-preview" id="notif-preview-${escapeHtmlText(n.id)}" style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${unread?'600':'400'};">${preview}</div>
-              <div class="notif-full" id="notif-full-${escapeHtmlText(n.id)}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${escapeHtmlText(n.body)}</div>
-              <div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;">${n.from ? `From ${escapeHtmlText(n.from)} · ` : ''}${formatNotifTimestamp(n)}</div>
+              <div class="notif-full" id="notif-full-${escapeHtmlText(n.id)}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${escapeHtmlText(n.body)}${canReplyTo(n) ? `<div style="margin-top:8px;"><button class="link-mini" onclick="event.stopPropagation();openMessageThread('${jsAttr(n.threadId || n.id)}','${jsAttr(n.fromId)}')">${ICONS.mail} Reply</button></div>` : ''}</div>
+              <div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;">${n.from ? `${n.fromId === myNotifId() ? 'To' : 'From'} ${escapeHtmlText(n.fromId === myNotifId() ? (personLookup(n.recipientId)?.name || 'them') : n.from)} · ` : ''}${formatNotifTimestamp(n)}</div>
             </div>
             <div id="notif-chevron-${escapeHtmlText(n.id)}" style="color:var(--ink-faint);flex-shrink:0;margin-top:2px;transition:transform .15s;">${ICONS.chevR}</div>
           </div>`;
@@ -15007,6 +15255,7 @@ function handleAppealSubmit(e){
     // ANY appeal lacking a supabaseId forever, which included every mock
     // seed appeal, not just genuinely-pending ones -- see MOCK-DATA-AUDIT.md.
     pendingSync: true,
+    studentId: State.user?.id || State.user?.reg || null,
     student: State.user.name,
     course: courseLabel,
     session: date,
@@ -15027,6 +15276,18 @@ function resolveAppeal(id, approved){
     appeal.status = approved ? 'approved' : 'rejected';
     logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', `Appeal ${approved?'approved':'rejected'}`, `appeal-${id}`, `${appeal.student} — ${appeal.course}`);
     liveResolveAppeal(appeal, approved); // fire-and-forget — local status change above already succeeded either way
+    // Tell the student. Appeals seeded as demo data carry no student id, so
+    // they are skipped rather than sent to nobody.
+    const msg = appeal.studentId ? templateMessage('appealResolved', {
+      studentName: appeal.student, courseName: appeal.course, sessionDate: appeal.session,
+      resolution: approved ? 'approved' : 'rejected',
+      resolutionNote: approved ? 'Your attendance record has been updated.' : 'Your attendance record has not been changed.',
+    }) : null;
+    if(msg) pushNotification({
+      recipientRole: 'student', recipientId: appeal.studentId, type: 'appealResolved',
+      title: msg.title, body: msg.body,
+      from: 'System', fromId: 'system',
+    });
   }
   showToast(approved ? "Appeal approved — record updated" : "Appeal denied");
   // refreshScreenContentOnly(), not rerenderCurrentScreen(): the local status
@@ -16053,6 +16314,7 @@ function getScreenHTML(screenId){
       // courseRecords stays: that's what "Full Course Records" opens.
       case 'courseRecords': return renderCourseRecords();
       case 'notifications': return renderNotifications();
+      case 'messageThread': return renderMessageThread();
       case 'supportTickets': return renderSupportTickets();
       case 'profile': return renderStaffProfile();
     }
@@ -16091,6 +16353,7 @@ function getScreenHTML(screenId){
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
       case 'notifications': return renderNotifications();
+      case 'messageThread': return renderMessageThread();
       case 'auditSystem': return renderAuditSystem();
       case 'yearArchives': return renderYearArchives();
       case 'yearArchiveDetail': return renderYearArchiveDetail();
@@ -16126,6 +16389,7 @@ function getScreenHTML(screenId){
       case 'supportTickets': return renderSupportTickets();
       case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true, groupByMode:true });
       case 'notifications': return renderNotifications();
+      case 'messageThread': return renderMessageThread();
       case 'profile': return renderStaffProfile();
     }
   } else if(State.role === 'student'){
@@ -16140,6 +16404,7 @@ function getScreenHTML(screenId){
       case 'appeals': return renderAppeals();
       case 'supportTickets': return renderSupportTickets();
       case 'notifications': return renderNotifications();
+      case 'messageThread': return renderMessageThread();
       case 'classSummary': return renderClassSummary();
       case 'missingStudents': return renderMissingStudents();
       case 'classReport': return renderClassReport();
@@ -16303,7 +16568,7 @@ function navigate(screenId, opts){
   // re-fetch on every visit to the inbox so messages sent mid-session (the
   // Admin/Lecturer/Registrar composing while this device stays logged in)
   // actually show up without requiring a full logout/login.
-  if(screenId === 'notifications') loadNotificationsFromSupabase();
+  if(screenId === 'notifications' || screenId === 'messageThread') loadNotificationsFromSupabase();
   if(screenId === 'sentNotifications') loadSentNotificationsFromSupabase();
   if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
   if(screenId === 'database') loadStaffFromSupabase(); // Database screen's table-count tiles read LECTURERS/REGISTRARS.length directly
