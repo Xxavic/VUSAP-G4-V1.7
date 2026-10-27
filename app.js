@@ -824,8 +824,14 @@ async function checkLecturerActiveSession(){
 // Student side: discover the active session across the student's enrolled
 // courses, apply it, and open the Realtime subscription. Guarded so it
 // only runs once per visit to the Check-In screen (avoids re-render loops).
-async function startStudentLiveSessionSync(){
-  if(!LIVE_BACKEND || studentLiveSyncDoneForThisVisit) return;
+// force: look again even though this visit already searched. Needed because a
+// search that found nothing used to be final for the whole visit and set up no
+// live subscription, so a lecturer starting a session a moment later stayed
+// invisible: Home could show the lecture, but Check In still said "No active
+// session". Only re-searches while nothing live is known.
+async function startStudentLiveSessionSync(force){
+  if(!LIVE_BACKEND) return;
+  if(studentLiveSyncDoneForThisVisit && !(force && !isLiveSessionActive())) return;
   studentLiveSyncDoneForThisVisit = true;
   for(const c of STUDENT_COURSES){
     const row = await liveFindActiveSession(c.code, State.user?.mode, c.classId);
@@ -870,10 +876,42 @@ async function restoreCheckedInStateForBroadcast(broadcastId){
   }
 }
 
+// While the student is on Home or Check In and no live session is known, look
+// again every few seconds, and redraw as soon as one appears. Stops by itself
+// once a session is found or the student goes elsewhere.
+let studentDiscoveryPoll = null;
+function stopStudentDiscoveryPoll(){
+  if(studentDiscoveryPoll){ clearInterval(studentDiscoveryPoll); studentDiscoveryPoll = null; }
+}
+async function recheckLiveSession(){
+  if(!LIVE_BACKEND || State.role !== 'student') return false;
+  await startStudentLiveSessionSync(true);
+  const open = isLiveSessionOpenForStudent();
+  if(open && (currentScreen === 'home' || currentScreen === 'checkin')){
+    refreshScreenContentOnly();
+    if(currentScreen === 'checkin' && checkinMethod === 'qr' && !State.hasCheckedInToday) startQrScanner();
+  }
+  return open;
+}
+function startStudentDiscoveryPoll(){
+  stopStudentDiscoveryPoll();
+  if(!LIVE_BACKEND || isLiveSessionOpenForStudent()) return;
+  studentDiscoveryPoll = setInterval(async ()=>{
+    if(currentScreen !== 'home' && currentScreen !== 'checkin'){ stopStudentDiscoveryPoll(); return; }
+    if(isLiveSessionOpenForStudent()){ stopStudentDiscoveryPoll(); return; }
+    if(await recheckLiveSession()) stopStudentDiscoveryPoll();
+  }, 6000);
+}
+async function checkAgainForSession(){
+  showToast('Checking for a live session…');
+  if(!(await recheckLiveSession())) showToast('Still no live session. Your lecturer has not started one yet.');
+}
+
 // Reset the sync guard + tear down the subscription when the Student leaves
 // the Check-In screen, so returning to it re-discovers the live session fresh.
 function resetStudentLiveSync(){
   studentLiveSyncDoneForThisVisit = false;
+  stopStudentDiscoveryPoll();
   if(liveSessionUpdatesUnsubscribe){
     liveSessionUpdatesUnsubscribe();
     liveSessionUpdatesUnsubscribe = null;
@@ -8796,8 +8834,10 @@ function renderStudentHome(){
     <div class="card card-pad" style="text-align:center; border-color:#fecaca;">
       <div class="empty-state" style="padding:18px 10px;">
         ${ICONS.alertTriangle}
-        <div class="t" style="color:var(--absent);">You are late, hurry up and check in</div>
+        <div class="t" style="color:var(--absent);">Your lecture has started</div>
         <div class="s">${escapeHtmlText(bannerLecture.lecture.code)} — ${escapeHtmlText(bannerLecture.lecture.name)} · ${escapeHtmlText(bannerLecture.lecture.room)}</div>
+        <div class="s" style="margin-top:6px;">Check-in opens when your lecturer starts the session. This page updates by itself.</div>
+        ${LIVE_BACKEND ? `<button class="btn btn-ghost" onclick="checkAgainForSession()" style="max-width:180px;margin:10px auto 0;">Check again</button>` : ''}
       </div>
     </div>` : bannerLecture && bannerLecture.kind === 'countdown' ? `
     <div class="card card-pad" style="text-align:center;">
@@ -9162,8 +9202,9 @@ function renderCheckIn(){
       <div class="error-state">
         <div class="err-icon">${ICONS.alertTriangle}</div>
         <div class="t">No active session</div>
-        <div class="s">There's no live check-in session for your courses right now.</div>
-        <button class="btn btn-primary" onclick="navigate('home')" style="max-width:200px;margin:0 auto;">Back to Home</button>
+        <div class="s">There's no live check-in session for your courses right now. This screen checks again every few seconds, so it will open as soon as your lecturer starts one.</div>
+        <button class="btn btn-primary" onclick="checkAgainForSession()" style="max-width:200px;margin:0 auto 10px;">Check again</button>
+        <button class="btn btn-ghost" onclick="navigate('home')" style="max-width:200px;margin:0 auto;">Back to Home</button>
       </div>
     </div>`;
   }
@@ -16513,7 +16554,15 @@ function navigate(screenId, opts){
     updateLiveRoster();
   }
   if(screenId === 'checkin'){
-    startStudentLiveSessionSync();
+    // force: Home may already have searched and found nothing; look again now
+    // that the student is actually trying to check in.
+    startStudentLiveSessionSync(true).then(()=>{
+      if(currentScreen === 'checkin' && isLiveSessionOpenForStudent()){
+        refreshScreenContentOnly();
+        if(checkinMethod === 'qr' && !State.hasCheckedInToday) startQrScanner();
+      }
+    });
+    startStudentDiscoveryPoll();
   }
   if(screenId === 'coordinatorQrDisplay'){
     // Fills the QR box immediately if LIVE_SESSION is already known (e.g. the
@@ -16540,6 +16589,7 @@ function navigate(screenId, opts){
     // warning instead of "You're checked in", since getStudentBannerLecture()
     // has no way to know they'd already checked in without this running first.
     startStudentLiveSessionSync();
+    startStudentDiscoveryPoll();
   }
   if(screenId === 'checkin' && checkinMethod === 'qr' && isLiveSessionActive() && !State.hasCheckedInToday) startQrScanner();
   // Restored — this was dropped from a prior build of the Lecturer Dashboard
