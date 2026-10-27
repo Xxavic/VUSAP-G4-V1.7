@@ -34,3 +34,23 @@ the code before being listed.
 ## Still open
 
 Nothing from the first audit is left. Not covered: the optional ideas still parked (guardian notifications, grades feed).
+
+
+## Administrator pass (patch 0016)
+
+The administrator dashboard went from 14 list rows plus 4 stat tiles to 8 rows, one attention card and 4 plain counts.
+
+| Was | Now |
+|---|---|
+| "People" row, plus a People bottom tab, plus a Total Users tile | The bottom tab only. The tile is a plain count. |
+| Active Roles and Faculties tiles linking to the rows below them | Plain counts (People, Faculties, Programmes, Courses). Nothing links twice. |
+| System Health: OK (hard-coded, always OK) | Removed. It reported nothing real. |
+| Role Assignments (its own screen, only reassigned each faculty's Registrar) | Shown on each faculty card in Faculties & Programmes, with Reassign. A "Registrar needed" card appears on the dashboard when a faculty has none. |
+| Attendance Policies and Fraud Thresholds as two rows | One "Attendance Rules" row with Policies / Fraud detection tabs |
+| Academic Calendar row | Removed from the list. It is the Calendar tab under Schedules, as for every other role. |
+| Messages and Notification Templates as two rows | One "Messages" row. Templates is a fourth tab. |
+| Backups and Database Management as two rows | One "Database & Backups" screen. The "Deferred Operations" list of things the app cannot do was removed. |
+| Support under System | Under "Needs your attention", with the open count |
+| "Audit System" row, "Audit Trail" screen | "Audit Trail" in both places |
+
+Also fixed: several grey notes and edit buttons that were unreadable in dark mode.

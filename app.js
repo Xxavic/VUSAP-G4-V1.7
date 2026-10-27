@@ -11817,22 +11817,18 @@ function exportReport(format, courseCode){
 // ADMINISTRATOR: DASHBOARD (full system access)
 // ============================================================
 
+// The administrator's dashboard list. `route` is where each one goes. People,
+// Records and Schedules are the bottom tabs, and Support is shown above this
+// list as the thing that needs attention, so none of them are repeated here.
 const SYSTEM_MODULES = [
-  { id:'userManagement', group:'People & structure', label:'People', sub:'View, enroll, edit, suspend or reactivate accounts', icon:ICONS.userCog, color:'#1d4ed8', bg:'#dbeafe' },
-  { id:'roleAssignments', group:'People & structure', label:'Role Assignments', sub:'Who holds which role', icon:ICONS.userCog, color:'#7c3aed', bg:'#ede9fe' },
-  { id:'faculties', group:'People & structure', label:'Faculties & Programmes', sub:'The academic structure everything hangs off', icon:ICONS.building, color:'#0369a1', bg:'#e0f2fe' },
-  { id:'courses', group:'People & structure', label:'Courses', sub:'Create and assign courses', icon:ICONS.layers, color:'#b45309', bg:'#fef3c7' },
-  { id:'policies', group:'Attendance rules', label:'Attendance Policies', sub:'Set minimum attendance, grace periods', icon:ICONS.gavel, color:'#9c2220', bg:'#fee2e2' },
-  { id:'fraudThresholds', group:'Attendance rules', label:'Fraud Thresholds', sub:'Tune detection sensitivity', icon:ICONS.flag, color:'#dc2626', bg:'#fee2e2' },
-  { id:'academicCalendar', group:'Attendance rules', label:'Academic Calendar', sub:'Holidays, breaks and exam periods', icon:ICONS.calendar, color:'#0f766e', bg:'#ccfbf1' },
-  { id:'sendNotification', group:'Communication', label:'Messages', sub:'Send to students or staff, and see what was sent', icon:ICONS.bell, color:'#1d4ed8', bg:'#dbeafe' },
-  { id:'notifTemplates', group:'Communication', label:'Notification Templates', sub:'Edit system message templates', icon:ICONS.megaphone, color:'#1d4ed8', bg:'#dbeafe' },
-  { id:'systemSettings', group:'System', label:'System Settings', sub:'General configuration', icon:ICONS.settings, color:'#475569', bg:'#f1f5f9' },
-  { id:'auditSystem', group:'System', label:'Audit System', sub:'Full system-wide audit trail', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
-  { id:'yearArchives', group:'System', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
-  { id:'backups', group:'System', label:'Backups', sub:'Schedule and restore backups', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
-  { id:'database', group:'System', label:'Database Management', sub:'Tables, migrations, integrity checks', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
-  { id:'supportTickets', group:'System', label:'Support', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
+  { id:'faculties', group:'Structure', route:'facultiesProgrammes', label:'Faculties & Programmes', sub:'Faculties, programmes and who is Registrar of each', icon:ICONS.building, color:'#0369a1', bg:'#e0f2fe' },
+  { id:'courses', group:'Structure', route:'courseCatalog', label:'Courses', sub:'Create and assign courses', icon:ICONS.layers, color:'#b45309', bg:'#fef3c7' },
+  { id:'attendanceRules', group:'Rules and messages', route:'attendancePolicies', label:'Attendance Rules', sub:'Minimum attendance, grace periods and fraud detection', icon:ICONS.gavel, color:'#9c2220', bg:'#fee2e2' },
+  { id:'messages', group:'Rules and messages', route:'notifications', label:'Messages', sub:'Inbox, send, sent and message templates', icon:ICONS.bell, color:'#1d4ed8', bg:'#dbeafe' },
+  { id:'systemSettings', group:'System', route:'systemSettings', label:'System Settings', sub:'Name, academic year, terms and branding', icon:ICONS.settings, color:'#475569', bg:'#f1f5f9' },
+  { id:'auditSystem', group:'System', route:'auditSystem', label:'Audit Trail', sub:'Everything that changed, and who changed it', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
+  { id:'yearArchives', group:'System', route:'yearArchives', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
+  { id:'database', group:'System', route:'database', label:'Database & Backups', sub:'Record counts, integrity checks and export', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
 ];
 
 function renderAdministratorDashboard(){
@@ -11862,35 +11858,57 @@ function renderAdministratorDashboard(){
   </div>
   <div class="content">
     <div class="stat-grid">
-      <div class="stat-tile" onclick="navigate('register')" style="cursor:pointer;">
-        <div class="top"><span class="label">Total Users</span>
+      <div class="stat-tile">
+        <div class="top"><span class="label">People</span>
           <span class="stat-icon" style="background:#dbeafe; color:#1d4ed8;">${ICONS.users}</span></div>
         <div class="value">${getStaffDirectory().length}</div>
       </div>
-      <div class="stat-tile" onclick="navigate('roleAssignments')" style="cursor:pointer;">
-        <div class="top"><span class="label">Active Roles</span>
-          <span class="stat-icon" style="background:#f3e8ff; color:#7e22a3;">${ICONS.shield}</span></div>
-        <div class="value">${Object.keys(ROLE_BADGE_META).length}</div>
-      </div>
-      <div class="stat-tile" onclick="navigate('facultiesProgrammes')" style="cursor:pointer;">
+      <div class="stat-tile">
         <div class="top"><span class="label">Faculties</span>
           <span class="stat-icon" style="background:#ccfbf1; color:#0f766e;">${ICONS.building}</span></div>
         <div class="value">${FACULTIES.length}</div>
       </div>
       <div class="stat-tile">
-        <div class="top"><span class="label">System Health</span>
-          <span class="stat-icon" style="background:#dcfce7; color:#16a34a;">${ICONS.trend}</span></div>
-        <div class="value">OK</div>
+        <div class="top"><span class="label">Programmes</span>
+          <span class="stat-icon" style="background:#f3e8ff; color:#7e22a3;">${ICONS.graduation}</span></div>
+        <div class="value">${PROGRAMMES.length}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="top"><span class="label">Courses</span>
+          <span class="stat-icon" style="background:#fef3c7; color:#b45309;">${ICONS.layers}</span></div>
+        <div class="value">${COURSES.length}</div>
       </div>
     </div>
 
+    ${(() => {
+      const open = scopedSupportTickets().filter(t => t.status === 'open').length;
+      const vacant = FACULTIES.filter(f => !registrarForFaculty(f.key)?.[1]).length;
+      return `
     <div class="card section-card">
-      <div class="section-title">${ICONS.settings} Administration</div>
+      <div class="section-title">${ICONS.flag} Needs your attention</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <a class="quick-action" onclick="navigate('supportTickets')">
+          <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
+          <div class="qa-text"><div class="t">Support</div><div class="s">${open ? `${open} open report${open === 1 ? '' : 's'}` : 'Nothing open'}</div></div>
+          <div class="chev">${ICONS.chevR}</div>
+        </a>
+        ${vacant ? `
+        <a class="quick-action" onclick="navigate('facultiesProgrammes')">
+          <div class="qa-icon" style="background:var(--late-bg); color:var(--late);">${ICONS.shield}</div>
+          <div class="qa-text"><div class="t">Registrar needed</div><div class="s">${vacant} facult${vacant === 1 ? 'y has' : 'ies have'} no Registrar</div></div>
+          <div class="chev">${ICONS.chevR}</div>
+        </a>` : ''}
+      </div>
+    </div>`;
+    })()}
+
+    <div class="card section-card">
+      <div class="section-title">${ICONS.settings} Manage</div>
       ${[...new Set(SYSTEM_MODULES.map(m => m.group))].map(g => `
       <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.3px;margin:14px 0 8px;color:var(--ink-faint)">${g}</div>
       <div style="display:flex; flex-direction:column; gap:10px;">
         ${SYSTEM_MODULES.filter(m => m.group === g).map(m=>`
-        <div class="report-option" onclick="openSystemModule('${jsAttr(m.id)}')">
+        <div class="report-option" onclick="navigate('${jsAttr(m.route)}')">
           <div class="ro-icon" style="background:${m.bg}; color:${m.color};">${m.icon}</div>
           <div class="ro-text"><div class="t">${m.label}</div><div class="s">${m.sub}</div></div>
           <div class="chev">${ICONS.chevR}</div>
@@ -11898,75 +11916,6 @@ function renderAdministratorDashboard(){
       </div>`).join('')}
     </div>
   </div>`;
-}
-
-function openSystemModule(moduleId){
-  if(moduleId === 'userManagement'){
-    // Part 1 of the Sept 2026 handoff merged User Management into the
-    // unified Register screen — this System Modules tile still exists as a
-    // shortcut, it just points at the merged screen now.
-    navigate('register');
-    return;
-  }
-  if(moduleId === 'roleAssignments'){
-    navigate('roleAssignments');
-    return;
-  }
-  if(moduleId === 'faculties'){
-    navigate('facultiesProgrammes');
-    return;
-  }
-  if(moduleId === 'courses'){
-    navigate('courseCatalog');
-    return;
-  }
-  if(moduleId === 'policies'){
-    navigate('attendancePolicies');
-    return;
-  }
-  if(moduleId === 'fraudThresholds'){
-    navigate('fraudThresholds');
-    return;
-  }
-  if(moduleId === 'notifTemplates'){
-    navigate('notifTemplates');
-    return;
-  }
-  if(moduleId === 'sendNotification'){
-    navigate('notifications');
-    return;
-  }
-  if(moduleId === 'systemSettings'){
-    navigate('systemSettings');
-    return;
-  }
-  if(moduleId === 'academicCalendar'){
-    navigate('calendar');
-    return;
-  }
-  if(moduleId === 'yearArchives'){
-    navigate('yearArchives');
-    return;
-  }
-  if(moduleId === 'auditSystem'){
-    navigate('auditSystem');
-    return;
-  }
-  if(moduleId === 'backups'){
-    navigate('backups');
-    return;
-  }
-  if(moduleId === 'database'){
-    navigate('database');
-    return;
-  }
-  if(moduleId === 'supportTickets'){
-    navigate('supportTickets');
-    return;
-  }
-  // All known modules are wired above — this path should never be reached.
-  console.warn('Unknown module id:', moduleId);
-  showToast(`Unknown module: ${moduleId}`);
 }
 
 // ============================================================
@@ -12530,61 +12479,6 @@ function registrarForFaculty(facultyKey){
   return Object.entries(USERS).find(([id, u]) => u.role === 'registrar' && u.facultyKey === facultyKey);
 }
 
-function seatlessRegistrars(){
-  return Object.entries(USERS).filter(([id, u]) => u.role === 'registrar' && !u.facultyKey);
-}
-
-function renderRoleAssignments(){
-  const seatless = seatlessRegistrars();
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Role Assignments</div>
-    </div>
-  </div>
-  <div class="content">
-    <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
-      ${ICONS.shield.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Every faculty has exactly one Registrar.</strong> Reassign below to move someone to a different faculty, fill a vacancy, or swap in someone else.
-    </div>
-
-    ${seatless.length ? `
-    <div class="empty-state-sm" style="background:var(--late-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--late); font-size:12px; line-height:1.5; font-weight:600; margin-top:10px;">
-      ${ICONS.flag.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} ${seatless.length} Registrar${seatless.length>1?'s':''} ${seatless.length>1?'have':'has'} no faculty assigned: ${seatless.map(([id,u])=>u.name).join(', ')}. Assign them to a faculty below.
-    </div>` : ''}
-
-    <div class="card card-pad" style="margin-top:14px;">
-      <div class="section-title">${ICONS.building} Faculties</div>
-      <div id="roleAssignmentsList" style="display:flex; flex-direction:column; gap:10px;">
-        ${FACULTIES.map(fac => facultyRegistrarRow(fac)).join('')}
-      </div>
-    </div>
-  </div>
-
-  <div class="sheet" id="reassignSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <span id="reassignSheetTitle">Reassign Registrar</span>
-      <button onclick="closeSheet('reassignSheet')">${ICONS.close}</button>
-    </div>
-    <div id="reassignSheetBody"></div>
-  </div>`;
-}
-
-function facultyRegistrarRow(fac){
-  const found = registrarForFaculty(fac.key);
-  const [regId, regUser] = found || [null, null];
-  const vacant = !regUser;
-  return `
-  <div class="lecture-row" style="flex-direction:column; align-items:stretch; gap:10px; ${vacant ? 'border-color:var(--late);' : ''}">
-    <div>
-      <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(fac.name)}</div>
-      <div class="lecture-meta" style="margin-top:5px; ${vacant ? 'color:var(--late); font-weight:700;' : ''}">${regUser ? `${escapeHtmlText(regUser.name)} · ${regId}` : 'Vacant — no Registrar assigned'}</div>
-    </div>
-    <button class="btn ${vacant ? 'btn-primary' : 'btn-ghost'}" style="padding:9px 14px; font-size:12px;" onclick="openReassignSheet('${jsAttr(fac.key)}')">${(vacant ? ICONS.plus : ICONS.refresh).replace(/<svg /,'<svg style="width:13px;height:13px;" ')} ${vacant ? 'Assign Registrar' : 'Reassign'}</button>
-  </div>`;
-}
-
 function openReassignSheet(facultyKey){
   const fac = FACULTIES.find(f => f.key === facultyKey);
   const [currentId, currentUser] = registrarForFaculty(facultyKey) || [null, null];
@@ -12657,9 +12551,7 @@ function confirmReassignRegistrar(facultyKey){
     showToast(`${movedName} moved to ${facLabel}`);
   }
 
-  // Re-render the whole screen (not just the list) so the seatless-registrar
-  // warning banner at the top reflects the new state too.
-  navigate('roleAssignments', { replace: true });
+  navigate('facultiesProgrammes', { replace: true });
 }
 
 // ============================================================
@@ -12675,7 +12567,7 @@ function renderFacultiesProgrammes(){
     </div>
   </div>
   <div class="content" style="padding-bottom:90px;">
-    <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
+    <div class="empty-state-sm" style="background:rgba(127,127,127,.12); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
       ${ICONS.building.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Faculty → Programme → Course → Class</strong> is the academic hierarchy everything else (Registrars, students, reports) is scoped to. Deleting a faculty or programme is blocked while it still has programmes or students attached.
     </div>
 
@@ -12687,6 +12579,15 @@ function renderFacultiesProgrammes(){
     <div class="sticky-footer-inner" style="padding:8px;">
       <button class="btn btn-primary" onclick="openFacultyFormSheet()">${ICONS.plus} Add Faculty</button>
     </div>
+  </div>
+
+  <div class="sheet" id="reassignSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span id="reassignSheetTitle">Reassign Registrar</span>
+      <button onclick="closeSheet('reassignSheet')">${ICONS.close}</button>
+    </div>
+    <div id="reassignSheetBody"></div>
   </div>
 
   <div class="sheet" id="facultyFormSheet">
@@ -12717,9 +12618,14 @@ function facultyCard(fac){
       <div style="flex:1; min-width:0;">
         <div class="lecture-code" style="font-size:14px;">${escapeHtmlText(fac.name)}</div>
         <div class="lecture-meta" style="margin-top:4px;">${progs.length} programme${progs.length!==1?'s':''} · ${studentCount} student${studentCount!==1?'s':''}</div>
+        ${(() => {
+          const [regId, regUser] = registrarForFaculty(fac.key) || [null, null];
+          return `<div class="lecture-meta" style="margin-top:6px;${regUser ? '' : 'color:var(--late);font-weight:700;'}">Registrar: ${regUser ? escapeHtmlText(regUser.name) : 'vacant'}</div>
+          <div class="lecture-meta" style="margin-top:2px;">${regUser ? `${escapeHtmlText(regId)} · ` : ''}<a onclick="openReassignSheet('${jsAttr(fac.key)}')" style="color:var(--theme-primary);font-weight:700;cursor:pointer;">${regUser ? 'Reassign' : 'Assign a Registrar'}</a></div>`;
+        })()}
       </div>
       <div style="display:flex; gap:6px; flex-shrink:0;">
-        <button class="icon-btn" style="width:34px;height:34px;background:var(--unmarked-bg);" onclick="openFacultyFormSheet('${jsAttr(fac.key)}')" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:15px;height:15px;" ')}</button>
+        <button class="icon-btn" style="width:34px;height:34px;background:rgba(127,127,127,.18);color:inherit;" onclick="openFacultyFormSheet('${jsAttr(fac.key)}')" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:15px;height:15px;" ')}</button>
         <button class="icon-btn" style="width:34px;height:34px;background:#fee2e2;color:#b91c1c;" onclick="confirmDeleteFaculty('${jsAttr(fac.key)}')" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:15px;height:15px;" ')}</button>
       </div>
     </div>
@@ -12741,7 +12647,7 @@ function programmeRow(p){
       <div class="lecture-meta" style="margin-top:3px;">${escapeHtmlText(p.codePrefix)} · ${studentCount} student${studentCount!==1?'s':''}</div>
     </div>
     <div style="display:flex; gap:6px; flex-shrink:0;">
-      <button class="icon-btn" style="width:30px;height:30px;background:var(--unmarked-bg);" onclick="openProgrammeFormSheet('${jsAttr(p.key)}')" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:13px;height:13px;" ')}</button>
+      <button class="icon-btn" style="width:30px;height:30px;background:rgba(127,127,127,.18);color:inherit;" onclick="openProgrammeFormSheet('${jsAttr(p.key)}')" title="Edit">${ICONS.edit.replace(/<svg /,'<svg style="width:13px;height:13px;" ')}</button>
       <button class="icon-btn" style="width:30px;height:30px;background:#fee2e2;color:#b91c1c;" onclick="confirmDeleteProgramme('${jsAttr(p.key)}')" title="Delete">${ICONS.close.replace(/<svg /,'<svg style="width:13px;height:13px;" ')}</button>
     </div>
   </div>`;
@@ -13281,11 +13187,12 @@ function renderAttendancePolicies(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Attendance Policies</div>
+      <div class="page-title" style="font-size:18px;">Attendance Rules</div>
     </div>
   </div>
   <div class="content">
-    <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
+    ${attendanceRulesTabs('attendancePolicies')}
+    <div class="empty-state-sm" style="background:rgba(127,127,127,.12); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
       ${ICONS.gavel.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Changes take effect immediately — new sessions pick up QR and window settings the next time a session starts.
     </div>
 
@@ -13385,11 +13292,12 @@ function renderFraudThresholds(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Fraud Thresholds</div>
+      <div class="page-title" style="font-size:18px;">Attendance Rules</div>
     </div>
   </div>
   <div class="content">
-    <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
+    ${attendanceRulesTabs('fraudThresholds')}
+    <div class="empty-state-sm" style="background:rgba(127,127,127,.12); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
       ${ICONS.flag.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Detection thresholds control what triggers a fraud flag in the Fraud Center. Changes take effect immediately on new check-in events.
     </div>
 
@@ -13487,10 +13395,11 @@ function renderNotifTemplates(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Notification Templates</div>
+      <div class="page-title" style="font-size:18px;">Messages</div>
     </div>
   </div>
   <div class="content">
+    ${messageTabs('notifTemplates')}
     <div style="font-size:12px;line-height:1.5;color:var(--ink-soft);">
       ${ICONS.megaphone.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Quick messages appear under "Start from a template" on the Send screen, for you and for registrars and lecturers.
     </div>
@@ -14335,30 +14244,6 @@ function filterAuditLog(){
 // export the current in-memory state as a JSON snapshot for demo purposes.
 // ============================================================
 
-function renderBackups(){
-  // Backups are not performed or scheduled by this app: they belong to the
-  // Supabase project behind it. This screen used to show invented backup
-  // history and "Enabled" schedule badges that the app had no way to know
-  // were true, so it now says only what is real.
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Backups</div>
-    </div>
-  </div>
-  <div class="content">
-    <div class="empty-state-sm" style="background:#fef3c7; border-radius:var(--radius-md); padding:14px; text-align:left; color:#92400e; font-size:12px; line-height:1.5; font-weight:600;">
-      ${ICONS.archive.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Managed outside this app.</strong> Scheduled backups and restores are handled by this institution's Supabase project (Dashboard &rarr; Database &rarr; Backups). Whether daily backups or point-in-time recovery are available, and how long they are kept, depends on that project's plan.
-    </div>
-    <div class="card card-pad" style="margin-top:14px;">
-      <div class="section-title">${ICONS.archive} Export</div>
-      <div class="lecture-meta" style="margin-bottom:10px;">Download what this device currently holds as a JSON file. This is not a database backup.</div>
-      <button class="btn btn-ghost" onclick="exportSnapshot()">${ICONS.fileText} Export Current State (JSON)</button>
-    </div>
-  </div>`;
-}
-
 function exportSnapshot(){
   const snapshot = {
     exportedAt: new Date().toISOString(),
@@ -14425,17 +14310,17 @@ function renderDatabaseManagement(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Database</div>
+      <div class="page-title" style="font-size:18px;">Database & Backups</div>
     </div>
   </div>
   <div class="content">
     <div class="empty-state-sm" style="background:#fef3c7; border-radius:var(--radius-md); padding:14px; text-align:left; color:#92400e; font-size:12px; line-height:1.5; font-weight:500;">
-      ${ICONS.database.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Read-only in this prototype.</strong> Migrations, RLS management, and index maintenance require Supabase direct access (Gates 4–7). Data counts and integrity checks below are live.
+      ${ICONS.database.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} <strong>Backups and migrations are managed outside this app.</strong> Scheduled backups, restores, migrations and access rules live in this institution's Supabase project (Dashboard &rarr; Database). Whether daily backups or point-in-time recovery are available depends on that project's plan. The counts below are what this device currently holds.
     </div>
 
     <div class="card card-pad" style="margin-top:14px;">
       <div class="section-head-row">
-        <div class="section-title" style="margin-bottom:0;">${ICONS.database} In-memory Tables</div>
+        <div class="section-title" style="margin-bottom:0;">${ICONS.database} Records on this device</div>
         <span style="font-size:11px;color:var(--ink-faint);font-weight:600;">${tables.reduce((a,t)=>a+t.count,0)} total rows</span>
       </div>
       ${tables.map(t => `
@@ -14464,12 +14349,9 @@ function renderDatabaseManagement(){
     </div>
 
     <div class="card card-pad">
-      <div class="section-title">${ICONS.settings} Deferred Operations</div>
-      ${['Run database migrations','Manage Row-Level Security policies','View query performance and slow logs','Manage indexes and table statistics','Vacuum and analyze tables'].map(op => `
-        <div class="lecture-row" style="padding:10px 0;">
-          <div style="flex:1;font-size:12.5px;color:var(--ink-soft);">${op}</div>
-          <span class="badge dept" style="background:#f1f5f9;color:#64748b;">Backend required</span>
-        </div>`).join('')}
+      <div class="section-title">${ICONS.archive} Export</div>
+      <div class="lecture-meta" style="margin-bottom:10px;">Download what this device currently holds as a JSON file. This is not a database backup.</div>
+      <button class="btn btn-ghost" onclick="exportSnapshot()">${ICONS.fileText} Export Current State (JSON)</button>
     </div>
   </div>`;
 }
@@ -14928,7 +14810,7 @@ function renderComposeNotification(){
           <option value="">Write my own</option>
           ${QUICK_MESSAGES.map(q => `<option value="${escapeHtmlText(q.id)}">${escapeHtmlText(q.label)}</option>`).join('')}
         </select>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">Fill in the [bracketed] parts before sending.${State.role === 'administrator' ? ` <a onclick="navigate('notifTemplates')" style="color:var(--theme-primary);font-weight:700;cursor:pointer;">Manage templates</a>` : ''}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">Fill in the [bracketed] parts before sending.${State.role === 'administrator' ? ` Edit them under the Templates tab.` : ''}</div>
       </div>` : ''}
 
       <div class="field">
@@ -16253,6 +16135,9 @@ let currentScreen = 'dashboard';
 // dashboard card for each, they share one tab strip so the person sees one
 // section with a few views and can move between them in a tap.
 // ============================================================
+function attendanceRulesTabs(active){
+  return sectionTabs([{ id: 'attendancePolicies', label: 'Policies' }, { id: 'fraudThresholds', label: 'Fraud detection' }], active);
+}
 function sectionTabs(tabs, active){
   return `<div role="tablist" style="display:flex;gap:6px;margin:0 0 12px">${tabs.map(t => {
     const on = t.id === active;
@@ -16263,7 +16148,7 @@ function messageTabs(active){
   const tabs = State.role === 'student'
     ? [{ id: 'notifications', label: 'Inbox' }, { id: 'announcements', label: 'Announcements' }]
     : State.role === 'administrator'
-      ? [{ id: 'notifications', label: 'Inbox' }, { id: 'sendNotification', label: 'Send' }, { id: 'sentNotifications', label: 'Sent' }]
+      ? [{ id: 'notifications', label: 'Inbox' }, { id: 'sendNotification', label: 'Send' }, { id: 'sentNotifications', label: 'Sent' }, { id: 'notifTemplates', label: 'Templates' }]
       : [{ id: 'notifications', label: 'Inbox' }, { id: 'announcements', label: 'Announcements' }, { id: 'sendNotification', label: 'Send' }, { id: 'sentNotifications', label: 'Sent' }];
   return sectionTabs(tabs, active);
 }
@@ -16383,7 +16268,6 @@ function getScreenHTML(screenId){
       case 'records': return renderAttendanceCatalog();
       case 'facultyRecordsCatalog': return renderFacultyRecordsCatalog();
       case 'courseRecords': return renderCourseRecords();
-      case 'roleAssignments': return renderRoleAssignments();
       case 'facultiesProgrammes': return renderFacultiesProgrammes();
       case 'courseCatalog': return renderCourseCatalog();
       case 'coursesByYear': return renderCoursesByYear();
@@ -16398,7 +16282,6 @@ function getScreenHTML(screenId){
       case 'auditSystem': return renderAuditSystem();
       case 'yearArchives': return renderYearArchives();
       case 'yearArchiveDetail': return renderYearArchiveDetail();
-      case 'backups': return renderBackups();
       case 'database': return renderDatabaseManagement();
       case 'supportTickets': return renderSupportTickets();
       case 'allSchedules': return renderSchedule({ title:'All Lecture Schedules', subtitle:'University-wide timetable', showDeptFilter:true, backTarget:'dashboard', showCreateSession:true, groupByMode:true });
@@ -16584,7 +16467,7 @@ function navigate(screenId, opts){
   // actually show up without requiring a full logout/login.
   if(screenId === 'notifications' || screenId === 'messageThread') loadNotificationsFromSupabase();
   if(screenId === 'sentNotifications') loadSentNotificationsFromSupabase();
-  if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
+  if(screenId === 'auditSystem' || screenId === 'database') loadAuditLogFromSupabase();
   if(screenId === 'database') loadStaffFromSupabase(); // Database screen's table-count tiles read LECTURERS/REGISTRARS.length directly
   if(screenId === 'compliance') loadLecturerComplianceFromSupabase();
   if(screenId === 'analyticsPunctuality') loadPunctualityFromSupabase();
