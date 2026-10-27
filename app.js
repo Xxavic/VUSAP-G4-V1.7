@@ -16698,14 +16698,38 @@ function renderAuthScreenFromHistory(name){
   renderApp();
 }
 
-// Roles that get the sidebar layout on a wide screen (see "DESKTOP SHELL" in
-// index.html). Students keep the phone layout everywhere.
-const WIDE_SHELL_ROLES = ['lecturer', 'registrar', 'administrator'];
+// Device recognition. Phones always get the phone layout; laptops, desktops and
+// tablets that are wide enough (landscape) get the sidebar layout, and every
+// role gets it (see "DESKTOP SHELL" in index.html). The class is re-evaluated
+// on resize/rotation, so dragging a desktop window narrow falls back to the
+// phone layout and a tablet switches when turned.
+const WIDE_SHELL_ROLES = ['student', 'lecturer', 'registrar', 'administrator'];
+
+function detectDevice(){
+  let kind = 'desktop';
+  try{
+    const touchOnly = matchMedia('(pointer:coarse)').matches && matchMedia('(hover:none)').matches;
+    if(touchOnly){
+      const shortSide = Math.min(screen.width || 0, screen.height || 0);
+      kind = shortSide >= 700 ? 'tablet' : 'phone';
+    }
+  }catch(e){}
+  document.documentElement.setAttribute('data-device', kind);
+  return kind;
+}
+
+function applyWideShell(){
+  const on = !!State.role && WIDE_SHELL_ROLES.includes(State.role) && detectDevice() !== 'phone';
+  document.body.classList.toggle('wide-shell', on);
+}
+detectDevice();
+window.addEventListener('resize', ()=>{ applyWideShell(); });
+window.addEventListener('orientationchange', ()=>{ setTimeout(applyWideShell, 150); });
 
 function renderBottomNav(){
   const items = NAV_CONFIG[State.role] || [];
   const nav = document.getElementById('bottomNav');
-  document.body.classList.toggle('staff-shell', WIDE_SHELL_ROLES.includes(State.role));
+  applyWideShell();
   const u = State.user || {};
   const meta = STAFF_ROLE_META[State.role] || {};
   // The brand block and the account footer only show in the sidebar (the
@@ -16738,7 +16762,7 @@ function renderApp(){
     setTimeout(checkBackendStatus, 100); // let the DOM settle before the fetch
     navEl.innerHTML = '';
     navEl.style.display = 'none';
-    document.body.classList.remove('staff-shell');
+    document.body.classList.remove('wide-shell');
     // Anchor history here so a stray back-press after logout can't resurrect
     // a previous session's screen underneath the login form.
     history.replaceState({ qrastScreen: null }, '', '');

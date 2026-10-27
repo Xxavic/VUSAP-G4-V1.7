@@ -1131,30 +1131,30 @@ input,select,textarea{font-family:inherit;}
 /* ============ DESKTOP SHELL (staff roles, 1024px and wider) ============
    Lecturer, Registrar and Administrator get a left sidebar and a wider page
    on a laptop or desktop. Phones, tablets and students keep the phone
-   layout above: nothing in this block applies below 1024px. body.staff-shell
+   layout above: nothing in this block applies below 1024px. body.wide-shell
    is set by renderBottomNav(). */
 .side-only{display:none;}
 @media (min-width:1024px){
-  body.staff-shell{background:var(--bg);}
-  body.staff-shell #app{max-width:none; margin:0 0 0 248px; box-shadow:none;}
-  body.staff-shell .screen{padding-bottom:28px;}
-  body.staff-shell #offlineBanner{max-width:none; left:248px;}
-  body.staff-shell .install-banner{display:none !important;}
+  body.wide-shell{background:var(--bg);}
+  body.wide-shell #app{max-width:none; margin:0 0 0 248px; box-shadow:none;}
+  body.wide-shell .screen{padding-bottom:28px;}
+  body.wide-shell #offlineBanner{max-width:none; left:248px;}
+  body.wide-shell .install-banner{display:none !important;}
 
   /* sidebar */
-  body.staff-shell .bottom-nav{
+  body.wide-shell .bottom-nav{
     left:0; right:auto; top:0; bottom:0; width:248px; max-width:none; margin:0;
     flex-direction:column; justify-content:flex-start; gap:4px;
     padding:18px 12px 14px; border-top:none; border-right:1px solid var(--line);
     overflow-y:auto;
   }
-  body.staff-shell .nav-item{
+  body.wide-shell .nav-item{
     flex:none; flex-direction:row; justify-content:flex-start; gap:12px;
     padding:11px 14px; font-size:14px; font-weight:700; text-align:left;
   }
-  body.staff-shell .nav-item svg{width:20px; height:20px; flex-shrink:0;}
-  body.staff-shell .side-only{display:block;}
-  .side-brand{display:flex; align-items:center; gap:10px; padding:2px 6px 18px;}
+  body.wide-shell .nav-item svg{width:20px; height:20px; flex-shrink:0;}
+  body.wide-shell .side-only{display:block;}
+  body.wide-shell .side-brand{display:flex; align-items:center; gap:10px; padding:2px 6px 18px;}
   .side-brand .mark{width:38px; height:38px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
   .side-brand .mark svg, .side-brand .mark img{width:100%; height:100%; object-fit:contain;}
   .side-brand .nm{font-family:var(--font-display); font-weight:800; font-size:17px; letter-spacing:.5px; line-height:1.1;}
@@ -1168,37 +1168,37 @@ input,select,textarea{font-family:inherit;}
   .side-user button:hover{background:color-mix(in srgb, var(--theme-primary) 8%, transparent);}
 
   /* page */
-  body.staff-shell .app-header > *{max-width:1040px; margin-left:auto; margin-right:auto;}
-  body.staff-shell .app-header{border-radius:0 0 22px 22px; padding-left:28px; padding-right:28px;}
-  body.staff-shell .content{max-width:1088px; width:100%; margin:0 auto; padding:24px 28px; gap:18px;}
-  body.staff-shell .stat-grid{grid-template-columns:repeat(4, 1fr); gap:14px;}
+  body.wide-shell .app-header > *{max-width:1040px; margin-left:auto; margin-right:auto;}
+  body.wide-shell .app-header{border-radius:0 0 22px 22px; padding-left:28px; padding-right:28px;}
+  body.wide-shell .content{max-width:1088px; width:100%; margin:0 auto; padding:24px 28px; gap:18px;}
+  body.wide-shell .stat-grid{grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px;}
   /* the sidebar already carries the brand and account, so the header drops its copy */
-  body.staff-shell .app-header .brand-row{justify-content:flex-end;}
-  body.staff-shell .app-header .brand-row .brand-id{display:none;}
+  body.wide-shell .app-header .brand-row{justify-content:flex-end;}
+  body.wide-shell .app-header .brand-row .brand-id{display:none;}
   /* a page is a two-column grid; everything spans both columns except
      tappable shortcut rows, which pair up side by side */
-  body.staff-shell .content{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; column-gap:14px;}
-  body.staff-shell .content > *{grid-column:1 / -1; min-width:0;}
-  body.staff-shell .content > a.quick-action{grid-column:auto;}
-  body.staff-shell .report-option .ro-text, body.staff-shell .quick-action .qa-text{flex:1; min-width:0;}
+  body.wide-shell .content{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; column-gap:14px;}
+  body.wide-shell .content > *{grid-column:1 / -1; min-width:0;}
+  body.wide-shell .content > a.quick-action{grid-column:auto;}
+  body.wide-shell .report-option .ro-text, body.wide-shell .quick-action .qa-text{flex:1; min-width:0;}
   /* rows of tappable tiles flow into two columns instead of one long list */
-  body.staff-shell .content div:has(> .report-option),
-  body.staff-shell .content div:has(> a.quick-action){display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px !important;}
+  body.wide-shell .content div:has(> .report-option),
+  body.wide-shell .content div:has(> a.quick-action){display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px !important;}
 
   /* bottom sheets become a centred dialog */
-  body.staff-shell .sheet{
+  body.wide-shell .sheet{
     left:calc(50% + 124px); right:auto; bottom:auto; top:50%;
     width:min(580px, calc(100vw - 320px)); max-width:none; margin:0;
     border-radius:20px; padding:12px 24px 24px; max-height:84vh;
     transform:translate(-50%, -46%); opacity:0; visibility:hidden;
     transition:transform .2s ease, opacity .2s ease, visibility 0s linear .2s;
   }
-  body.staff-shell .sheet.show{transform:translate(-50%, -50%); opacity:1; visibility:visible; transition:transform .2s ease, opacity .2s ease;}
-  body.staff-shell .sheet-handle{display:none;}
+  body.wide-shell .sheet.show{transform:translate(-50%, -50%); opacity:1; visibility:visible; transition:transform .2s ease, opacity .2s ease;}
+  body.wide-shell .sheet-handle{display:none;}
 
   /* floating action bars sit at the bottom of the content area */
-  body.staff-shell .sticky-footer{left:248px; right:0; bottom:0; max-width:none; padding:14px 28px 16px;}
-  body.staff-shell .sticky-footer-inner{max-width:560px; margin:0 auto;}
+  body.wide-shell .sticky-footer{left:248px; right:0; bottom:0; max-width:none; padding:14px 28px 16px;}
+  body.wide-shell .sticky-footer-inner{max-width:560px; margin:0 auto;}
 }
 
 /* ---- Projector / present mode (lecturer live session) ---- */
@@ -1237,13 +1237,13 @@ body.presenting-session .bottom-nav,body.presenting-session .app-header{display:
   .live-hero-card.presenting .qr-code-box{width:min(70vw,44vh); height:min(70vw,44vh)}
 }
 @media (min-width:1024px){
-  body.staff-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting){
+  body.wide-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting){
     display:grid; grid-template-columns:auto 1fr; column-gap:40px; align-items:center; justify-items:center; padding:28px 32px;
   }
-  body.staff-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) .qr-display-wrap{grid-column:1; grid-row:1 / span 6}
-  body.staff-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) > :not(.qr-display-wrap):not(.present-btn):not(.present-exit){grid-column:2}
-  body.staff-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) .qr-code-box{width:300px; height:300px}
-  body.staff-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) .session-pin-digit{width:52px; height:64px; font-size:28px}
+  body.wide-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) .qr-display-wrap{grid-column:1; grid-row:1 / span 6}
+  body.wide-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) > :not(.qr-display-wrap):not(.present-btn):not(.present-exit){grid-column:2}
+  body.wide-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) .qr-code-box{width:300px; height:300px}
+  body.wide-shell #app[data-role="lecturer"] .live-hero-card:not(.presenting) .session-pin-digit{width:52px; height:64px; font-size:28px}
 }
 
 /* backup PIN block */
