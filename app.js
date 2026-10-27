@@ -635,6 +635,35 @@ async function liveFindActiveSession(courseCode, mode, classId){
   }
 }
 
+// Student side: the same lookup as liveFindActiveSession(), for all of the
+// student's courses in ONE query instead of one per course (the discovery poll
+// below runs this every few seconds). Picks, in STUDENT_COURSES order, the
+// newest active row for that course's code (and class, when known).
+// row.class_id === undefined means the class_id column does not exist yet:
+// same fallback as liveFindActiveSession(), match on code + mode alone.
+async function liveFindActiveSessionForCourses(courses, mode){
+  if(!LIVE_BACKEND || !courses.length) return null;
+  try {
+    let query = SUPABASE_CLIENT
+      .from('live_qr_sessions')
+      .select('*')
+      .in('course_code', [...new Set(courses.map(c => c.code))])
+      .eq('active', true);
+    if(mode) query = query.eq('mode', mode);
+    const { data, error } = await query.order('updated_at', { ascending: false });
+    if(error){ console.warn('liveFindActiveSessionForCourses error:', error); return null; }
+    for(const c of courses){
+      const row = (data || []).find(r => r.course_code === c.code
+        && (!c.classId || r.class_id === undefined || r.class_id === c.classId));
+      if(row) return row;
+    }
+    return null;
+  } catch(e){
+    console.warn('liveFindActiveSessionForCourses failed:', e);
+    return null;
+  }
+}
+
 // Apply a broadcast row (from initial fetch or a Realtime update) onto local LIVE_SESSION.
 function applyLiveSessionRow(row){
   if(!row) return;
@@ -833,18 +862,15 @@ async function startStudentLiveSessionSync(force){
   if(!LIVE_BACKEND) return;
   if(studentLiveSyncDoneForThisVisit && !(force && !isLiveSessionActive())) return;
   studentLiveSyncDoneForThisVisit = true;
-  for(const c of STUDENT_COURSES){
-    const row = await liveFindActiveSession(c.code, State.user?.mode, c.classId);
-    if(row){
-      applyLiveSessionRow(row);
-      subscribeToLiveSession(c.code);
-      await restoreCheckedInStateForBroadcast(row.id);
-      // A check-in still waiting in the offline queue counts too.
-      if(!State.hasCheckedInToday && await hasQueuedCheckIn(row.id)){
-        State.hasCheckedInToday = true;
-        refreshScreenContentOnly();
-      }
-      return;
+  const row = await liveFindActiveSessionForCourses(STUDENT_COURSES, State.user?.mode);
+  if(row){
+    applyLiveSessionRow(row);
+    subscribeToLiveSession(row.course_code);
+    await restoreCheckedInStateForBroadcast(row.id);
+    // A check-in still waiting in the offline queue counts too.
+    if(!State.hasCheckedInToday && await hasQueuedCheckIn(row.id)){
+      State.hasCheckedInToday = true;
+      refreshScreenContentOnly();
     }
   }
 }
@@ -879,12 +905,31 @@ async function restoreCheckedInStateForBroadcast(broadcastId){
 // While the student is on Home or Check In and no live session is known, look
 // again every few seconds, and redraw as soon as one appears. Stops by itself
 // once a session is found or the student goes elsewhere.
+// To keep the database load to students who can actually be waiting for a
+// session, a tick only queries when: one of the student's own lectures today
+// starts within DISCOVERY_LEAD_MIN or is under way, the app is visible, and
+// the previous check has finished. Outside that, "Check again" still works.
+const DISCOVERY_POLL_MS = 6000;
+const DISCOVERY_LEAD_MIN = 15;
 let studentDiscoveryPoll = null;
+let discoveryInFlight = null;
 function stopStudentDiscoveryPoll(){
   if(studentDiscoveryPoll){ clearInterval(studentDiscoveryPoll); studentDiscoveryPoll = null; }
 }
+function inStudentLectureWindow(){
+  const now = Date.now();
+  return getStudentTodayLectures().some(l => {
+    const r = parseLectureTimeRange(l.time);
+    return r && now >= r.start.getTime() - DISCOVERY_LEAD_MIN * 60000 && now <= r.end.getTime();
+  });
+}
 async function recheckLiveSession(){
   if(!LIVE_BACKEND || State.role !== 'student') return false;
+  if(discoveryInFlight) return discoveryInFlight;
+  discoveryInFlight = recheckLiveSessionNow().finally(() => { discoveryInFlight = null; });
+  return discoveryInFlight;
+}
+async function recheckLiveSessionNow(){
   await startStudentLiveSessionSync(true);
   const open = isLiveSessionOpenForStudent();
   if(open && (currentScreen === 'home' || currentScreen === 'checkin')){
@@ -899,8 +944,9 @@ function startStudentDiscoveryPoll(){
   studentDiscoveryPoll = setInterval(async ()=>{
     if(currentScreen !== 'home' && currentScreen !== 'checkin'){ stopStudentDiscoveryPoll(); return; }
     if(isLiveSessionOpenForStudent()){ stopStudentDiscoveryPoll(); return; }
+    if(document.hidden || discoveryInFlight || !inStudentLectureWindow()) return;
     if(await recheckLiveSession()) stopStudentDiscoveryPoll();
-  }, 6000);
+  }, DISCOVERY_POLL_MS);
 }
 async function checkAgainForSession(){
   showToast('Checking for a live session…');
@@ -9202,7 +9248,7 @@ function renderCheckIn(){
       <div class="error-state">
         <div class="err-icon">${ICONS.alertTriangle}</div>
         <div class="t">No active session</div>
-        <div class="s">There's no live check-in session for your courses right now. This screen checks again every few seconds, so it will open as soon as your lecturer starts one.</div>
+        <div class="s">There's no live check-in session for your courses right now. Around your lecture times this screen checks again every few seconds, so it opens as soon as your lecturer starts one.</div>
         <button class="btn btn-primary" onclick="checkAgainForSession()" style="max-width:200px;margin:0 auto 10px;">Check again</button>
         <button class="btn btn-ghost" onclick="navigate('home')" style="max-width:200px;margin:0 auto;">Back to Home</button>
       </div>
