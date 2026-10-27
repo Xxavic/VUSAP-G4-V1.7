@@ -5225,10 +5225,11 @@ function renderCalendarScreen(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('${State.role === 'student' ? 'home' : 'dashboard'}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Academic Calendar</div>
+      <div class="page-title" style="font-size:18px;">Calendar</div>
     </div>
   </div>
   <div class="content">
+    ${scheduleTabs('calendar')}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <button class="link-mini" style="font-size:14px;color:var(--theme-primary,#0E1C26);padding:6px 8px" onclick="shiftCalMonth(-1)" aria-label="Previous month">‹ Prev</button>
       <b style="font-size:16px">${monthName}</b>
@@ -5281,6 +5282,10 @@ function renderAcademicCalendarEditor(){
       <div class="field" style="margin-top:12px"><label>Last day (same as first for one day)</label><input class="input" type="date" id="calEnd" /></div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px"><input type="checkbox" id="calNoTeaching" checked disabled /> No lectures on these days</label>
       <button class="btn btn-primary" style="margin-top:14px;width:100%" onclick="addCalendarEvent()">Add to calendar</button>
+    </div>
+    <div class="card card-pad" style="font-size:13px;line-height:19px">
+      Term Start Date and the two semesters' dates are set in System Settings, not here.
+      <button class="link-mini" style="margin-top:6px" onclick="navigate('systemSettings')">${ICONS.settings} Open System Settings</button>
     </div>
     <div class="card card-pad">
       <div class="section-title">Entries</div>
@@ -6239,19 +6244,9 @@ function renderLecturerDashboard(){
       <div class="qa-text"><div class="t">Start Live Session</div><div class="s">Generate QR & PIN for student check-in</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
-    <a class="quick-action" onclick="navigate('markAttendance')">
-      <div class="qa-icon">${ICONS.check}</div>
-      <div class="qa-text"><div class="t">Attendance</div><div class="s">Corrections, records & export for your courses</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('schedule')">
-      <div class="qa-icon">${ICONS.calendar}</div>
-      <div class="qa-text"><div class="t">My Timetable</div><div class="s">View all assigned lectures</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
     <a class="quick-action" onclick="navigate('announcements')">
       <div class="qa-icon">${ICONS.megaphone}</div>
-      <div class="qa-text"><div class="t">Announcements</div><div class="s">Post updates to your courses</div></div>
+      <div class="qa-text"><div class="t">Messages</div><div class="s">Announcements and notifications for your courses</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('supportTickets')">
@@ -6964,6 +6959,7 @@ function renderSchedule(opts){
     </div>
   </div>
   <div class="content" style="${showCreateSession ? 'padding-bottom:90px;' : ''}">
+    ${scheduleTabs('timetable')}
     <div class="search-wrap">
       ${ICONS.search}
       <input class="input" placeholder="Search course, lecturer or venue..." oninput="filterSchedule(this.value)" id="scheduleSearch" />
@@ -8266,7 +8262,7 @@ function renderRegister(opts){
   const fk = currentRegistrarFacultyKey();
   const people = scopedRegisterPeople();
 
-  const title = isLecturer ? 'My Students' : 'Register';
+  const title = isLecturer ? 'My Students' : 'People';
 
   // Fills #deletionRequestsCard once this HTML is in the DOM.
   if(canManage && LIVE_BACKEND) setTimeout(loadPendingDeletionRequests, 0);
@@ -8819,15 +8815,11 @@ function renderStudentHome(){
     <div class="quick-action-grid">
       <a class="quick-action" onclick="navigate('announcements')">
         <div class="qa-icon">${ICONS.megaphone}</div>
-        <div class="qa-text"><div class="t">Announcements</div><div class="s">${ANNOUNCEMENTS.length} recent updates</div></div>
+        <div class="qa-text"><div class="t">Messages</div><div class="s">${ANNOUNCEMENTS.length} announcements, and your inbox</div></div>
       </a>
       <a class="quick-action" onclick="navigate('appeals')">
         <div class="qa-icon">${ICONS.gavel}</div>
         <div class="qa-text"><div class="t">Attendance Appeals</div><div class="s">Submit or track</div></div>
-      </a>
-      <a class="quick-action" onclick="navigate('timetable')">
-        <div class="qa-icon">${ICONS.calendar}</div>
-        <div class="qa-text"><div class="t">My Timetable</div><div class="s">Full weekly schedule</div></div>
       </a>
       <a class="quick-action" onclick="navigate('myAttendance')">
         <div class="qa-icon">${ICONS.records}</div>
@@ -8836,10 +8828,6 @@ function renderStudentHome(){
       <a class="quick-action" onclick="navigate('supportTickets')">
         <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
         <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems or account access</div></div>
-      </a>
-      <a class="quick-action" onclick="navigate('profile')">
-        <div class="qa-icon">${ICONS.user}</div>
-        <div class="qa-text"><div class="t">Profile & Settings</div><div class="s">ID, contact, preferences</div></div>
       </a>
     </div>
   </div>`;
@@ -8864,6 +8852,7 @@ function renderStudentTimetable(){
     </div>
   </div>
   <div class="content">
+    ${scheduleTabs('timetable')}
     ${filteredSchedule.map(d=>scheduleDayGroup(d, false)).join('')}
   </div>`;
 }
@@ -10005,6 +9994,22 @@ function renderRegistrarDashboard(){
       </div>
     </div>
 
+    ${groupHeading('Needs your attention')}
+    <a class="quick-action" onclick="navigate('appeals')">
+      <div class="qa-icon">${ICONS.gavel}</div>
+      <div class="qa-text"><div class="t">Appeals & Disputes</div><div class="s">${scopedAppeals().filter(a=>a.status==='pending').length} pending review</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('fraudCenter')">
+      <div class="qa-icon" style="background:#dc2626;">${ICONS.flag}</div>
+      <div class="qa-text"><div class="t">Fraud Center</div><div class="s">${scopedSuspicionLog().length} flagged check-ins, listed or grouped by device</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('supportTickets')">
+      <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
+      <div class="qa-text"><div class="t">Support Tickets</div><div class="s">${scopedSupportTickets().filter(t=>t.status==='open').length} open in your faculty</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
     <div class="card section-card">
       <div class="section-title">${ICONS.chart} ${facultyName(State.user.facultyKey).replace('Faculty of ','')} Attendance Breakdown</div>
       ${donutChart([
@@ -10029,44 +10034,31 @@ function renderRegistrarDashboard(){
       </div>`).join('') || `<div class="empty-state-sm">No recent submissions in your faculty</div>`}
     </div>
 
+    ${groupHeading('Reports')}
     <a class="quick-action solid" onclick="navigate('dataAnalytics')">
       <div class="qa-icon">${ICONS.chart}</div>
-      <div class="qa-text"><div class="t">Data Analytics & Reports</div><div class="s">Student attendance & lecturer compliance</div></div>
+      <div class="qa-text"><div class="t">Reports & Analytics</div><div class="s">At-risk students, eligibility, patterns, lecturers</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
-    <a class="quick-action" onclick="navigate('calendar')">
-      <div class="qa-icon">${ICONS.calendar}</div>
-      <div class="qa-text"><div class="t">Academic Calendar</div><div class="s">Terms, holidays, breaks and exam periods</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('announcements')">
-      <div class="qa-icon">${ICONS.megaphone}</div>
-      <div class="qa-text"><div class="t">Announcements</div><div class="s">Post updates and send notifications to your faculty</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('appeals')">
-      <div class="qa-icon">${ICONS.gavel}</div>
-      <div class="qa-text"><div class="t">Appeals & Disputes</div><div class="s">${scopedAppeals().filter(a=>a.status==='pending').length} pending review</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('fraudCenter')">
-      <div class="qa-icon" style="background:#dc2626;">${ICONS.flag}</div>
-      <div class="qa-text"><div class="t">Fraud Center</div><div class="s">${scopedSuspicionLog().length} flagged check-ins to review</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('supportTickets')">
-      <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
-      <div class="qa-text"><div class="t">Support Tickets</div><div class="s">${scopedSupportTickets().filter(t=>t.status==='open').length} open in your faculty</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
+    ${groupHeading('Manage')}
     <a class="quick-action" onclick="navigate('register')">
       <div class="qa-icon">${ICONS.users}</div>
-      <div class="qa-text"><div class="t">Register</div><div class="s">Students & lecturers in your faculty</div></div>
+      <div class="qa-text"><div class="t">People</div><div class="s">Students & lecturers in your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('courseCatalog')">
       <div class="qa-icon" style="background:#b45309;">${ICONS.layers}</div>
       <div class="qa-text"><div class="t">Courses</div><div class="s">Create and edit courses in your faculty</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('calendar')">
+      <div class="qa-icon">${ICONS.calendar}</div>
+      <div class="qa-text"><div class="t">Calendar</div><div class="s">Timetable view, holidays, breaks and exam periods</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('announcements')">
+      <div class="qa-icon">${ICONS.megaphone}</div>
+      <div class="qa-text"><div class="t">Messages</div><div class="s">Announcements and notifications to your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('auditSystem')">
@@ -10357,59 +10349,30 @@ function renderAttendanceRecordsBlock(opts){
 // its own export action added (exportComplianceReport() below).
 
 function renderDataAnalyticsHub(){
+  const item = (screen, icon, t, sub, solid) => `
+    <a class="quick-action${solid ? ' solid' : ''}" onclick="navigate('${screen}')">
+      <div class="qa-icon">${icon}</div>
+      <div class="qa-text"><div class="t">${t}</div><div class="s">${sub}</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>`;
   return `
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Data Analytics & Reports</div>
+      <div class="page-title" style="font-size:18px;">Reports & Analytics</div>
     </div>
   </div>
   <div class="content">
-    <a class="quick-action solid" onclick="navigate('analyticsAttendance')">
-      <div class="qa-icon">${ICONS.records}</div>
-      <div class="qa-text"><div class="t">Student Attendance</div><div class="s">Records, comparison charts & export</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsAtRisk')">
-      <div class="qa-icon">${ICONS.users}</div>
-      <div class="qa-text"><div class="t">At-Risk Students</div><div class="s">Who is below the cutoff, and who is slipping</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsHeatmap')">
-      <div class="qa-icon">${ICONS.chart}</div>
-      <div class="qa-text"><div class="t">Attendance Heatmap</div><div class="s">Which days and hours are best and worst attended</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsEligibility')">
-      <div class="qa-icon">${ICONS.fileText}</div>
-      <div class="qa-text"><div class="t">Exam Eligibility</div><div class="s">Who meets the attendance cutoff, per course</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsCohorts')">
-      <div class="qa-icon">${ICONS.chart}</div>
-      <div class="qa-text"><div class="t">Cohort Comparison</div><div class="s">By programme, course, year, study mode</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsMonthly')">
-      <div class="qa-icon">${ICONS.calendar}</div>
-      <div class="qa-text"><div class="t">Monthly Report</div><div class="s">Month totals, change and courses</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsDevices')">
-      <div class="qa-icon">${ICONS.flag}</div>
-      <div class="qa-text"><div class="t">Device Fraud Patterns</div><div class="s">Flags grouped by device and student</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('analyticsPunctuality')">
-      <div class="qa-icon">${ICONS.scaleIcon}</div>
-      <div class="qa-text"><div class="t">Lecturer Punctuality</div><div class="s">On-time, delayed and out-of-time starts over time</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
-    <a class="quick-action" onclick="navigate('compliance')">
-      <div class="qa-icon">${ICONS.scaleIcon}</div>
-      <div class="qa-text"><div class="t">Lecturer Compliance</div><div class="s">Session delivery vs. expected & export</div></div>
-      <div class="chev">${ICONS.chevR}</div>
-    </a>
+    ${groupHeading('Students')}
+    ${item('analyticsAtRisk', ICONS.users, 'At-Risk Students', 'Who is below the cutoff, and who is slipping', true)}
+    ${item('analyticsEligibility', ICONS.fileText, 'Exam Eligibility', 'Who meets the attendance cutoff, per course')}
+    ${item('analyticsAttendance', ICONS.records, 'Attendance Records', 'Records, comparison charts and export')}
+    ${groupHeading('Patterns')}
+    ${item('analyticsHeatmap', ICONS.chart, 'Attendance Heatmap', 'Which days and hours are best and worst attended')}
+    ${item('analyticsCohorts', ICONS.chart, 'Cohort Comparison', 'By faculty, programme, course, year or study mode')}
+    ${item('analyticsMonthly', ICONS.calendar, 'Monthly Report', 'Month totals, change and courses')}
+    ${groupHeading('Lecturers')}
+    ${item('compliance', ICONS.scaleIcon, 'Lecturer Delivery & Punctuality', 'Sessions held against expected, and how on time they start')}
   </div>`;
 }
 
@@ -10768,11 +10731,11 @@ function setCohortDim(d){ _cohortDim = d; refreshScreenContentOnly(); }
 function setMonthSel(m){ _monthSel = m; refreshScreenContentOnly(); }
 function setMonthFaculty(f){ _monthFaculty = f; refreshScreenContentOnly(); }
 
-function analyticsHeader(title, exportKey){
+function analyticsHeader(title, backTarget){
   return `
   <div class="app-header">
     <div class="header-back">
-      <button class="back-btn" onclick="navigate('dataAnalytics')">${ICONS.back}</button>
+      <button class="back-btn" onclick="navigate('${backTarget || 'dataAnalytics'}')">${ICONS.back}</button>
       <div class="page-title" style="font-size:18px;">${title}</div>
     </div>
   </div>`;
@@ -11062,8 +11025,9 @@ function renderDeviceFraudAnalytics(){
         </div>
         <div style="margin-top:6px;font-size:13px;line-height:20px">${d.flags} flag${d.flags === 1 ? '' : 's'}${d.high ? ` (${d.high} high)` : ''} · ${d.students.length} student${d.students.length === 1 ? '' : 's'}: ${d.students.map(escapeHtmlText).join(', ')}<br>${escapeHtmlText(d.courses.join(', ') || '—')} · ${escapeHtmlText(d.first.slice(0, 10))}${d.last.slice(0, 10) !== d.first.slice(0, 10) ? ' to ' + escapeHtmlText(d.last.slice(0, 10)) : ''}</div>
       </div>`).join('');
-  return `${analyticsHeader('Device Fraud Patterns')}
+  return `${analyticsHeader('Fraud Center', 'dashboard')}
   <div class="content">
+    ${fraudTabs('analyticsDevices')}
     ${exportButtons('exportDeviceFraudReport')}
     <div style="font-size:13px;line-height:19px;margin-bottom:10px">Fraud flags grouped by the device they came from. Several students on one device within a short time is the pattern of someone checking in for friends. A flag is a lead to look into, not proof: a shared phone can have an innocent reason.</div>
     ${body}
@@ -11102,8 +11066,9 @@ function renderPunctualityAnalytics(){
         </div>
         <div style="font-size:11px;margin-top:2px">Last 8 weeks, oldest to newest. Grey: no sessions that week.</div>
       </div>`).join('');
-  return `${analyticsHeader('Lecturer Punctuality')}
+  return `${analyticsHeader('Lecturers')}
   <div class="content">
+    ${lecturerTabs('analyticsPunctuality')}
     ${rows.length ? exportButtons('exportPunctualityReport') : ''}
     <div style="font-size:13px;line-height:19px;margin-bottom:10px">How each lecturer's sessions started against the timetable: on time (CL), delayed (DL) or out of time (LOT). Only sessions that were actually started appear here. A lecture that never started leaves no entry; see Lecturer Compliance for delivery rate.</div>
     ${body}
@@ -11701,6 +11666,7 @@ function renderFraudCenter(){
     </div>
   </div>
   <div class="content">
+    ${fraudTabs('fraudCenter')}
     <div class="status-chip-grid" style="grid-template-columns:repeat(3,1fr);">
       <div class="status-chip unmarked"><div class="n">${log.length}</div><div class="l">Total Flags</div></div>
       <div class="status-chip absent"><div class="n">${high}</div><div class="l">High</div></div>
@@ -11718,79 +11684,6 @@ function renderFraudCenter(){
         </div>
         <span class="severity-pill ${s.severity}">${s.severity}</span>
       </div>`).join('') || `<div class="empty-state-sm">No fraud flags in your faculty</div>`}
-    </div>
-  </div>`;
-}
-
-// ============================================================
-// REGISTRAR: REPORTS & EXPORT
-// ============================================================
-
-function renderReports(){
-  const records = scopedRecords();
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Reports & Export</div>
-    </div>
-  </div>
-  <div class="content">
-    <div class="field-row">
-      <div class="field">
-        <label>Course</label>
-        <select class="select" id="reportCourse" onchange="updateReportPreview()">
-          <option value="">All Courses</option>
-          ${[...new Set(records.map(r=>r.code))].map(code=>{
-            const sample = records.find(r=>r.code===code);
-            return `<option value="${escapeHtmlText(code)}">${escapeHtmlText(code)} – ${escapeHtmlText(sample.course)}</option>`;
-          }).join('')}
-        </select>
-      </div>
-      <div class="field">
-        <label>Date Range</label>
-        <select class="select" id="reportRange" onchange="updateReportPreview()">
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-          <option value="term">This Term</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-title">${ICONS.fileText} Export Format</div>
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <div class="report-option" onclick="exportReport('pdf')">
-          <div class="ro-icon" style="background:#fee2e2; color:#dc2626;">${ICONS.fileText}</div>
-          <div class="ro-text"><div class="t">Export as PDF</div><div class="s">Formatted report — opens print dialog</div></div>
-          <div class="chev">${ICONS.chevR}</div>
-        </div>
-        <div class="report-option" onclick="exportReport('excel')">
-          <div class="ro-icon" style="background:#dcfce7; color:#16a34a;">${ICONS.fileSpreadsheet}</div>
-          <div class="ro-text"><div class="t">Export as CSV</div><div class="s">Raw data — open in Excel or Google Sheets</div></div>
-          <div class="chev">${ICONS.chevR}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card section-card">
-      <div class="section-title">${ICONS.chart} Preview</div>
-      <div id="reportPreviewInfo" style="font-size:11px; color:var(--ink-faint); margin-bottom:10px;">${records.length} total records — showing first 5</div>
-      <div style="overflow-x:auto;">
-        <table id="reportPreviewTable" style="width:100%; border-collapse:collapse; font-size:11px;">
-          <thead><tr style="text-align:left; color:var(--ink-faint); border-bottom:1px solid var(--line);">
-            <th style="padding:6px 8px;">Student</th><th style="padding:6px 8px;">Programme</th><th style="padding:6px 8px;">Course</th><th style="padding:6px 8px;">Status</th>
-          </tr></thead>
-          <tbody id="reportPreviewBody">
-            ${records.slice(0,5).map(r=>`<tr style="border-bottom:1px solid var(--line);">
-              <td style="padding:6px 8px; font-weight:600;">${escapeHtmlText(r.name)}</td>
-              <td style="padding:6px 8px;">${escapeHtmlText(r.prog)}</td>
-              <td style="padding:6px 8px;">${escapeHtmlText(r.code)}</td>
-              <td style="padding:6px 8px;"><span class="status-pill ${escapeHtmlText(r.status)}">${escapeHtmlText(r.status)}</span></td>
-            </tr>`).join('') || `<tr><td colspan="4" style="padding:14px 8px; text-align:center; color:var(--ink-faint);">No records to preview</td></tr>`}
-          </tbody>
-        </table>
-      </div>
     </div>
   </div>`;
 }
@@ -11880,41 +11773,26 @@ function exportReport(format, courseCode){
   }
 }
 
-function updateReportPreview(){
-  const courseFilter = document.getElementById('reportCourse')?.value || '';
-  const records = scopedRecords();
-  const filtered = courseFilter ? records.filter(r => r.code === courseFilter) : records;
-  const body = document.getElementById('reportPreviewBody');
-  const info = document.getElementById('reportPreviewInfo');
-  if(info) info.textContent = `${filtered.length} records — showing first 5`;
-  if(body){
-    body.innerHTML = filtered.slice(0,5).map(r=>`<tr style="border-bottom:1px solid var(--line);">
-      <td style="padding:6px 8px; font-weight:600;">${escapeHtmlText(r.name)}</td>
-      <td style="padding:6px 8px;">${escapeHtmlText(r.prog)}</td>
-      <td style="padding:6px 8px;">${escapeHtmlText(r.code)}</td>
-      <td style="padding:6px 8px;"><span class="status-pill ${escapeHtmlText(r.status)}">${escapeHtmlText(r.status)}</span></td>
-    </tr>`).join('') || `<tr><td colspan="4" style="padding:14px 8px; text-align:center; color:var(--ink-faint);">No records match</td></tr>`;
-  }
-}
-
 // ============================================================
 // ADMINISTRATOR: DASHBOARD (full system access)
 // ============================================================
 
 const SYSTEM_MODULES = [
-  { id:'userManagement', label:'Register', sub:'View, enroll, edit, suspend, or reactivate accounts', icon:ICONS.userCog, color:'#1d4ed8', bg:'#dbeafe' },
-  { id:'courses', label:'Courses', sub:'Create and assign courses', icon:ICONS.layers, color:'#b45309', bg:'#fef3c7' },
-  { id:'policies', label:'Attendance Policies', sub:'Set minimum attendance, grace periods', icon:ICONS.gavel, color:'#9c2220', bg:'#fee2e2' },
-  { id:'fraudThresholds', label:'Fraud Thresholds', sub:'Tune detection sensitivity', icon:ICONS.flag, color:'#dc2626', bg:'#fee2e2' },
-  { id:'notifTemplates', label:'Notification Templates', sub:'Edit system message templates', icon:ICONS.megaphone, color:'#1d4ed8', bg:'#dbeafe' },
-  { id:'sendNotification', label:'Send Notification', sub:'Compose and send to students or staff', icon:ICONS.bell, color:'#1d4ed8', bg:'#dbeafe' },
-  { id:'academicCalendar', label:'Academic Calendar', sub:'Holidays, breaks and exam periods', icon:ICONS.calendar, color:'#0f766e', bg:'#ccfbf1' },
-  { id:'systemSettings', label:'System Settings', sub:'General configuration', icon:ICONS.settings, color:'#475569', bg:'#f1f5f9' },
-  { id:'auditSystem', label:'Audit System', sub:'Full system-wide audit trail', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
-  { id:'yearArchives', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
-  { id:'backups', label:'Backups', sub:'Schedule and restore backups', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
-  { id:'database', label:'Database Management', sub:'Tables, migrations, integrity checks', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
-  { id:'supportTickets', label:'Support Tickets', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
+  { id:'userManagement', group:'People & structure', label:'People', sub:'View, enroll, edit, suspend or reactivate accounts', icon:ICONS.userCog, color:'#1d4ed8', bg:'#dbeafe' },
+  { id:'roleAssignments', group:'People & structure', label:'Role Assignments', sub:'Who holds which role', icon:ICONS.userCog, color:'#7c3aed', bg:'#ede9fe' },
+  { id:'faculties', group:'People & structure', label:'Faculties & Programmes', sub:'The academic structure everything hangs off', icon:ICONS.building, color:'#0369a1', bg:'#e0f2fe' },
+  { id:'courses', group:'People & structure', label:'Courses', sub:'Create and assign courses', icon:ICONS.layers, color:'#b45309', bg:'#fef3c7' },
+  { id:'policies', group:'Attendance rules', label:'Attendance Policies', sub:'Set minimum attendance, grace periods', icon:ICONS.gavel, color:'#9c2220', bg:'#fee2e2' },
+  { id:'fraudThresholds', group:'Attendance rules', label:'Fraud Thresholds', sub:'Tune detection sensitivity', icon:ICONS.flag, color:'#dc2626', bg:'#fee2e2' },
+  { id:'academicCalendar', group:'Attendance rules', label:'Academic Calendar', sub:'Holidays, breaks and exam periods', icon:ICONS.calendar, color:'#0f766e', bg:'#ccfbf1' },
+  { id:'sendNotification', group:'Communication', label:'Messages', sub:'Send to students or staff, and see what was sent', icon:ICONS.bell, color:'#1d4ed8', bg:'#dbeafe' },
+  { id:'notifTemplates', group:'Communication', label:'Notification Templates', sub:'Edit system message templates', icon:ICONS.megaphone, color:'#1d4ed8', bg:'#dbeafe' },
+  { id:'systemSettings', group:'System', label:'System Settings', sub:'General configuration', icon:ICONS.settings, color:'#475569', bg:'#f1f5f9' },
+  { id:'auditSystem', group:'System', label:'Audit System', sub:'Full system-wide audit trail', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
+  { id:'yearArchives', group:'System', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
+  { id:'backups', group:'System', label:'Backups', sub:'Schedule and restore backups', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
+  { id:'database', group:'System', label:'Database Management', sub:'Tables, migrations, integrity checks', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
+  { id:'supportTickets', group:'System', label:'Support Tickets', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
 ];
 
 function renderAdministratorDashboard(){
@@ -11967,15 +11845,17 @@ function renderAdministratorDashboard(){
     </div>
 
     <div class="card section-card">
-      <div class="section-title">${ICONS.settings} System Modules</div>
+      <div class="section-title">${ICONS.settings} Administration</div>
+      ${[...new Set(SYSTEM_MODULES.map(m => m.group))].map(g => `
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.3px;margin:14px 0 8px;color:var(--ink-faint)">${g}</div>
       <div style="display:flex; flex-direction:column; gap:10px;">
-        ${SYSTEM_MODULES.map(m=>`
+        ${SYSTEM_MODULES.filter(m => m.group === g).map(m=>`
         <div class="report-option" onclick="openSystemModule('${jsAttr(m.id)}')">
           <div class="ro-icon" style="background:${m.bg}; color:${m.color};">${m.icon}</div>
           <div class="ro-text"><div class="t">${m.label}</div><div class="s">${m.sub}</div></div>
           <div class="chev">${ICONS.chevR}</div>
         </div>`).join('')}
-      </div>
+      </div>`).join('')}
     </div>
   </div>`;
 }
@@ -12013,7 +11893,7 @@ function openSystemModule(moduleId){
     return;
   }
   if(moduleId === 'sendNotification'){
-    navigate('sendNotification');
+    navigate('notifications');
     return;
   }
   if(moduleId === 'systemSettings'){
@@ -12022,6 +11902,10 @@ function openSystemModule(moduleId){
   }
   if(moduleId === 'academicCalendar'){
     navigate('calendar');
+    return;
+  }
+  if(moduleId === 'yearArchives'){
+    navigate('yearArchives');
     return;
   }
   if(moduleId === 'auditSystem'){
@@ -14028,6 +13912,7 @@ function renderNotifications(){
     </div>
   </div>
   <div class="content">
+    ${messageTabs('notifications')}
     ${notifs.length === 0 ? `
       <div class="empty-state">
         ${ICONS.bell}
@@ -14497,6 +14382,7 @@ function renderAnnouncements(){
     </div>
   </div>
   <div class="content" ${canPost ? 'style="padding-bottom:90px;"' : ''}>
+    ${messageTabs('announcements')}
     ${ANNOUNCEMENTS.length === 0 ? `<div class="empty-state">${ICONS.megaphone}<div class="t" style="margin-top:14px;">No announcements yet</div></div>` : ''}
     ${ANNOUNCEMENTS.map(a=>`
     <div class="card card-pad">
@@ -14729,6 +14615,7 @@ function renderComposeNotification(){
     </div>
   </div>
   <div class="content" style="padding-bottom:24px;">
+    ${messageTabs('sendNotification')}
     <form id="composeNotificationForm" onsubmit="return submitComposeNotification(event)" style="display:flex;flex-direction:column;gap:16px;">
       <input type="hidden" id="notifRecipientType" value="${options[0].value}" />
 
@@ -14964,11 +14851,12 @@ function renderSentNotifications(){
   return `
   <div class="app-header">
     <div class="header-back">
-      <button class="back-btn" onclick="navigate('sendNotification')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Outbox</div>
+      <button class="back-btn" onclick="navigate('${State.role === 'student' ? 'home' : 'dashboard'}')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Sent</div>
     </div>
   </div>
   <div class="content">
+    ${messageTabs('sentNotifications')}
     ${mine.length === 0 ? `
       <div class="empty-state">
         ${ICONS.bell}
@@ -15973,17 +15861,15 @@ function confirmDeleteSlot(day, index){
 // ============================================================
 
 function renderCompliance(){
-  const fk = currentRegistrarFacultyKey();
-  const facultyAnalytics = fk ? FACULTY_ANALYTICS.filter(f=>f.facultyKey===fk) : FACULTY_ANALYTICS;
-  const facultiesToShow = fk ? FACULTIES.filter(f=>f.key===fk) : FACULTIES;
   return `
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dataAnalytics')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Analytics & Compliance</div>
+      <div class="page-title" style="font-size:18px;">Lecturers</div>
     </div>
   </div>
   <div class="content">
+    ${lecturerTabs('compliance')}
     <div class="card card-pad">
       <div class="section-head-row">
         <div class="section-title" style="margin-bottom:0;">${ICONS.scaleIcon} Lecturer Compliance Report</div>
@@ -15993,20 +15879,6 @@ function renderCompliance(){
         </div>
       </div>
       <div style="font-size:11.5px; color:var(--ink-faint);">Exports ${scopedLecturerCompliance().length} lecturer${scopedLecturerCompliance().length===1?'':'s'} in your faculty</div>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-title">${ICONS.building} Faculty Attendance</div>
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        ${facultyAnalytics.map(f=>`
-        <div class="lecture-row">
-          <div>
-            <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(f.faculty)}</div>
-            <div class="lecture-meta" style="margin-top:3px;">${f.students} students · ${f.programmes} programmes</div>
-          </div>
-          <span class="badge ${f.avgAttendance>=85?'done':'pending'}">${f.avgAttendance}%</span>
-        </div>`).join('')}
-      </div>
     </div>
 
     <div class="card card-pad">
@@ -16034,23 +15906,11 @@ function renderCompliance(){
       `}
     </div>
 
-    <div class="card card-pad">
-      <div class="section-title">${ICONS.chart} Programme Analytics</div>
-      ${facultiesToShow.map(fac => `
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px; font-weight:800; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:8px;">${escapeHtmlText(fac.name)}</div>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          ${PROGRAMME_ANALYTICS.filter(p=>p.facultyKey===fac.key).map(p=>`
-          <div class="lecture-row">
-            <div>
-              <div class="lecture-code" style="font-size:13px;">${escapeHtmlText(p.programme)}</div>
-              <div class="lecture-meta" style="margin-top:3px;">${p.students} students</div>
-            </div>
-            <span class="badge ${p.avgAttendance===0?'pending':p.avgAttendance>=85?'done':'pending'}">${p.avgAttendance ? p.avgAttendance+'%' : 'No data'}</span>
-          </div>`).join('')}
-        </div>
-      </div>`).join('')}
-    </div>
+    <a class="quick-action" onclick="navigate('analyticsCohorts')">
+      <div class="qa-icon">${ICONS.chart}</div>
+      <div class="qa-text"><div class="t">Faculty and programme attendance</div><div class="s">Now in Cohort Comparison, with every figure built the same way</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
   </div>`;
 }
 
@@ -16132,31 +15992,63 @@ function exportComplianceReport(format){
 
 let currentScreen = 'dashboard';
 
+// ============================================================
+// SECTION TABS (Oct 2026 UX pass). Several screens are really views of one
+// thing (messages, schedule, fraud, lecturer reports). Instead of a separate
+// dashboard card for each, they share one tab strip so the person sees one
+// section with a few views and can move between them in a tap.
+// ============================================================
+function sectionTabs(tabs, active){
+  return `<div role="tablist" style="display:flex;gap:6px;margin:0 0 12px">${tabs.map(t => {
+    const on = t.id === active;
+    return `<button role="tab" aria-selected="${on}" onclick="navigate('${t.id}')" style="flex:1;padding:9px 6px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid ${on ? 'var(--theme-primary,#0E1C26)' : '#cbd5e1'};background:${on ? 'var(--theme-primary,#0E1C26)' : '#fff'};color:${on ? '#fff' : '#1e293b'}">${t.label}</button>`;
+  }).join('')}</div>`;
+}
+function messageTabs(active){
+  const tabs = State.role === 'student'
+    ? [{ id: 'notifications', label: 'Inbox' }, { id: 'announcements', label: 'Announcements' }]
+    : State.role === 'administrator'
+      ? [{ id: 'notifications', label: 'Inbox' }, { id: 'sendNotification', label: 'Send' }, { id: 'sentNotifications', label: 'Sent' }]
+      : [{ id: 'notifications', label: 'Inbox' }, { id: 'announcements', label: 'Announcements' }, { id: 'sendNotification', label: 'Send' }, { id: 'sentNotifications', label: 'Sent' }];
+  return sectionTabs(tabs, active);
+}
+function scheduleTabs(active){
+  const home = { student: 'timetable', lecturer: 'schedule', registrar: 'allSchedules', administrator: 'allSchedules' }[State.role] || 'schedule';
+  return sectionTabs([{ id: home, label: 'Timetable' }, { id: 'calendar', label: 'Calendar' }], active === 'calendar' ? 'calendar' : home);
+}
+function fraudTabs(active){
+  return sectionTabs([{ id: 'fraudCenter', label: 'Flags' }, { id: 'analyticsDevices', label: 'By device' }], active);
+}
+function lecturerTabs(active){
+  return sectionTabs([{ id: 'compliance', label: 'Delivery rate' }, { id: 'analyticsPunctuality', label: 'Punctuality' }], active);
+}
+function groupHeading(text){
+  return `<div class="section-title" style="margin:18px 4px 8px">${text}</div>`;
+}
+
 const NAV_CONFIG = {
   lecturer: [
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
     { id:'markAttendance', label:'Attendance', icon:ICONS.check },
-    { id:'schedule', label:'Timetable', icon:ICONS.calendar },
-    { id:'calendar', label:'Calendar', icon:ICONS.calendar },
+    { id:'schedule', label:'Schedule', icon:ICONS.calendar, also:['calendar'] },
     { id:'register', label:'Students', icon:ICONS.users },
   ],
   registrar: [
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
     { id:'records', label:'Records', icon:ICONS.records },
-    { id:'register', label:'Register', icon:ICONS.users },
-    { id:'allSchedules', label:'Schedules', icon:ICONS.schedule },
+    { id:'register', label:'People', icon:ICONS.users },
+    { id:'allSchedules', label:'Schedules', icon:ICONS.schedule, also:['calendar'] },
   ],
   administrator: [
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
     { id:'register', label:'People', icon:ICONS.users },
     { id:'records', label:'Records', icon:ICONS.records },
-    { id:'allSchedules', label:'Schedules', icon:ICONS.schedule },
+    { id:'allSchedules', label:'Schedules', icon:ICONS.schedule, also:['calendar'] },
   ],
   student: [
     { id:'home', label:'Home', icon:ICONS.dashboard },
     { id:'checkin', label:'Check In', icon:ICONS.qrcode },
-    { id:'timetable', label:'Timetable', icon:ICONS.calendar },
-    { id:'calendar', label:'Calendar', icon:ICONS.calendar },
+    { id:'timetable', label:'Schedule', icon:ICONS.calendar, also:['calendar'] },
   ],
 };
 
@@ -16202,7 +16094,6 @@ function getScreenHTML(screenId){
       case 'courseCatalog': return renderCourseCatalog();
       case 'coursesByYear': return renderCoursesByYear();
       case 'fraudCenter': return renderFraudCenter();
-      case 'reports': return renderReports();
       case 'appeals': return renderAppeals();
       case 'supportTickets': return renderSupportTickets();
       case 'compliance': return renderCompliance();
@@ -16579,7 +16470,7 @@ function renderBottomNav(){
   const items = NAV_CONFIG[State.role] || [];
   const nav = document.getElementById('bottomNav');
   nav.innerHTML = items.map(item=>`
-    <button class="nav-item ${currentScreen===item.id?'active':''}" onclick="navigate('${jsAttr(item.id)}')">
+    <button class="nav-item ${(currentScreen===item.id || (item.also||[]).includes(currentScreen))?'active':''}" onclick="navigate('${jsAttr(item.id)}')">
       ${item.icon}
       <span>${item.label}</span>
     </button>`).join('');
