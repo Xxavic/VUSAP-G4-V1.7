@@ -10106,6 +10106,16 @@ function renderDataAnalyticsHub(){
       <div class="qa-text"><div class="t">Monthly Report</div><div class="s">Month totals, change and courses</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+    <a class="quick-action" onclick="navigate('analyticsDevices')">
+      <div class="qa-icon">${ICONS.flag}</div>
+      <div class="qa-text"><div class="t">Device Fraud Patterns</div><div class="s">Flags grouped by device and student</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('analyticsPunctuality')">
+      <div class="qa-icon">${ICONS.scaleIcon}</div>
+      <div class="qa-text"><div class="t">Lecturer Punctuality</div><div class="s">On-time, delayed and out-of-time starts over time</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
     <a class="quick-action" onclick="navigate('compliance')">
       <div class="qa-icon">${ICONS.scaleIcon}</div>
       <div class="qa-text"><div class="t">Lecturer Compliance</div><div class="s">Session delivery vs. expected & export</div></div>
@@ -10640,6 +10650,189 @@ function exportMonthlyReport(format){
     showToast('Monthly report exported as CSV');
   } else if(printReport('Monthly Attendance Report — ' + monthLabel(ym), `${scope} · ${rep.present} present, ${rep.late} late, ${rep.absent} absent`, headers, rows)){
     logAuditEvent(user[0], user[1], 'Report exported', ym, `Monthly PDF, ${scope}`);
+  }
+}
+
+// ============================================================
+// TIER 3 ANALYTICS (Oct 2026): fraud patterns by device and the lecturer
+// punctuality trend.
+//
+// Device patterns group the existing fraud flags (SUSPICION_LOG) by device id:
+// one device behind several students is the sign of someone checking in for
+// friends. Flags with no device id are counted, not grouped.
+//
+// Punctuality: a session's CL / DL / LOT result is recorded only as an audit
+// log entry ("Lecture session CL|DL|LOT", target = course code) when the
+// lecturer starts it, so the trend is built from those entries. The audit
+// log screen only keeps the newest 200 rows of every kind, so live data is
+// fetched separately here (PUNCT_LIVE) and the screen says how many sessions
+// it is based on. A lecturer who never starts a session leaves no entry, so
+// missed lectures are NOT in this view -- that is what Session Delivery Rate
+// under Lecturer Compliance measures.
+// ============================================================
+function computeDeviceFraud(log){
+  const by = new Map(); let noDevice = 0;
+  log.forEach(f => {
+    if(!f.deviceId){ noDevice++; return; }
+    if(!by.has(f.deviceId)) by.set(f.deviceId, []);
+    by.get(f.deviceId).push(f);
+  });
+  const devices = [...by.entries()].map(([deviceId, fl]) => {
+    const students = [...new Set(fl.map(f => f.student))];
+    const days = new Set(fl.map(f => String(f.date || '').slice(0, 10)).filter(Boolean));
+    const dates = fl.map(f => f.date || '').sort();
+    const pattern = students.length >= 2 ? 'multi' : (fl.length >= 2 && days.size >= 2 ? 'repeat' : 'single');
+    return {
+      deviceId, flags: fl.length, students, courses: [...new Set(fl.map(f => f.course).filter(Boolean))],
+      high: fl.filter(f => f.severity === 'high').length, days: days.size,
+      first: dates[0] || '', last: dates[dates.length - 1] || '', pattern
+    };
+  }).sort((a, b) => (b.students.length - a.students.length) || (b.flags - a.flags) || b.last.localeCompare(a.last));
+  return { devices, noDevice };
+}
+const DEVICE_PATTERN_LABEL = { multi: 'Several students, one device', repeat: 'Flagged on different days', single: 'Single flag' };
+
+let PUNCT_LIVE = null;
+async function loadPunctualityFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT.from('audit_log')
+      .select('actor_name, action, target, created_at, faculty_key')
+      .in('action', ['Lecture session CL', 'Lecture session DL', 'Lecture session LOT'])
+      .order('created_at', { ascending: false }).limit(2000);
+    if(error){ console.warn('loadPunctualityFromSupabase failed, using local audit log:', error); return; }
+    PUNCT_LIVE = (rows || []).map(r => ({
+      lecturer: r.actor_name, action: r.action, target: r.target, faculty: r.faculty_key || null,
+      timestamp: r.created_at ? r.created_at.replace('T', ' ').slice(0, 16) : ''
+    }));
+    refreshScreenContentOnly();
+  } catch(e){ console.warn('loadPunctualityFromSupabase error:', e); }
+}
+function punctualityEvents(){
+  const src = (LIVE_BACKEND && PUNCT_LIVE)
+    ? PUNCT_LIVE
+    : AUDIT_LOG.map(e => ({ lecturer: e.actorName, action: e.action, target: e.target, faculty: null, timestamp: e.timestamp }));
+  const fk = currentRegistrarFacultyKey();
+  return src.filter(e => /^Lecture session (CL|DL|LOT)$/.test(e.action || '')).filter(e => {
+    if(!fk) return true;
+    return (e.faculty || auditEventFacultyKey({ target: e.target })) === fk;
+  });
+}
+function eventTimeMs(ts){
+  // Strict on purpose: Date.parse is lenient enough to accept text like "garbage:00Z".
+  if(!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(ts || ''))) return null;
+  const t = Date.parse(String(ts).replace(' ', 'T') + ':00Z'); return isNaN(t) ? null : t;
+}
+function weekStartMs(ms){ const d = new Date(ms); const dow = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow); }
+
+// events -> one row per lecturer. Trend compares the last 28 days with the 28
+// before; it needs 3+ sessions in each, and a change of 10 points or more.
+function computePunctuality(events, nowMs, weeks){
+  weeks = weeks || 8;
+  const DAY = 86400000, by = new Map(); let undated = 0;
+  events.forEach(e => {
+    const ms = eventTimeMs(e.timestamp);
+    if(ms === null || !e.lecturer){ undated++; return; }
+    if(!by.has(e.lecturer)) by.set(e.lecturer, []);
+    by.get(e.lecturer).push({ ms, s: /(CL|DL|LOT)$/.exec(e.action)[1] });
+  });
+  const onTime = evs => evs.length ? Math.round(evs.filter(x => x.s === 'CL').length / evs.length * 100) : null;
+  const thisWeek = weekStartMs(nowMs);
+  const rows = [...by.entries()].map(([lecturer, evs]) => {
+    const recent = evs.filter(x => x.ms > nowMs - 28 * DAY && x.ms <= nowMs);
+    const prior = evs.filter(x => x.ms > nowMs - 56 * DAY && x.ms <= nowMs - 28 * DAY);
+    const recentPct = onTime(recent), priorPct = onTime(prior);
+    let trend = null;
+    if(recent.length >= 3 && prior.length >= 3){
+      const d = recentPct - priorPct; trend = d >= 10 ? 'up' : d <= -10 ? 'down' : 'flat';
+    }
+    const strip = [];
+    for(let i = weeks - 1; i >= 0; i--){
+      const ws = thisWeek - i * 7 * DAY;
+      const inWeek = evs.filter(x => x.ms >= ws && x.ms < ws + 7 * DAY);
+      strip.push({ weekStart: ws, n: inWeek.length, pct: onTime(inWeek) });
+    }
+    return {
+      lecturer, n: evs.length, cl: evs.filter(x => x.s === 'CL').length, dl: evs.filter(x => x.s === 'DL').length,
+      lot: evs.filter(x => x.s === 'LOT').length, pct: onTime(evs), recentPct, priorPct, trend, strip
+    };
+  }).sort((a, b) => (a.pct - b.pct) || a.lecturer.localeCompare(b.lecturer));
+  return { rows, undated };
+}
+
+function renderDeviceFraudAnalytics(){
+  const { devices, noDevice } = computeDeviceFraud(scopedSuspicionLog());
+  const col = { multi: '#b91c1c', repeat: '#b45309', single: '#64748b' };
+  const body = devices.length === 0
+    ? `<div class="card section-card">No fraud flags with a device recorded yet.</div>`
+    : devices.map(d => `
+      <div class="card section-card" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <b style="font-size:14px;word-break:break-all">${escapeHtmlText(d.deviceId)}</b>
+          <span style="font-size:11px;font-weight:700;color:${col[d.pattern]};border:1px solid ${col[d.pattern]};border-radius:999px;padding:2px 8px;white-space:nowrap">${DEVICE_PATTERN_LABEL[d.pattern]}</span>
+        </div>
+        <div style="margin-top:6px;font-size:13px;line-height:20px">${d.flags} flag${d.flags === 1 ? '' : 's'}${d.high ? ` (${d.high} high)` : ''} · ${d.students.length} student${d.students.length === 1 ? '' : 's'}: ${d.students.map(escapeHtmlText).join(', ')}<br>${escapeHtmlText(d.courses.join(', ') || '—')} · ${escapeHtmlText(d.first.slice(0, 10))}${d.last.slice(0, 10) !== d.first.slice(0, 10) ? ' to ' + escapeHtmlText(d.last.slice(0, 10)) : ''}</div>
+      </div>`).join('');
+  return `${analyticsHeader('Device Fraud Patterns')}
+  <div class="content">
+    ${exportButtons('exportDeviceFraudReport')}
+    <div style="font-size:13px;line-height:19px;margin-bottom:10px">Fraud flags grouped by the device they came from. Several students on one device within a short time is the pattern of someone checking in for friends. A flag is a lead to look into, not proof: a shared phone can have an innocent reason.</div>
+    ${body}
+    ${noDevice ? `<div style="font-size:12px;line-height:18px;margin-top:6px">${noDevice} flag${noDevice === 1 ? ' has' : 's have'} no device recorded and ${noDevice === 1 ? 'is' : 'are'} not grouped.</div>` : ''}
+  </div>`;
+}
+function exportDeviceFraudReport(format){
+  const { devices } = computeDeviceFraud(scopedSuspicionLog());
+  if(devices.length === 0){ showToast('Nothing to export'); return; }
+  const headers = ['Device','Pattern','Flags','High','Students','Courses','First','Last'];
+  const rows = devices.map(d => [d.deviceId, DEVICE_PATTERN_LABEL[d.pattern], d.flags, d.high, d.students.join('; '), d.courses.join('; '), d.first, d.last]);
+  const user = [State.user?.staffId || 'system', State.user?.name || 'System'];
+  if(format === 'excel'){
+    csvDownload(`qrast-device-fraud-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    logAuditEvent(user[0], user[1], 'Report exported', 'fraud', `Device fraud CSV, ${devices.length} devices`);
+    showToast(`${devices.length} devices exported as CSV`);
+  } else if(printReport('Fraud Patterns by Device', 'flags are leads, not proof', headers, rows)){
+    logAuditEvent(user[0], user[1], 'Report exported', 'fraud', `Device fraud PDF, ${devices.length} devices`);
+  }
+}
+
+function renderPunctualityAnalytics(){
+  const events = punctualityEvents();
+  const { rows, undated } = computePunctuality(events, Date.now());
+  const arrow = { up: '↑ improving', down: '↓ slipping', flat: '→ steady' };
+  const col = p => p === null ? '#e2e8f0' : p >= 80 ? '#15803d' : p >= 50 ? '#b45309' : '#b91c1c';
+  const body = rows.length === 0
+    ? `<div class="card section-card">No started sessions recorded yet, so there is nothing to trend.</div>`
+    : rows.map(r => `
+      <div class="card section-card" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;gap:10px;font-size:14px"><b>${escapeHtmlText(r.lecturer)}</b><b>${r.pct}% on time</b></div>
+        <div style="margin-top:4px;font-size:13px;line-height:20px">${r.n} session${r.n === 1 ? '' : 's'} started: ${r.cl} on time, ${r.dl} delayed, ${r.lot} out of time${r.n < 3 ? ' · <i>few sessions, read with care</i>' : ''}</div>
+        <div style="margin-top:4px;font-size:13px">${r.trend ? `Last 28 days <b>${r.recentPct}%</b> vs the 28 before <b>${r.priorPct}%</b>: ${arrow[r.trend]}` : 'Not enough sessions in the last two months to show a trend'}</div>
+        <div style="display:flex;gap:4px;align-items:flex-end;height:34px;margin-top:8px" role="img" aria-label="On-time share per week, last 8 weeks">
+          ${r.strip.map(w => `<div title="${new Date(w.weekStart).toISOString().slice(0, 10)}: ${w.pct === null ? 'no sessions' : w.pct + '% of ' + w.n}" style="flex:1;height:${w.pct === null ? 6 : Math.max(6, Math.round(w.pct * 0.34))}px;background:${col(w.pct)};border-radius:2px"></div>`).join('')}
+        </div>
+        <div style="font-size:11px;margin-top:2px">Last 8 weeks, oldest to newest. Grey: no sessions that week.</div>
+      </div>`).join('');
+  return `${analyticsHeader('Lecturer Punctuality')}
+  <div class="content">
+    ${rows.length ? exportButtons('exportPunctualityReport') : ''}
+    <div style="font-size:13px;line-height:19px;margin-bottom:10px">How each lecturer's sessions started against the timetable: on time (CL), delayed (DL) or out of time (LOT). Only sessions that were actually started appear here. A lecture that never started leaves no entry; see Lecturer Compliance for delivery rate.</div>
+    ${body}
+    ${undated ? `<div style="font-size:12px;margin-top:6px">${undated} entr${undated === 1 ? 'y' : 'ies'} had no usable date or lecturer and ${undated === 1 ? 'was' : 'were'} left out.</div>` : ''}
+  </div>`;
+}
+function exportPunctualityReport(format){
+  const { rows } = computePunctuality(punctualityEvents(), Date.now());
+  if(rows.length === 0){ showToast('Nothing to export'); return; }
+  const headers = ['Lecturer','Sessions started','On time (CL)','Delayed (DL)','Out of time (LOT)','On time %','Last 28 days %','Previous 28 days %'];
+  const out = rows.map(r => [r.lecturer, r.n, r.cl, r.dl, r.lot, r.pct, r.recentPct ?? '', r.priorPct ?? '']);
+  const user = [State.user?.staffId || 'system', State.user?.name || 'System'];
+  if(format === 'excel'){
+    csvDownload(`qrast-punctuality-${new Date().toISOString().slice(0, 10)}.csv`, headers, out);
+    logAuditEvent(user[0], user[1], 'Report exported', 'lecturer-compliance', `Punctuality CSV, ${rows.length} lecturers`);
+    showToast(`${rows.length} lecturers exported as CSV`);
+  } else if(printReport('Lecturer Punctuality', 'sessions started on time, delayed or out of time', headers, out)){
+    logAuditEvent(user[0], user[1], 'Report exported', 'lecturer-compliance', `Punctuality PDF, ${rows.length} lecturers`);
   }
 }
 
@@ -15723,6 +15916,8 @@ function getScreenHTML(screenId){
       case 'analyticsEligibility': return renderEligibilityAnalytics();
       case 'analyticsCohorts': return renderCohortAnalytics();
       case 'analyticsMonthly': return renderMonthlyAnalytics();
+      case 'analyticsDevices': return renderDeviceFraudAnalytics();
+      case 'analyticsPunctuality': return renderPunctualityAnalytics();
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
@@ -15941,6 +16136,7 @@ function navigate(screenId, opts){
   if(screenId === 'auditSystem' || screenId === 'backups' || screenId === 'database') loadAuditLogFromSupabase();
   if(screenId === 'database') loadStaffFromSupabase(); // Database screen's table-count tiles read LECTURERS/REGISTRARS.length directly
   if(screenId === 'compliance') loadLecturerComplianceFromSupabase();
+  if(screenId === 'analyticsPunctuality') loadPunctualityFromSupabase();
   if(screenId === 'fraudCenter' || screenId === 'database') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();
