@@ -9543,6 +9543,34 @@ function redirectToAppealFromCheckIn(outcome){
 // LECTURER: START SESSION (QR + PIN generation)
 // ============================================================
 
+// Projector ("present") mode: the live-session card fills the whole screen with
+// a very large QR and PIN so a lecture hall can read it from the back. It is a
+// class on the same card, so every element id the ticker/roster poller updates
+// (#liveSessionCountdown, #qrRotateLabel, #liveCheckinCount ...) is unchanged.
+let PRESENTING = false;
+
+function setPresenting(on){
+  PRESENTING = !!on;
+  const card = document.getElementById('liveHeroCard');
+  if(card) card.classList.toggle('presenting', PRESENTING);
+  document.body.classList.toggle('presenting-session', PRESENTING);
+  try{
+    if(PRESENTING && document.documentElement.requestFullscreen && !document.fullscreenElement){
+      document.documentElement.requestFullscreen().catch(()=>{});
+    } else if(!PRESENTING && document.fullscreenElement && document.exitFullscreen){
+      document.exitFullscreen().catch(()=>{});
+    }
+  }catch(e){}
+  drawQrPlaceholder();
+}
+document.addEventListener('fullscreenchange', ()=>{
+  // Esc in fullscreen leaves fullscreen; leave present mode with it.
+  if(!document.fullscreenElement && PRESENTING) setPresenting(false);
+});
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && PRESENTING) setPresenting(false);
+});
+
 function renderStartSession(){
   return `
   <div class="app-header">
@@ -9556,7 +9584,9 @@ function renderStartSession(){
     </div>
   </div>
   <div class="content">
-    <div class="live-hero-card">
+    <div class="live-hero-card${PRESENTING ? ' presenting' : ''}" id="liveHeroCard">
+      <button class="present-btn" onclick="setPresenting(true)" title="Show the QR full screen for a projector">${ICONS.qrcode.replace(/<svg /,'<svg style="width:14px;height:14px;" ')} Present on projector</button>
+      <button class="present-exit" onclick="setPresenting(false)">${ICONS.close.replace(/<svg /,'<svg style="width:14px;height:14px;" ')} Exit full screen</button>
       <div class="qr-display-wrap">
         <div id="qrCanvasHolder" class="qr-code-box"></div>
       </div>
@@ -9724,6 +9754,7 @@ function finalizeSessionAttendance(){
 }
 
 function endSession(){
+  if(PRESENTING) setPresenting(false);
   {
     const lectures = getLecturerTodayLectures();
     const i = pickLectureRow(lectures, LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.room, LIVE_SESSION.startedAt);
@@ -16608,14 +16639,33 @@ function renderAuthScreenFromHistory(name){
   renderApp();
 }
 
+// Roles that get the sidebar layout on a wide screen (see "DESKTOP SHELL" in
+// index.html). Students keep the phone layout everywhere.
+const WIDE_SHELL_ROLES = ['lecturer', 'registrar', 'administrator'];
+
 function renderBottomNav(){
   const items = NAV_CONFIG[State.role] || [];
   const nav = document.getElementById('bottomNav');
-  nav.innerHTML = items.map(item=>`
+  document.body.classList.toggle('staff-shell', WIDE_SHELL_ROLES.includes(State.role));
+  const u = State.user || {};
+  const meta = STAFF_ROLE_META[State.role] || {};
+  // The brand block and the account footer only show in the sidebar (the
+  // .side-only class is hidden on phones, where the bottom bar is items only).
+  nav.innerHTML = `
+    <div class="side-only side-brand">
+      <div class="mark">${currentLogoMark()}</div>
+      <div><div class="nm">${escapeHtmlText(SYSTEM_SETTINGS.systemName || 'QRAST')}</div><div class="rl">${escapeHtmlText(meta.label || '')}</div></div>
+    </div>` + items.map(item=>`
     <button class="nav-item ${(currentScreen===item.id || (item.also||[]).includes(currentScreen))?'active':''}" onclick="navigate('${jsAttr(item.id)}')">
       ${item.icon}
       <span>${item.label}</span>
-    </button>`).join('');
+    </button>`).join('') + `
+    <div class="side-only side-spacer"></div>
+    <div class="side-only side-user">
+      <div class="who">${escapeHtmlText(u.name || '')}</div>
+      <div class="id">${escapeHtmlText(u.staffId || u.id || '')}</div>
+      <div class="row2"><button onclick="navigate('profile')">Profile</button><button onclick="logout()">Sign out</button></div>
+    </div>`;
 }
 
 function renderApp(){
@@ -16629,6 +16679,7 @@ function renderApp(){
     setTimeout(checkBackendStatus, 100); // let the DOM settle before the fetch
     navEl.innerHTML = '';
     navEl.style.display = 'none';
+    document.body.classList.remove('staff-shell');
     // Anchor history here so a stray back-press after logout can't resurrect
     // a previous session's screen underneath the login form.
     history.replaceState({ qrastScreen: null }, '', '');
