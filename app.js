@@ -3815,6 +3815,25 @@ const NOTIFICATION_TEMPLATES = {
 };
 
 // ============================================================
+// QUICK MESSAGES: reusable wording for the Send screen. Unlike the automatic
+// templates above, these are broadcast-ready: one message goes to the whole
+// audience, so the parts that change each time are [bracketed] and the sender
+// fills them in before sending. Held in memory for now (edits last until the
+// app reloads); a table is the next step if they should survive reloads.
+// ============================================================
+const QUICK_MESSAGES = [
+  { id:'qm1', label:'Class cancelled', title:'Class cancelled: [course] on [date]', body:'The [course] class on [date] at [time] is cancelled. We will share the make-up arrangements soon. Sorry for the inconvenience.' },
+  { id:'qm2', label:'Class rescheduled', title:'Class moved: [course]', body:'The [course] class that was on [old date] has moved to [new date] at [time], venue [venue]. Please note the change.' },
+  { id:'qm3', label:'Attendance reminder', title:'Reminder: attendance counts', body:'A reminder that you need at least 75% attendance to qualify for exams. Check in at the start of every lecture and check your attendance on QRAST.' },
+  { id:'qm4', label:'Test or exam notice', title:'[Test/Exam]: [course] on [date]', body:'The [test/exam] for [course] is on [date] at [time], venue [venue]. Arrive early and carry your student ID.' },
+  { id:'qm5', label:'Holiday or closure', title:'Closed on [date]', body:'The university will be closed on [date] for [reason]. Lectures resume on [date].' },
+  { id:'qm6', label:'System maintenance', title:'QRAST maintenance on [date]', body:'QRAST will be unavailable on [date] from [start time] to [end time] for maintenance. Please check in before or after that time.' },
+];
+let _qmSeq = 100;
+let _qmDeleteArmed = null;
+const QM_PLACEHOLDER = /\[[^\]\n]+\]/;
+
+// ============================================================
 // SYSTEM SETTINGS
 // ============================================================
 const SYSTEM_SETTINGS = {
@@ -13380,8 +13399,29 @@ function renderNotifTemplates(){
     </div>
   </div>
   <div class="content">
-    <div class="empty-state-sm" style="background:var(--unmarked-bg); border-radius:var(--radius-md); padding:14px; text-align:left; color:var(--ink-soft); font-size:12px; line-height:1.5; font-weight:500;">
-      ${ICONS.megaphone.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Edit the messages QRAST sends for each event. Use <code style="background:rgba(0,0,0,.06);padding:1px 4px;border-radius:4px;">{tokens}</code> to insert dynamic values.
+    <div style="font-size:12px;line-height:1.5;color:var(--ink-soft);">
+      ${ICONS.megaphone.replace(/<svg /,'<svg style="width:14px;height:14px;vertical-align:-2px;" ')} Quick messages appear under "Start from a template" on the Send screen, for you and for registrars and lecturers.
+    </div>
+
+    <div class="section-title" style="margin:18px 0 0;">${ICONS.bell} Quick messages</div>
+    ${QUICK_MESSAGES.map(q => `
+    <div class="card card-pad" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:13px;">${escapeHtmlText(q.label)}</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${escapeHtmlText(q.body.length > 110 ? q.body.slice(0, 110) + '…' : q.body)}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <button class="link-mini" onclick="openQuickMessageSheet('${jsAttr(q.id)}')">Edit</button>
+          <button class="link-mini" style="color:#b91c1c" onclick="deleteQuickMessage('${jsAttr(q.id)}')">${_qmDeleteArmed === q.id ? 'Tap again' : 'Delete'}</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="empty-state-sm">No quick messages yet</div>'}
+    <button class="btn btn-ghost" style="margin-top:12px;" onclick="openQuickMessageSheet(null)">${ICONS.plus} Add a quick message</button>
+
+    <div class="section-title" style="margin:26px 0 0;">${ICONS.settings} Automatic messages</div>
+    <div style="font-size:12px;line-height:1.5;color:var(--ink-soft);margin-top:8px;">
+      These are the wordings planned for messages QRAST sends by itself. They are not connected yet: changing or switching them off here does not change what students and staff receive today.
     </div>
     ${templates.map(([key, t]) => notifTemplateCard(key, t)).join('')}
   </div>
@@ -13410,7 +13450,7 @@ function notifTemplateCard(key, t){
           <input type="checkbox" ${t.enabled?'checked':''} onchange="toggleNotifTemplate('${jsAttr(key)}',this.checked)" />
           <span class="toggle-slider"></span>
         </label>
-        <button class="icon-btn" style="width:32px;height:32px;background:var(--unmarked-bg);" onclick="openNotifEditSheet('${jsAttr(key)}')">${ICONS.edit.replace(/<svg /,'<svg style="width:13px;height:13px;" ')}</button>
+        <button class="link-mini" onclick="openNotifEditSheet('${jsAttr(key)}')">Edit</button>
       </div>
     </div>
   </div>`;
@@ -13463,6 +13503,49 @@ function getTemplateTokens(key){
     fraudFlagged: ['{studentName}','{courseName}','{reason}','{date}'],
   };
   return tokens[key] || [];
+}
+
+function openQuickMessageSheet(id){
+  const q = id ? QUICK_MESSAGES.find(x => x.id === id) : null;
+  document.getElementById('notifEditTitle').textContent = q ? `Edit — ${q.label}` : 'New quick message';
+  document.getElementById('notifEditBody').innerHTML = `
+    <div class="field" style="margin-bottom:14px;"><label>Name <span class="req">*</span></label>
+      <input class="input" id="qmLabel" value="${escapeHtmlText(q ? q.label : '')}" placeholder="e.g. Class cancelled" /></div>
+    <div class="field" style="margin-bottom:14px;"><label>Title <span class="req">*</span></label>
+      <input class="input" id="qmTitle" value="${escapeHtmlText(q ? q.title : '')}" /></div>
+    <div class="field"><label>Message <span class="req">*</span></label>
+      <textarea class="input" id="qmBody" rows="6" style="height:auto;resize:vertical;">${escapeHtmlText(q ? q.body : '')}</textarea></div>
+    <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;">Put the parts that change in [square brackets]. The sender must replace them before sending.</div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button type="button" class="btn btn-ghost" onclick="closeSheet('notifEditSheet')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveQuickMessage(${q ? `'${jsAttr(q.id)}'` : 'null'})">${ICONS.check} Save</button>
+    </div>`;
+  openSheet('notifEditSheet');
+}
+
+function saveQuickMessage(id){
+  const label = document.getElementById('qmLabel')?.value.trim();
+  const title = document.getElementById('qmTitle')?.value.trim();
+  const body = document.getElementById('qmBody')?.value.trim();
+  if(!label || !title || !body){ showToast('Fill in the name, title and message'); return; }
+  let q = id ? QUICK_MESSAGES.find(x => x.id === id) : null;
+  if(q){ q.label = label; q.title = title; q.body = body; }
+  else { q = { id: 'qm' + (++_qmSeq), label, title, body }; QUICK_MESSAGES.push(q); }
+  closeSheet('notifEditSheet');
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', id ? 'Quick message updated' : 'Quick message added', q.id, label);
+  showToast(`${label} saved`);
+  navigate('notifTemplates', { replace: true });
+}
+
+function deleteQuickMessage(id){
+  const i = QUICK_MESSAGES.findIndex(x => x.id === id);
+  if(i < 0) return;
+  if(_qmDeleteArmed !== id){ _qmDeleteArmed = id; refreshScreenContentOnly(); return; }
+  _qmDeleteArmed = null;
+  const [q] = QUICK_MESSAGES.splice(i, 1);
+  logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Quick message removed', q.id, q.label);
+  showToast(`${q.label} removed`);
+  navigate('notifTemplates', { replace: true });
 }
 
 function saveNotifTemplate(key){
@@ -14576,6 +14659,16 @@ function renderComposeNotification(){
         <div class="notif-pick-list" id="notifPersonList"></div>
       </div>
 
+      ${QUICK_MESSAGES.length ? `
+      <div class="field">
+        <label>Start from a template</label>
+        <select class="select" id="notifQuickMessage" onchange="applyQuickMessage(this.value)">
+          <option value="">Write my own</option>
+          ${QUICK_MESSAGES.map(q => `<option value="${escapeHtmlText(q.id)}">${escapeHtmlText(q.label)}</option>`).join('')}
+        </select>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">Fill in the [bracketed] parts before sending.${State.role === 'administrator' ? ` <a onclick="navigate('notifTemplates')" style="color:var(--theme-primary);font-weight:700;cursor:pointer;">Manage templates</a>` : ''}</div>
+      </div>` : ''}
+
       <div class="field">
         <label>Title <span class="req">*</span></label>
         <input class="input" id="notifTitle" placeholder="e.g. Reminder: Submit your project" oninput="updateNotifPreview()" required />
@@ -14735,12 +14828,24 @@ function updateNotifPreview(){
   if(counter) counter.textContent = `${bodyEl?.value.length || 0} characters`;
 }
 
+function applyQuickMessage(id){
+  const q = QUICK_MESSAGES.find(x => x.id === id);
+  if(!q) return;
+  const t = document.getElementById('notifTitle'), b = document.getElementById('notifBody');
+  if(t) t.value = q.title;
+  if(b) b.value = q.body;
+  updateNotifPreview();
+  showToast('Template added. Fill in the [bracketed] parts');
+  (t && QM_PLACEHOLDER.test(q.title) ? t : b)?.focus();
+}
+
 function submitComposeNotification(e){
   e.preventDefault();
   const recipientType = document.getElementById('notifRecipientType')?.value;
   const title = document.getElementById('notifTitle')?.value.trim();
   const body = document.getElementById('notifBody')?.value.trim();
   if(!title || !body){ showToast("Fill in title and message"); return false; }
+  if(QM_PLACEHOLDER.test(title) || QM_PLACEHOLDER.test(body)){ showToast("Replace the [bracketed] parts first"); return false; }
 
   const roleByType = {
     allStudents:'student', courseStudents:'student', specificStudent:'student',
