@@ -8995,17 +8995,8 @@ function exportMyAttendance(format){
 
   if(format === 'excel'){
     const headers = ['Date','Course Code','Course','Venue','Status'];
-    const rows = records.map(r => [
-      `"${r.date}"`, `"${r.code}"`, `"${r.course}"`, `"${r.venue}"`, `"${r.status}"`,
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qrast-my-attendance-${idLabel}-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const rows = records.map(r => [r.date, r.code, r.course, r.venue, r.status]);
+    csvDownload(`qrast-my-attendance-${idLabel}-${new Date().toISOString().slice(0,10)}.csv`, headers, rows);
     showToast(`${records.length} of your records exported as CSV`, ICONS.download.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
 
   } else if(format === 'pdf'){
