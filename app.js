@@ -3637,8 +3637,7 @@ function getStaffDirectory(){
   // because they weren't one of the hardcoded demo logins, and a
   // suspension needs to be reflected here the moment it happens.
   const students = STUDENTS.map(s => {
-    const account = USERS[s.reg];
-    const provisioned = isProvisionedAccount(s.reg);
+        const provisioned = isProvisionedAccount(s.reg);
     return {
       // Sept 2026 handoff, Part 1: STUDENTS records now carry a real `email`
       // field (and `mode`) rather than only ever deriving it on the fly —
@@ -3649,7 +3648,7 @@ function getStaffDirectory(){
       // override the provisioned check, otherwise a demo-only fixture like
       // Brian's silently reported "active" here even though it can never
       // actually sign in once the live backend is up.
-      status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
+      status: isSuspendedAccount(s.reg) ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
       hasAccount: provisioned,
     };
   });
@@ -3658,19 +3657,16 @@ function getStaffDirectory(){
   // unprovisioned staff id (e.g. a hardcoded demo login with no live
   // Supabase counterpart) instead of always defaulting to "active".
   const lecturers = LECTURERS.map(l => {
-    const account = USERS[l.id];
-    const provisioned = isProvisionedAccount(l.id);
-    return { ...l, role:"lecturer", status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
+        const provisioned = isProvisionedAccount(l.id);
+    return { ...l, role:"lecturer", status: isSuspendedAccount(l.id) ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
   });
   const registrars = REGISTRARS.map(r => {
-    const account = USERS[r.id];
-    const provisioned = isProvisionedAccount(r.id);
-    return { ...r, role:"registrar", status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
+        const provisioned = isProvisionedAccount(r.id);
+    return { ...r, role:"registrar", status: isSuspendedAccount(r.id) ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
   });
   const administrators = ADMINISTRATORS.map(a => {
-    const account = USERS[a.id];
-    const provisioned = isProvisionedAccount(a.id);
-    return { ...a, role:"administrator", status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
+        const provisioned = isProvisionedAccount(a.id);
+    return { ...a, role:"administrator", status: isSuspendedAccount(a.id) ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'), hasAccount: provisioned };
   });
   return [...administrators, ...registrars, ...lecturers, ...students];
 }
@@ -8333,16 +8329,21 @@ function canManagePerson(p){
 // real list of university_ids that have a live account, so that check
 // reflects reality instead of just the mock roster.
 let LIVE_PROVISIONED_IDS = new Set();
+// users.status per university ID, loaded with LIVE_PROVISIONED_IDS. The
+// directory used to read suspension only from the demo USERS list, so a real
+// account showed "Active" no matter what the database said.
+let LIVE_ACCOUNT_STATUS = new Map();
 
 async function loadProvisionedAccountsFromSupabase(){
   if(!LIVE_BACKEND) return;
   try {
     const { data: rows, error } = await SUPABASE_CLIENT
       .from('users')
-      .select('university_id');
+      .select('university_id, status');
     if(error){ console.warn('loadProvisionedAccountsFromSupabase failed:', error); return; }
     if(!rows) return;
     LIVE_PROVISIONED_IDS = new Set(rows.map(r => r.university_id).filter(Boolean));
+    LIVE_ACCOUNT_STATUS = new Map(rows.filter(r => r.university_id).map(r => [r.university_id, r.status || 'active']));
     refreshScreenContentOnly(); // hook-free — see its own comment for why not rerenderCurrentScreen()
   } catch(e){
     console.warn('loadProvisionedAccountsFromSupabase error:', e);
@@ -8364,9 +8365,14 @@ function isProvisionedAccount(id){
   return LIVE_PROVISIONED_IDS.has(id) || (!LIVE_BACKEND && !!USERS[id]);
 }
 
+// The live users.status when it has been loaded, else the demo USERS entry.
+function isSuspendedAccount(id){
+  const live = LIVE_ACCOUNT_STATUS.get(id);
+  return (live !== undefined ? live : USERS[id]?.status) === 'suspended';
+}
+
 function tagStudentForRegister(s){
-  const account = USERS[s.reg];
-  const provisioned = isProvisionedAccount(s.reg);
+    const provisioned = isProvisionedAccount(s.reg);
   return {
     id: s.reg, role: 'student', name: s.name,
     dept: s.dept, deptKey: s.deptKey, facultyKey: s.facultyKey, faculty: s.faculty,
@@ -8376,22 +8382,21 @@ function tagStudentForRegister(s){
     // See the identical comment on getStaffDirectory()'s student mapping —
     // a mock USERS record alone isn't proof of a real, live-login-capable
     // account.
-    status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
+    status: isSuspendedAccount(s.reg) ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
     hasAccount: provisioned,
     _studentId: s.id,
   };
 }
 
 function tagStaffForRegister(p, role){
-  const account = USERS[p.id];
-  const provisioned = isProvisionedAccount(p.id);
+    const provisioned = isProvisionedAccount(p.id);
   return {
     id: p.id, role, name: p.name,
     dept: p.dept, facultyKey: p.facultyKey || facultyKeyForProgrammeName(p.dept),
     email: p.email,
     // See the identical fix in getStaffDirectory() — a mock USERS entry
     // isn't proof of a real, live-login-capable account.
-    status: account?.status === 'suspended' ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
+    status: isSuspendedAccount(p.id) ? 'suspended' : (provisioned ? 'active' : 'unprovisioned'),
     hasAccount: provisioned,
   };
 }
@@ -12461,22 +12466,30 @@ async function suspendAccount(personId, opts){
   if(USERS[personId]) USERS[personId].status = 'suspended';
 
   let persisted = !LIVE_BACKEND; // mock-only mode: the in-memory write above IS the whole story
+  let denied = false;
   if(LIVE_BACKEND){
     try {
       const payload = { status: 'suspended' };
       if(graduated) payload.graduated_at = new Date().toISOString();
-      const { error } = await SUPABASE_CLIENT.from('users').update(payload).eq('university_id', personId);
-      if(error){ console.warn('suspendAccount: live update failed:', error); } else { persisted = true; }
+      // .select(): an update RLS does not allow (e.g. a student outside this
+      // Registrar's faculty) matches no rows and returns no error, so check
+      // that a row actually changed before reporting success.
+      const { data, error } = await SUPABASE_CLIENT.from('users').update(payload).eq('university_id', personId).select('university_id');
+      if(error){ console.warn('suspendAccount: live update failed:', error); }
+      else if(!data || !data.length){ denied = true; console.warn('suspendAccount: no row updated for', personId); }
+      else { persisted = true; LIVE_ACCOUNT_STATUS.set(personId, 'suspended'); }
     } catch(e){ console.warn('suspendAccount error:', e); }
   }
 
-  logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System',
+  if(persisted) logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System',
     graduated ? 'Student marked graduated' : 'Account suspended', personId,
     graduated ? `${displayName} marked graduated — account suspended` : `${displayName} account suspended`);
   closeSheet('accountDetailSheet');
   showToast(persisted
     ? `${displayName}'s account has been ${graduated ? 'marked graduated and suspended' : 'suspended'}`
-    : `Couldn't reach the server — ${displayName}'s account was NOT actually suspended. Try again once you're back online.`);
+    : denied
+      ? `${displayName}'s account was NOT suspended: you don't have permission to change this account (check its faculty).`
+      : `Couldn't reach the server — ${displayName}'s account was NOT actually suspended. Try again once you're back online.`);
   navigate('register', { replace: true });
 }
 
@@ -12486,20 +12499,25 @@ async function reactivateAccount(personId){
   if(USERS[personId]) USERS[personId].status = 'active';
 
   let persisted = !LIVE_BACKEND;
+  let denied = false;
   if(LIVE_BACKEND){
     try {
       // Clears graduated_at too — a reactivated account isn't "graduated"
       // anymore (e.g. correcting a mistaken graduation mark).
-      const { error } = await SUPABASE_CLIENT.from('users').update({ status: 'active', graduated_at: null }).eq('university_id', personId);
-      if(error){ console.warn('reactivateAccount: live update failed:', error); } else { persisted = true; }
+      const { data, error } = await SUPABASE_CLIENT.from('users').update({ status: 'active', graduated_at: null }).eq('university_id', personId).select('university_id');
+      if(error){ console.warn('reactivateAccount: live update failed:', error); }
+      else if(!data || !data.length){ denied = true; console.warn('reactivateAccount: no row updated for', personId); }
+      else { persisted = true; LIVE_ACCOUNT_STATUS.set(personId, 'active'); }
     } catch(e){ console.warn('reactivateAccount error:', e); }
   }
 
-  logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account reactivated', personId, `${displayName} account reactivated`);
+  if(persisted) logAuditEvent(State.user?.staffId||State.pendingUserId||'system', State.user?.name||'System', 'Account reactivated', personId, `${displayName} account reactivated`);
   closeSheet('accountDetailSheet');
   showToast(persisted
     ? `${displayName}'s account has been reactivated`
-    : `Couldn't reach the server — ${displayName}'s account was NOT actually reactivated. Try again once you're back online.`);
+    : denied
+      ? `${displayName}'s account was NOT reactivated: you don't have permission to change this account (check its faculty).`
+      : `Couldn't reach the server — ${displayName}'s account was NOT actually reactivated. Try again once you're back online.`);
   navigate('register', { replace: true });
 }
 
