@@ -22,11 +22,15 @@ the code before being listed.
 | 12 | "Register" meant two things (people directory, and attendance register). | Registrar and Administrator now say "People". |
 | 13 | Semester dates live in System Settings, holidays in the Calendar editor, with no pointer between them. | Calendar editor links to System Settings. |
 
-## Deliberately not changed (candidates for a later pass)
+## Second pass (patch 0012)
 
-- Two implementations of the weekly timetable (staff `renderSchedule`, student `renderStudentTimetable`).
-- Three copies of CSV/PDF export code (older `exportReport`, `exportComplianceReport`, and the newer shared `csvDownload`/`printReport`). Moving the old two onto the shared ones would remove about 150 lines and make every export behave the same.
-- Two profile screens (staff, student).
-- The Records tab (catalog) and Reports & Analytics > Attendance Records overlap. They answer different questions today (browse by course vs charts and export), so merging needs your call.
-- Per-student percentage (`STUDENTS.pct`) and record-based percentage use the same credit rules but are computed in different places. Worth unifying.
-- Support Tickets is called "Report an Issue" for students and lecturers, "Support Tickets" for staff. Same screen, two names.
+- **Exports:** `exportReport` and `exportComplianceReport` now use the shared `csvDownload` / `printReport`, about 280 lines removed. Side effects you will notice: CSV cells with quotes or commas are now escaped correctly (the old builder broke on them), and the PDF no longer colours the status/rate text.
+- **Percentages:** the live student loader now computes `STUDENTS.pct` and the trend with `weightedAttendancePct`, the same function every record-based figure uses. Results are identical on test data. Note the two figures can still differ for a student because `STUDENTS.pct` covers all their attendance rows while screens built from `RECORDS` cover only the records loaded for that screen.
+- **Timetable:** the student timetable now has the same search and day filter as the staff schedule (one shared `scheduleFilterBar`). The two views stay separate on purpose: staff can edit, group by mode and filter by department; students see a read-only list of their own courses.
+- **Profiles:** one `profileScreen` shell for all roles. Students' page title changes from "Profile & Settings" to "Profile", and "Preferences" to "Settings", to match staff.
+- **Support:** the screen, dashboard tiles and the admin module are all called "Support". The button inside the screen still says "Report an Issue" because that is the action.
+- **Records vs charts (your call: keep both, link them):** the Reports tile and screen are now "Attendance Charts" (they were "Attendance Records" on the tile and "Student Attendance" on the screen). The Registrar's Records tab has a "Charts & export" link, and the charts screen has a "Browse by course" link back. Administrators have no analytics screens, so they see no charts link.
+
+## Still open
+
+Nothing from the first audit is left. Not covered: the optional ideas still parked (guardian notifications, grades feed).

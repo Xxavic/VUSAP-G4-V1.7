@@ -2850,29 +2850,11 @@ async function loadStudentsFromSupabase(){
         .in('student_id', studentIds);
       
       if(!attErr && attRows){
-        // Group by student and compute statistics
+        // Group rows by student; the percentage and trend are computed below
+        // by the shared weightedAttendancePct() so this figure and every
+        // record-based figure use one set of credit rules.
         attRows.forEach(a => {
-          if(!attendanceStats[a.student_id]){
-            attendanceStats[a.student_id] = { present: 0, total: 0, recentPresent: 0, recentTotal: 0, olderPresent: 0, olderTotal: 0 };
-          }
-          attendanceStats[a.student_id].total++;
-          // Weighted credit (Sept 2026): present/late/absent no longer count
-          // as a binary "did this count or not" -- see
-          // attendanceCreditForStatus(). `present` here means "credit
-          // earned", summed as a float; the pct math below is unchanged
-          // (earned / total), it's just no longer only ever 0 or 1 per row.
-          attendanceStats[a.student_id].present += attendanceCreditForStatus(a.status);
-
-          // Split into recent (last 30 days) vs older for trend calculation
-          const now = new Date();
-          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          if(a.marked_at >= thirtyDaysAgo){
-            attendanceStats[a.student_id].recentTotal++;
-            attendanceStats[a.student_id].recentPresent += attendanceCreditForStatus(a.status);
-          } else {
-            attendanceStats[a.student_id].olderTotal++;
-            attendanceStats[a.student_id].olderPresent += attendanceCreditForStatus(a.status);
-          }
+          (attendanceStats[a.student_id] = attendanceStats[a.student_id] || []).push(a);
         });
       }
     } catch(e){
@@ -2906,20 +2888,14 @@ async function loadStudentsFromSupabase(){
       const facultyInfo = resolveFaculty(row.faculty_key);
       
       // Compute attendance percentage and trend
-      let pct = null;
-      let trend = null;
-      const stats = attendanceStats[row.id];
-      if(stats && stats.total > 0){
-        pct = Math.round((stats.present / stats.total) * 100);
-        // Trend: compare recent (last 30 days) vs older period
-        if(stats.recentTotal > 0 && stats.olderTotal > 0){
-          const recentPct = (stats.recentPresent / stats.recentTotal) * 100;
-          const olderPct = (stats.olderPresent / stats.olderTotal) * 100;
-          trend = recentPct >= olderPct ? 'up' : 'down';
-        }
-        // If insufficient data for trend, leave it as null (not 'up')
-      }
-      
+      const stuRows = attendanceStats[row.id] || [];
+      const pct = weightedAttendancePct(stuRows);   // null when there are no rows
+      // Trend: last 30 days vs earlier. Left null (not 'up') when either side is empty.
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const recentPct = weightedAttendancePct(stuRows.filter(a => a.marked_at >= thirtyDaysAgo));
+      const olderPct = weightedAttendancePct(stuRows.filter(a => !(a.marked_at >= thirtyDaysAgo)));
+      const trend = (recentPct !== null && olderPct !== null) ? (recentPct >= olderPct ? 'up' : 'down') : null;
+
       const existingIndex = STUDENTS.findIndex(s => s.reg === row.university_id);
       const liveStudent = {
         id: existingIndex >= 0 ? STUDENTS[existingIndex].id : STUDENTS.length + 1, // Keep existing ID if replacing, otherwise assign new
@@ -6088,43 +6064,42 @@ const STAFF_ROLE_META = {
   administrator:  { label:"Administrator",  sub:"Full system administration",          icon:ICONS.shield,     backTarget:'dashboard' },
 };
 
-function renderStaffProfile(){
+// One profile screen for every role. The shell (header, avatar card, the
+// dark-mode switch and Sign Out) is the same; each role supplies its own id
+// line and account rows.
+function profileScreen({ backTarget, title, idLine, badge = '', sectionTitle, rows, settingsTitle = 'Settings' }){
   const u = State.user;
-  const meta = STAFF_ROLE_META[State.role] || { label:"Staff", sub:"", icon:ICONS.user };
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  const dark = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark';
+  const row = (icon, k, v, small) => `<div class="info-list-row"><span class="k">${icon} ${k}</span><span class="v"${small ? ' style="font-size:11.5px;"' : ''}>${v}</span></div>`;
   return `
   <div class="app-header">
     <div class="header-back">
-      <button class="back-btn" onclick="navigate('${jsAttr(meta.backTarget)}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Profile</div>
+      <button class="back-btn" onclick="navigate('${jsAttr(backTarget)}')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${title}</div>
     </div>
   </div>
   <div class="content">
     <div class="profile-card">
       <div class="profile-avatar-lg">${escapeHtmlText(initials(u.name))}</div>
       <div class="profile-name">${escapeHtmlText(u.name)}</div>
-      <div class="profile-reg">${u.staffId || ''}</div>
+      <div class="profile-reg">${idLine}</div>
+      ${badge}
     </div>
 
     <div class="card card-pad">
-      <div class="section-title">${meta.icon} Account Information</div>
+      <div class="section-title">${sectionTitle}</div>
       <div class="info-list">
-        <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${escapeHtmlText(u.name)}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.pin} Staff ID</span><span class="v">${u.staffId || '—'}</span></div>
-        <div class="info-list-row"><span class="k">${meta.icon} Role</span><span class="v">${meta.label}</span></div>
-        ${u.dept ? `<div class="info-list-row"><span class="k">${ICONS.building} Department</span><span class="v">${escapeHtmlText(u.dept)}</span></div>` : ''}
-        ${u.facultyKey ? `<div class="info-list-row"><span class="k">${ICONS.building} Faculty</span><span class="v">${facultyName(u.facultyKey)}</span></div>` : ''}
-        <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${escapeHtmlText(vuEmail(u.name))}</span></div>
+        ${rows.filter(Boolean).map(r => row(r[0], r[1], r[2], r[3])).join('')}
       </div>
     </div>
 
     <div class="card card-pad">
-      <div class="section-title">${ICONS.settings} Settings</div>
+      <div class="section-title">${ICONS.settings} ${settingsTitle}</div>
       <div class="info-list">
         <div class="info-list-row">
           <span class="k">${ICONS.moon} Dark Mode</span>
           <label class="toggle-wrap">
-            <input type="checkbox" id="darkModeToggle" ${currentTheme === 'dark' ? 'checked' : ''} onchange="toggleDarkMode()">
+            <input type="checkbox" id="darkModeToggle" ${dark ? 'checked' : ''} onchange="toggleDarkMode()">
             <div class="toggle-slider"></div>
           </label>
         </div>
@@ -6133,6 +6108,24 @@ function renderStaffProfile(){
 
     <button class="btn btn-ghost" onclick="logout()" style="color:var(--absent); border-color:#fecaca;">${ICONS.logout} Sign Out</button>
   </div>`;
+}
+
+function renderStaffProfile(){
+  const u = State.user;
+  const meta = STAFF_ROLE_META[State.role] || { label:"Staff", sub:"", icon:ICONS.user, backTarget:'dashboard' };
+  return profileScreen({
+    backTarget: meta.backTarget, title: 'Profile',
+    idLine: escapeHtmlText(u.staffId || ''),
+    sectionTitle: `${meta.icon} Account Information`,
+    rows: [
+      [ICONS.user, 'Full Name', escapeHtmlText(u.name)],
+      [ICONS.pin, 'Staff ID', escapeHtmlText(u.staffId || '—')],
+      [meta.icon, 'Role', meta.label],
+      u.dept ? [ICONS.building, 'Department', escapeHtmlText(u.dept)] : null,
+      u.facultyKey ? [ICONS.building, 'Faculty', escapeHtmlText(facultyName(u.facultyKey))] : null,
+      [ICONS.mail, 'Email', escapeHtmlText(vuEmail(u.name)), true],
+    ],
+  });
 }
 
 // ============================================================
@@ -6251,7 +6244,7 @@ function renderLecturerDashboard(){
     </a>
     <a class="quick-action" onclick="navigate('supportTickets')">
       <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
-      <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems or attendance discrepancies</div></div>
+      <div class="qa-text"><div class="t">Support</div><div class="s">Report a problem or attendance discrepancy</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
   </div>
@@ -6897,6 +6890,34 @@ function submitAttendance(){
 // LECTURER: MY TIMETABLE  (also reused for Registrar "All Schedules")
 // ============================================================
 
+// Search + day (+ optional department) filter shared by the staff schedule
+// and the student timetable. filterSchedule() reads these three controls by id.
+function scheduleFilterBar(showDeptFilter, days){
+  days = days || SCHEDULE;
+  return `
+    <div class="search-wrap">
+      ${ICONS.search}
+      <input class="input" placeholder="Search course, lecturer or venue..." oninput="filterSchedule(this.value)" id="scheduleSearch" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <select class="select" id="dayFilter" onchange="filterSchedule()">
+          <option value="">All Days</option>
+          ${days.map(d=>`<option value="${escapeHtmlText(d.day)}">${escapeHtmlText(d.day)}</option>`).join('')}
+        </select>
+      </div>
+      ${showDeptFilter ? `
+      <div class="field">
+        <select class="select" id="deptFilter" onchange="filterSchedule()">
+          <option value="">All Departments</option>
+          <option value="Computer Science">Computer Science</option>
+          <option value="Business Administration">Business Administration</option>
+          <option value="Civil Engineering">Civil Engineering</option>
+        </select>
+      </div>` : ''}
+    </div>`;
+}
+
 function renderSchedule(opts){
   syncScheduleTodayFlags();
   opts = opts || {};
@@ -6960,27 +6981,7 @@ function renderSchedule(opts){
   </div>
   <div class="content" style="${showCreateSession ? 'padding-bottom:90px;' : ''}">
     ${scheduleTabs('timetable')}
-    <div class="search-wrap">
-      ${ICONS.search}
-      <input class="input" placeholder="Search course, lecturer or venue..." oninput="filterSchedule(this.value)" id="scheduleSearch" />
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <select class="select" id="dayFilter" onchange="filterSchedule()">
-          <option value="">All Days</option>
-          ${SCHEDULE.map(d=>`<option value="${escapeHtmlText(d.day)}">${escapeHtmlText(d.day)}</option>`).join('')}
-        </select>
-      </div>
-      ${showDeptFilter ? `
-      <div class="field">
-        <select class="select" id="deptFilter" onchange="filterSchedule()">
-          <option value="">All Departments</option>
-          <option value="Computer Science">Computer Science</option>
-          <option value="Business Administration">Business Administration</option>
-          <option value="Civil Engineering">Civil Engineering</option>
-        </select>
-      </div>` : ''}
-    </div>
+    ${scheduleFilterBar(showDeptFilter)}
     <div id="scheduleList">
       ${scheduleBody}
     </div>
@@ -8827,7 +8828,7 @@ function renderStudentHome(){
       </a>
       <a class="quick-action" onclick="navigate('supportTickets')">
         <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
-        <div class="qa-text"><div class="t">Report an Issue</div><div class="s">App problems or account access</div></div>
+        <div class="qa-text"><div class="t">Support</div><div class="s">Report a problem or account issue</div></div>
       </a>
     </div>
   </div>`;
@@ -8853,7 +8854,10 @@ function renderStudentTimetable(){
   </div>
   <div class="content">
     ${scheduleTabs('timetable')}
-    ${filteredSchedule.map(d=>scheduleDayGroup(d, false)).join('')}
+    ${scheduleFilterBar(false, filteredSchedule)}
+    <div id="scheduleList">
+      ${filteredSchedule.map(d=>scheduleDayGroup(d, false)).join('') || '<div class="empty-state-sm">No lectures scheduled for your courses yet</div>'}
+    </div>
   </div>`;
 }
 
@@ -9049,45 +9053,19 @@ function exportMyAttendance(format){
 
 function renderStudentProfile(){
   const u = State.user;
-  return `
-  <div class="app-header">
-    <div class="header-back">
-      <button class="back-btn" onclick="navigate('home')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Profile & Settings</div>
-    </div>
-  </div>
-  <div class="content">
-    <div class="profile-card">
-      <div class="profile-avatar-lg">${escapeHtmlText(initials(u.name))}</div>
-      <div class="profile-name">${escapeHtmlText(u.name)}</div>
-      <div class="profile-reg">${escapeHtmlText(u.reg)}</div>
-      ${u.is_class_coordinator ? `<span class="tag-pill" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;">${ICONS.shield.replace(/<svg /,'<svg style="width:12px;height:12px;" ')} Class Coordinator</span>` : ''}
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-title">${ICONS.graduation} Academic Information</div>
-      <div class="info-list">
-        <div class="info-list-row"><span class="k">${ICONS.user} Full Name</span><span class="v">${escapeHtmlText(u.name)}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.pin} Registration No.</span><span class="v">${escapeHtmlText(u.reg)}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.book} Programme</span><span class="v">${escapeHtmlText(u.dept)}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.calendar} Year of Study</span><span class="v">${escapeHtmlText(u.year || '—')}</span></div>
-        <div class="info-list-row"><span class="k">${ICONS.mail} Email</span><span class="v" style="font-size:11.5px;">${escapeHtmlText(vuEmail(u.name))}</span></div>
-      </div>
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-title">${ICONS.settings} Preferences</div>
-      <div class="info-list-row">
-        <span class="k">${ICONS.moon} Dark Mode</span>
-        <label class="toggle-wrap">
-          <input type="checkbox" id="darkModeToggle" ${(document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'checked' : ''} onchange="toggleDarkMode()">
-          <div class="toggle-slider"></div>
-        </label>
-      </div>
-    </div>
-
-    <button class="btn btn-ghost" onclick="logout()" style="color:var(--absent); border-color:#fecaca;">${ICONS.logout} Sign Out</button>
-  </div>`;
+  return profileScreen({
+    backTarget: 'home', title: 'Profile',
+    idLine: escapeHtmlText(u.reg),
+    badge: u.is_class_coordinator ? `<span class="tag-pill" style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;">${ICONS.shield.replace(/<svg /,'<svg style="width:12px;height:12px;" ')} Class Coordinator</span>` : '',
+    sectionTitle: `${ICONS.graduation} Academic Information`,
+    rows: [
+      [ICONS.user, 'Full Name', escapeHtmlText(u.name)],
+      [ICONS.pin, 'Registration No.', escapeHtmlText(u.reg)],
+      [ICONS.book, 'Programme', escapeHtmlText(u.dept)],
+      [ICONS.calendar, 'Year of Study', escapeHtmlText(u.year || '—')],
+      [ICONS.mail, 'Email', escapeHtmlText(vuEmail(u.name)), true],
+    ],
+  });
 }
 
 // ============================================================
@@ -10007,7 +9985,7 @@ function renderRegistrarDashboard(){
     </a>
     <a class="quick-action" onclick="navigate('supportTickets')">
       <div class="qa-icon" style="background:#eef2ff; color:#4338ca;">${ICONS.alertTriangle}</div>
-      <div class="qa-text"><div class="t">Support Tickets</div><div class="s">${scopedSupportTickets().filter(t=>t.status==='open').length} open in your faculty</div></div>
+      <div class="qa-text"><div class="t">Support</div><div class="s">${scopedSupportTickets().filter(t=>t.status==='open').length} open in your faculty</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <div class="card section-card">
@@ -10366,7 +10344,7 @@ function renderDataAnalyticsHub(){
     ${groupHeading('Students')}
     ${item('analyticsAtRisk', ICONS.users, 'At-Risk Students', 'Who is below the cutoff, and who is slipping', true)}
     ${item('analyticsEligibility', ICONS.fileText, 'Exam Eligibility', 'Who meets the attendance cutoff, per course')}
-    ${item('analyticsAttendance', ICONS.records, 'Attendance Records', 'Records, comparison charts and export')}
+    ${item('analyticsAttendance', ICONS.chart, 'Attendance Charts', 'Charts, comparison and export')}
     ${groupHeading('Patterns')}
     ${item('analyticsHeatmap', ICONS.chart, 'Attendance Heatmap', 'Which days and hours are best and worst attended')}
     ${item('analyticsCohorts', ICONS.chart, 'Cohort Comparison', 'By faculty, programme, course, year or study mode')}
@@ -11090,6 +11068,19 @@ function exportPunctualityReport(format){
   }
 }
 
+// One link each way between the two attendance screens: Records is where you
+// browse by course (and open a single course), Attendance Charts is where you
+// compare and export. Each says what the other one is for.
+function recordsCrossLink(to){
+  const toCharts = to === 'analyticsAttendance';
+  return `
+  <a class="quick-action" onclick="navigate('${to}')">
+    <div class="qa-icon">${toCharts ? ICONS.chart : ICONS.records}</div>
+    <div class="qa-text"><div class="t">${toCharts ? 'Charts & export' : 'Browse by course'}</div><div class="s">${toCharts ? 'Compare attendance across courses and export it' : 'Open a course to see who attended each session'}</div></div>
+    <div class="chev">${ICONS.chevR}</div>
+  </a>`;
+}
+
 function renderStudentAttendanceAnalytics(){
   const exportControl = `
     <div style="display:flex; gap:10px;">
@@ -11100,10 +11091,10 @@ function renderStudentAttendanceAnalytics(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dataAnalytics')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Student Attendance</div>
+      <div class="page-title" style="font-size:18px;">Attendance Charts</div>
     </div>
   </div>
-  ${renderAttendanceRecordsBlock({ exportControl, beforeList: renderStudentAttendanceChartsMarkup() })}`;
+  ${renderAttendanceRecordsBlock({ exportControl, beforeList: recordsCrossLink('records') + renderStudentAttendanceChartsMarkup() })}`;
 }
 
 function renderStudentAttendanceChartsMarkup(){
@@ -11529,6 +11520,7 @@ function renderAttendanceCatalog(){
   </div>
   <div class="content">
     <div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 14px;">${isAdmin ? 'Catalogued by faculty, then by course' : 'Catalogued by course'}</div>
+    ${State.role === 'registrar' ? recordsCrossLink('analyticsAttendance') : ''}
     <div class="card card-pad">
       <div style="display:flex;flex-direction:column;gap:10px;">${body}</div>
     </div>
@@ -11695,81 +11687,27 @@ function renderFraudCenter(){
 // standalone Reports & Export screen — that select only exists there now.
 function exportReport(format, courseCode){
   const courseFilter = courseCode != null ? courseCode : (document.getElementById('reportCourse')?.value || '');
-  const rangeFilter = document.getElementById('reportRange')?.value || 'term';
   const records = scopedRecords();
-
   const filtered = courseFilter ? records.filter(r => r.code === courseFilter) : records;
-
   if(filtered.length === 0){
     showToast("No records match your filters");
     return;
   }
-
+  const iconOf = k => ICONS[k].replace(/width="\d+" height="\d+"/,'width="15" height="15"');
+  const who = [State.user?.staffId||'system', State.user?.name||'System'];
   if(format === 'excel'){
-    // Build a real CSV file from the actual attendance records
-    const headers = ['Name','Registration No.','Programme','Course Code','Course','Status','Date'];
-    const rows = filtered.map(r => [
-      `"${r.name}"`,
-      `"${r.reg || ''}"`,
-      `"${r.prog || ''}"`,
-      `"${r.code}"`,
-      `"${r.course}"`,
-      `"${r.status}"`,
-      `"${r.date || ''}"`,
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qrast-attendance-${courseFilter||'all'}-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Report exported', courseFilter||'all', `CSV, ${filtered.length} records`);
-    showToast(`${filtered.length} records exported as CSV`, ICONS.download.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
-
+    csvDownload(`qrast-attendance-${courseFilter||'all'}-${new Date().toISOString().slice(0,10)}.csv`,
+      ['Name','Registration No.','Programme','Course Code','Course','Status','Date'],
+      filtered.map(r => [r.name, r.reg || '', r.prog || '', r.code, r.course, r.status, r.date || '']));
+    logAuditEvent(...who, 'Report exported', courseFilter||'all', `CSV, ${filtered.length} records`);
+    showToast(`${filtered.length} records exported as CSV`, iconOf('download'));
   } else if(format === 'pdf'){
-    // Build a formatted HTML table and print it as PDF via the browser's print dialog
-    const courseLabel = courseFilter
-      ? filtered[0]?.course || courseFilter
-      : 'All Courses';
-    const html = `<!DOCTYPE html><html><head><title>QRAST Attendance Report</title>
-    <style>
-      body{font-family:sans-serif;font-size:12px;color:#111;padding:24px;}
-      h1{font-size:18px;margin-bottom:4px;}
-      .meta{color:#666;font-size:11px;margin-bottom:20px;}
-      table{width:100%;border-collapse:collapse;}
-      th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:11px;}
-      td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;}
-      tr:nth-child(even){background:#f8fafc;}
-      .present{color:#16a34a;font-weight:700;}
-      .late{color:#d97706;font-weight:700;}
-      .absent{color:#dc2626;font-weight:700;}
-    </style></head><body>
-    <h1>QRAST Attendance Report</h1>
-    <div class="meta">${escapeHtmlText(SYSTEM_SETTINGS.institutionName)} · ${courseLabel} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
-    <table>
-      <thead><tr><th>Name</th><th>Reg. No.</th><th>Programme</th><th>Course</th><th>Status</th><th>Date</th></tr></thead>
-      <tbody>
-        ${filtered.map(r=>`<tr>
-          <td>${escapeHtmlText(r.name)}</td>
-          <td>${escapeHtmlText(r.reg||'')}</td>
-          <td>${escapeHtmlText(r.prog||'')}</td>
-          <td>${escapeHtmlText(r.code)} — ${escapeHtmlText(r.course)}</td>
-          <td class="${escapeHtmlText(r.status)}">${r.status.toUpperCase()}</td>
-          <td>${escapeHtmlText(r.date||'')}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-    <script>window.onload=()=>window.print();<\/script>
-    </body></html>`;
-    const win = window.open('', '_blank');
-    if(win){
-      win.document.write(html);
-      win.document.close();
-    }
-    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Report exported', courseFilter||'all', `PDF, ${filtered.length} records`);
-    showToast(`${filtered.length} records sent to print`, ICONS.fileText.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
+    const courseLabel = courseFilter ? (filtered[0]?.course || courseFilter) : 'All Courses';
+    printReport('QRAST Attendance Report', courseLabel,
+      ['Name','Reg. No.','Programme','Course','Status','Date'],
+      filtered.map(r => [r.name, r.reg || '', r.prog || '', `${r.code} — ${r.course}`, String(r.status).toUpperCase(), r.date || '']));
+    logAuditEvent(...who, 'Report exported', courseFilter||'all', `PDF, ${filtered.length} records`);
+    showToast(`${filtered.length} records sent to print`, iconOf('fileText'));
   }
 }
 
@@ -11792,7 +11730,7 @@ const SYSTEM_MODULES = [
   { id:'yearArchives', group:'System', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
   { id:'backups', group:'System', label:'Backups', sub:'Schedule and restore backups', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
   { id:'database', group:'System', label:'Database Management', sub:'Tables, migrations, integrity checks', icon:ICONS.database, color:'#9c2220', bg:'#fee2e2' },
-  { id:'supportTickets', group:'System', label:'Support Tickets', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
+  { id:'supportTickets', group:'System', label:'Support', sub:'University-wide reports; escalate to developer support', icon:ICONS.alertTriangle, color:'#4338ca', bg:'#eef2ff' },
 ];
 
 function renderAdministratorDashboard(){
@@ -15138,7 +15076,7 @@ function renderSupportTickets(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('${jsAttr(backTarget)}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">${isReviewer ? 'Support Tickets' : 'Report an Issue'}</div>
+      <div class="page-title" style="font-size:18px;">Support</div>
     </div>
   </div>
   <div class="content">
@@ -15923,66 +15861,21 @@ function exportComplianceReport(format){
     showToast("No lecturer compliance data to export");
     return;
   }
-
+  const iconOf = k => ICONS[k].replace(/width="\d+" height="\d+"/,'width="15" height="15"');
+  const who = [State.user?.staffId||'system', State.user?.name||'System'];
+  const rate = l => (l.complianceRate === null || l.complianceRate === undefined) ? 'N/A' : l.complianceRate;
   if(format === 'excel'){
-    const headers = ['Lecturer','Sessions Held','Sessions Expected','Compliance Rate (%)'];
-    const rows = data.map(l => [
-      `"${l.lecturer}"`,
-      l.sessionsHeld,
-      l.sessionsExpected,
-      l.complianceRate ?? 'N/A',
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qrast-lecturer-compliance-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Report exported', 'lecturer-compliance', `CSV, ${data.length} lecturers`);
-    showToast(`${data.length} lecturer records exported as CSV`, ICONS.download.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
-
+    csvDownload(`qrast-lecturer-compliance-${new Date().toISOString().slice(0,10)}.csv`,
+      ['Lecturer','Sessions Held','Sessions Expected','Compliance Rate (%)'],
+      data.map(l => [l.lecturer, l.sessionsHeld, l.sessionsExpected, rate(l)]));
+    logAuditEvent(...who, 'Report exported', 'lecturer-compliance', `CSV, ${data.length} lecturers`);
+    showToast(`${data.length} lecturer records exported as CSV`, iconOf('download'));
   } else if(format === 'pdf'){
-    const html = `<!DOCTYPE html><html><head><title>QRAST Lecturer Compliance Report</title>
-    <style>
-      body{font-family:sans-serif;font-size:12px;color:#111;padding:24px;}
-      h1{font-size:18px;margin-bottom:4px;}
-      .meta{color:#666;font-size:11px;margin-bottom:20px;}
-      table{width:100%;border-collapse:collapse;}
-      th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:11px;}
-      td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;}
-      tr:nth-child(even){background:#f8fafc;}
-      .good{color:#16a34a;font-weight:700;}
-      .warn{color:#d97706;font-weight:700;}
-      .bad{color:#dc2626;font-weight:700;}
-    </style></head><body>
-    <h1>QRAST Lecturer Compliance Report</h1>
-    <div class="meta">${escapeHtmlText(SYSTEM_SETTINGS.institutionName)} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
-    <table>
-      <thead><tr><th>Lecturer</th><th>Sessions Held</th><th>Sessions Expected</th><th>Compliance Rate</th></tr></thead>
-      <tbody>
-        ${data.map(l=>{
-          const hasRate = l.complianceRate !== null && l.complianceRate !== undefined;
-          const cls = !hasRate ? '' : (l.complianceRate>=90?'good':l.complianceRate>=80?'warn':'bad');
-          return `<tr>
-          <td>${escapeHtmlText(l.lecturer)}</td>
-          <td>${l.sessionsHeld}</td>
-          <td>${l.sessionsExpected}</td>
-          <td class="${cls}">${hasRate ? l.complianceRate+'%' : 'N/A'}</td>
-        </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-    <script>window.onload=()=>window.print();<\/script>
-    </body></html>`;
-    const win = window.open('', '_blank');
-    if(win){
-      win.document.write(html);
-      win.document.close();
-    }
-    logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Report exported', 'lecturer-compliance', `PDF, ${data.length} lecturers`);
-    showToast(`${data.length} lecturer records sent to print`, ICONS.fileText.replace(/width="\d+" height="\d+"/,'width="15" height="15"'));
+    printReport('QRAST Lecturer Compliance Report', 'Lecturer compliance',
+      ['Lecturer','Sessions Held','Sessions Expected','Compliance Rate'],
+      data.map(l => [l.lecturer, l.sessionsHeld, l.sessionsExpected, rate(l) === 'N/A' ? 'N/A' : rate(l) + '%']));
+    logAuditEvent(...who, 'Report exported', 'lecturer-compliance', `PDF, ${data.length} lecturers`);
+    showToast(`${data.length} lecturer records sent to print`, iconOf('fileText'));
   }
 }
 
