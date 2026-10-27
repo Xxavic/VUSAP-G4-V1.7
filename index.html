@@ -1276,6 +1276,14 @@ body.presenting-session .bottom-nav,body.presenting-session .app-header{display:
   html:not([data-device="phone"]) #app:not([data-role]) .login-card h1{font-size:26px}
   html:not([data-device="phone"]) #app:not([data-role]) .login-footer{padding:0}
 }
+
+/* desktop clean-up: things the sidebar already shows */
+@media (min-width:1024px){
+  body.wide-shell .dup-on-wide{display:none}
+  body.wide-shell .greeting-tags:not(:has(.tag-pill:not(.dup-on-wide))){display:none}
+  body.wide-shell .app-header .avatar-chip{display:none}
+  body.wide-shell .app-header:has(.brand-row){position:static}
+}
 </style>
 </head>
 <body>

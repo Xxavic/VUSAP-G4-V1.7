@@ -6345,7 +6345,7 @@ function renderLecturerDashboard(){
       <h2>${timeGreeting()}, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Manage your course sessions and attendance.</p>
       <div class="greeting-tags">
-        <span class="tag-pill">${escapeHtmlText(State.user.id || 'VU-LEC-101')}</span>
+        <span class="tag-pill dup-on-wide">${escapeHtmlText(State.user.id || 'VU-LEC-101')}</span>
         <span class="tag-pill">${escapeHtmlText(new Date().toLocaleDateString('en-US', { weekday: 'long' }))}</span>
       </div>
     </div>
@@ -10210,7 +10210,7 @@ function renderRegistrarDashboard(){
       <h2>${timeGreeting()}, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Registrar's Attendance Management Dashboard</p>
       <div class="greeting-tags">
-        <span class="tag-pill">${State.user.staffId || ''}</span>
+        <span class="tag-pill dup-on-wide">${State.user.staffId || ''}</span>
         <span class="tag-pill">${facultyName(State.user.facultyKey)}</span>
       </div>
     </div>
@@ -12047,8 +12047,8 @@ function renderAdministratorDashboard(){
       <h2>${timeGreeting()}, ${escapeHtmlText(firstName(State.user.name))}</h2>
       <p>Full system access — users, roles, and platform configuration.</p>
       <div class="greeting-tags">
-        <span class="tag-pill">${State.user.staffId || ''}</span>
-        <span class="tag-pill">Full Access</span>
+        <span class="tag-pill dup-on-wide">${State.user.staffId || ''}</span>
+        <span class="tag-pill dup-on-wide">Full Access</span>
       </div>
     </div>
   </div>
