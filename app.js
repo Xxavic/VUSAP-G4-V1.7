@@ -5068,6 +5068,277 @@ function scopedLecturerCompliance(){
   });
 }
 
+// ============================================================
+// ACADEMIC CALENDAR (Oct 2026). Holidays, breaks, exam periods and other
+// dated events, kept in academic_calendar_events (migrate-academic-calendar.sql).
+// Semester dates stay in System Settings; this holds what happens inside and
+// between them. Everyone reads it (the Calendar screen); only an
+// Administrator edits it. Dates are plain 'YYYY-MM-DD' strings, compared as
+// strings and stepped in UTC so the browser's time zone can never shift a day.
+// no_teaching marks days with no lectures expected: Session Delivery Rate
+// (Lecturer Compliance) leaves them out of "sessions expected", and a lecturer
+// who starts a session on one is told.
+// ============================================================
+let ACADEMIC_CALENDAR = []; // { id, kind, title, start, end, noTeaching }
+const CAL_KIND_LABEL = { holiday: 'Public holiday', break: 'Break', exam: 'Exam period', event: 'Event' };
+const CAL_KIND_COLOR = { holiday: '#b45309', break: '#b45309', exam: '#b91c1c', event: '#1d4ed8' };
+const WEEKDAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function isoDateValid(s){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s || ''))) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+function localTodayISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function weekdayNameOfISO(iso){ return WEEKDAY_NAMES[new Date(iso + 'T00:00:00Z').getUTCDay()]; }
+function addDaysISO(iso, n){
+  const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+}
+function calendarEventsOn(iso, events){
+  return (events || []).filter(e => e.start <= iso && iso <= e.end);
+}
+// The event that makes this a no-teaching day, or null.
+function noTeachingOn(iso, events){
+  return calendarEventsOn(iso, events).find(e => e.noTeaching) || null;
+}
+// How many lectures were expected between two dates (inclusive), given the
+// weekdays the lecturer teaches (one entry per weekly slot, so two slots on
+// a Monday are two entries) and the calendar. Days with no teaching count 0.
+function countTeachingOccurrences(weekdays, fromISO, toISO, events){
+  if(!isoDateValid(fromISO) || !isoDateValid(toISO) || fromISO > toISO || !(weekdays || []).length) return 0;
+  let n = 0;
+  for(let d = fromISO; d <= toISO; d = addDaysISO(d, 1)){
+    if(noTeachingOn(d, events)) continue;
+    const name = weekdayNameOfISO(d);
+    n += weekdays.filter(w => w === name).length;
+  }
+  return n;
+}
+// End of the semester that contains the term start date, if System Settings
+// has one -- stops "expected" growing forever after a semester has ended.
+function termEndCapISO(){
+  const s = SYSTEM_SETTINGS, t = s.termStartDate;
+  if(!t) return null;
+  if(s.semester1Start && s.semester1End && t >= s.semester1Start && t <= s.semester1End) return s.semester1End;
+  if(s.semester2Start && s.semester2End && t >= s.semester2Start && t <= s.semester2End) return s.semester2End;
+  return null;
+}
+
+async function loadAcademicCalendarFromSupabase(){
+  if(!LIVE_BACKEND) return;
+  try {
+    const { data: rows, error } = await SUPABASE_CLIENT.from('academic_calendar_events')
+      .select('id, kind, title, start_date, end_date, no_teaching').order('start_date', { ascending: true }).limit(1000);
+    if(error){
+      // Migration not run yet (relation missing): behave as an empty calendar.
+      if(!(error.code === '42P01' || error.code === 'PGRST205')) console.warn('loadAcademicCalendarFromSupabase failed, keeping current calendar:', error);
+      return;
+    }
+    ACADEMIC_CALENDAR = (rows || []).map(r => ({ id: r.id, kind: r.kind, title: r.title, start: r.start_date, end: r.end_date, noTeaching: !!r.no_teaching }));
+    refreshScreenContentOnly();
+  } catch(e){ console.warn('loadAcademicCalendarFromSupabase error:', e); }
+}
+
+// A one-line banner for today's dashboard, or ''.
+function todayCalendarBanner(){
+  const today = localTodayISO();
+  const evs = calendarEventsOn(today, ACADEMIC_CALENDAR);
+  if(evs.length === 0) return '';
+  const nt = evs.some(e => e.noTeaching);
+  return `<a class="quick-action" onclick="navigate('calendar')" style="margin-bottom:12px">
+    <div class="qa-icon">${ICONS.calendar}</div>
+    <div class="qa-text"><div class="t">${evs.map(e => escapeHtmlText(e.title)).join(' · ')}</div><div class="s">${nt ? 'No lectures expected today' : 'On the academic calendar today'}</div></div>
+    <div class="chev">${ICONS.chevR}</div></a>`;
+}
+
+// ---- Calendar screen (every role) ----
+let _calMonth = '';   // 'YYYY-MM'
+let _calDay = '';     // 'YYYY-MM-DD'
+function calCurrentMonth(){ return _calMonth || localTodayISO().slice(0, 7); }
+function shiftCalMonth(delta){
+  const [y, m] = calCurrentMonth().split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  _calMonth = d.toISOString().slice(0, 7); _calDay = '';
+  refreshScreenContentOnly();
+}
+function selectCalDay(iso){ _calDay = iso; refreshScreenContentOnly(); }
+function calToday(){ _calMonth = ''; _calDay = ''; refreshScreenContentOnly(); }
+
+// Month -> weeks of 7 cells, Monday first; null for padding cells.
+function monthGrid(ym){
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const lead = (first.getUTCDay() + 6) % 7;
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells = [];
+  for(let i = 0; i < lead; i++) cells.push(null);
+  for(let d = 1; d <= days; d++) cells.push(`${ym}-${String(d).padStart(2, '0')}`);
+  while(cells.length % 7) cells.push(null);
+  const weeks = [];
+  for(let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+// Lectures the signed-in person has on a weekday: a lecturer's own, or a
+// student's courses in their study mode. Registrars and Administrators have
+// their own timetable screens, so none here.
+function calendarLecturesFor(weekday){
+  if(State.role === 'lecturer'){
+    return getLecturerLectures().filter(l => l.day === weekday)
+      .map(l => ({ code: l.courseCode, name: l.courseName, time: l.time, room: l.room }));
+  }
+  if(State.role === 'student'){
+    const mine = STUDENT_COURSES.map(c => c.code);
+    const day = SCHEDULE.find(d => d.day === weekday);
+    return day ? filterLecturesForStudentMode(day.lectures.filter(l => mine.includes(l.code)))
+      .map(l => ({ code: l.code, name: l.name, time: l.time, room: l.room })) : [];
+  }
+  return [];
+}
+
+function renderCalendarScreen(){
+  const ym = calCurrentMonth();
+  const today = localTodayISO();
+  const sel = _calDay && _calDay.startsWith(ym) ? _calDay : (today.startsWith(ym) ? today : `${ym}-01`);
+  const weeks = monthGrid(ym);
+  const monthName = new Date(ym + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const cell = iso => {
+    if(!iso) return `<div></div>`;
+    const evs = calendarEventsOn(iso, ACADEMIC_CALENDAR);
+    const nt = evs.some(e => e.noTeaching);
+    const label = `${iso}${evs.length ? ': ' + evs.map(e => e.title).join(', ') : ''}${nt ? ' (no lectures)' : ''}`;
+    return `<button onclick="selectCalDay('${iso}')" aria-label="${escapeHtmlText(label)}" style="min-height:46px;padding:4px 2px;border-radius:8px;border:${iso === sel ? '2px solid var(--theme-primary,#0E1C26)' : '1px solid #e2e8f0'};background:${nt ? '#fef3c7' : '#fff'};display:flex;flex-direction:column;align-items:center;justify-content:space-between;cursor:pointer">
+      <span style="font-size:14px;line-height:18px;${iso === today ? 'font-weight:800;text-decoration:underline' : ''}">${+iso.slice(8)}</span>
+      <span style="display:flex;gap:2px;height:6px">${evs.slice(0, 3).map(e => `<i style="width:6px;height:6px;border-radius:50%;background:${CAL_KIND_COLOR[e.kind]}"></i>`).join('')}</span></button>`;
+  };
+  const dayEvs = calendarEventsOn(sel, ACADEMIC_CALENDAR);
+  const sem = semesterForDate(sel);
+  const lectures = calendarLecturesFor(weekdayNameOfISO(sel));
+  const upcoming = ACADEMIC_CALENDAR.filter(e => e.end >= today).slice(0, 5);
+  const range = e => e.start === e.end ? e.start : `${e.start} to ${e.end}`;
+  const adminLink = State.role === 'administrator'
+    ? `<button class="link-mini" onclick="navigate('academicCalendar')">${ICONS.settings} Edit calendar</button>` : '';
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('${State.role === 'student' ? 'home' : 'dashboard'}')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Academic Calendar</div>
+    </div>
+  </div>
+  <div class="content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <button class="link-mini" style="font-size:14px;color:var(--theme-primary,#0E1C26);padding:6px 8px" onclick="shiftCalMonth(-1)" aria-label="Previous month">‹ Prev</button>
+      <b style="font-size:16px">${monthName}</b>
+      <button class="link-mini" style="font-size:14px;color:var(--theme-primary,#0E1C26);padding:6px 8px" onclick="shiftCalMonth(1)" aria-label="Next month">Next ›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">
+      ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div style="font-size:11px;font-weight:700;text-align:center">${d}</div>`).join('')}
+      ${weeks.flat().map(cell).join('')}
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin:10px 0">
+      ${Object.keys(CAL_KIND_LABEL).map(k => `<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${CAL_KIND_COLOR[k]};margin-right:4px"></i>${CAL_KIND_LABEL[k]}</span>`).join('')}
+      <span><i style="display:inline-block;width:10px;height:10px;background:#fef3c7;border:1px solid #e2e8f0;margin-right:4px"></i>No lectures</span>
+      <button class="link-mini" onclick="calToday()" style="margin-left:auto;font-size:13px;color:var(--theme-primary,#0E1C26)">Today</button>
+    </div>
+    <div class="card section-card">
+      <div style="font-weight:800;font-size:15px">${weekdayNameOfISO(sel)}, ${sel}${sem ? ` · ${sem}` : ''}</div>
+      ${dayEvs.length ? dayEvs.map(e => `<div style="margin-top:8px;font-size:14px;line-height:20px"><b style="color:${CAL_KIND_COLOR[e.kind]}">${escapeHtmlText(e.title)}</b><br><span style="font-size:12px">${CAL_KIND_LABEL[e.kind]} · ${range(e)}${e.noTeaching ? ' · no lectures expected' : ''}</span></div>`).join('') : `<div style="margin-top:8px;font-size:13px">Nothing on the calendar for this day.</div>`}
+      ${(State.role === 'student' || State.role === 'lecturer') ? `<div style="margin-top:12px;font-size:12px;font-weight:700">${State.role === 'student' ? 'Your lectures' : 'Your timetable'} on ${weekdayNameOfISO(sel)}s</div>
+        ${lectures.length ? lectures.map(l => `<div style="font-size:13px;line-height:20px;margin-top:4px">${escapeHtmlText(l.time)} · <b>${escapeHtmlText(l.code)}</b> ${escapeHtmlText(l.name)} · ${escapeHtmlText(l.room || '')}</div>`).join('') : `<div style="font-size:13px;margin-top:4px">None.</div>`}
+        ${dayEvs.some(e => e.noTeaching) && lectures.length ? `<div style="font-size:12px;margin-top:6px"><i>No lectures are expected on this date, even though it is on your timetable.</i></div>` : ''}` : ''}
+    </div>
+    <div class="card section-card">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">Coming up</b>${adminLink}</div>
+      ${upcoming.length ? upcoming.map(e => `<div style="font-size:13px;line-height:20px;margin-top:6px"><b style="color:${CAL_KIND_COLOR[e.kind]}">${escapeHtmlText(e.title)}</b> · ${range(e)}</div>`).join('') : `<div style="font-size:13px;margin-top:6px">Nothing upcoming has been added yet.</div>`}
+    </div>
+  </div>`;
+}
+
+// ---- Administrator editor ----
+let _calDeleteArmed = null;
+let _calLocalSeq = 0;
+function renderAcademicCalendarEditor(){
+  const rows = [...ACADEMIC_CALENDAR].sort((a, b) => a.start.localeCompare(b.start));
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('calendar')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Edit Academic Calendar</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card card-pad">
+      <div class="section-title">${ICONS.calendar} Add an entry</div>
+      <div class="field"><label>Type</label>
+        <select class="select" id="calKind" onchange="calKindChanged()">
+          ${Object.keys(CAL_KIND_LABEL).map(k => `<option value="${k}">${CAL_KIND_LABEL[k]}</option>`).join('')}
+        </select></div>
+      <div class="field" style="margin-top:12px"><label>Title</label><input class="input" id="calTitle" maxlength="120" placeholder="e.g. Heroes Day, Mid-semester break" /></div>
+      <div class="field" style="margin-top:12px"><label>First day</label><input class="input" type="date" id="calStart" /></div>
+      <div class="field" style="margin-top:12px"><label>Last day (same as first for one day)</label><input class="input" type="date" id="calEnd" /></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px"><input type="checkbox" id="calNoTeaching" checked disabled /> No lectures on these days</label>
+      <button class="btn btn-primary" style="margin-top:14px;width:100%" onclick="addCalendarEvent()">Add to calendar</button>
+    </div>
+    <div class="card card-pad">
+      <div class="section-title">Entries</div>
+      ${rows.length ? rows.map(e => `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #e2e8f0">
+          <div style="min-width:0;font-size:13px;line-height:19px"><b style="color:${CAL_KIND_COLOR[e.kind]}">${escapeHtmlText(e.title)}</b><br>${CAL_KIND_LABEL[e.kind]} · ${e.start === e.end ? e.start : e.start + ' to ' + e.end}${e.noTeaching ? ' · no lectures' : ''}</div>
+          <button class="link-mini" style="color:#b91c1c" onclick="deleteCalendarEvent('${jsAttr(String(e.id))}')">${_calDeleteArmed === String(e.id) ? 'Tap again to delete' : 'Delete'}</button>
+        </div>`).join('') : `<div style="font-size:13px">No entries yet.</div>`}
+    </div>
+  </div>`;
+}
+// Holidays and breaks always have no lectures; exams and events can go either way.
+function calKindChanged(){
+  const k = document.getElementById('calKind')?.value, box = document.getElementById('calNoTeaching');
+  if(!box) return;
+  box.disabled = (k === 'holiday' || k === 'break');
+  box.checked = k !== 'event';
+}
+async function addCalendarEvent(){
+  const kind = document.getElementById('calKind')?.value;
+  const title = (document.getElementById('calTitle')?.value || '').trim();
+  const start = document.getElementById('calStart')?.value || '';
+  const end = document.getElementById('calEnd')?.value || start;
+  const noTeaching = (kind === 'holiday' || kind === 'break') ? true : !!document.getElementById('calNoTeaching')?.checked;
+  if(!CAL_KIND_LABEL[kind]){ showToast('Choose a type'); return; }
+  if(!title){ showToast('Give the entry a title'); return; }
+  if(title.length > 120){ showToast('Title is too long (120 characters at most)'); return; }
+  if(!isoDateValid(start) || !isoDateValid(end)){ showToast('Choose valid dates'); return; }
+  if(end < start){ showToast('The last day is before the first day'); return; }
+  if((Date.parse(end) - Date.parse(start)) / 86400000 > 366){ showToast('An entry can span at most a year'); return; }
+  let id = 'local-' + (++_calLocalSeq);
+  if(LIVE_BACKEND){
+    const { data, error } = await SUPABASE_CLIENT.from('academic_calendar_events')
+      .insert({ kind, title, start_date: start, end_date: end, no_teaching: noTeaching, created_by: State.user?.id || null })
+      .select('id').single();
+    if(error){ console.warn('addCalendarEvent failed:', error); showToast(error.code === '42501' ? 'Only an Administrator can change the calendar' : 'Could not save. Nothing was added.'); return; }
+    id = data.id;
+  }
+  ACADEMIC_CALENDAR.push({ id, kind, title, start, end, noTeaching });
+  logAuditEvent(State.user?.staffId || 'system', State.user?.name || 'System', 'Academic calendar entry added', 'calendar', `${CAL_KIND_LABEL[kind]}: ${title}, ${start}${end !== start ? ' to ' + end : ''}`);
+  showToast('Added to the calendar');
+  refreshScreenContentOnly();
+}
+async function deleteCalendarEvent(id){
+  if(_calDeleteArmed !== id){ _calDeleteArmed = id; refreshScreenContentOnly(); return; }
+  _calDeleteArmed = null;
+  const ev = ACADEMIC_CALENDAR.find(e => String(e.id) === id);
+  if(!ev) return;
+  if(LIVE_BACKEND){
+    const { error } = await SUPABASE_CLIENT.from('academic_calendar_events').delete().eq('id', id);
+    if(error){ console.warn('deleteCalendarEvent failed:', error); showToast('Could not delete. Nothing was removed.'); refreshScreenContentOnly(); return; }
+  }
+  ACADEMIC_CALENDAR = ACADEMIC_CALENDAR.filter(e => String(e.id) !== id);
+  logAuditEvent(State.user?.staffId || 'system', State.user?.name || 'System', 'Academic calendar entry removed', 'calendar', `${CAL_KIND_LABEL[ev.kind]}: ${ev.title}`);
+  showToast('Removed from the calendar');
+  refreshScreenContentOnly();
+}
+
 // How many weeks have elapsed since SYSTEM_SETTINGS.termStartDate, counting
 // the current week as week 1 (day 0-6 of the term = week 1, day 7-13 = week
 // 2, etc). Returns null if no term start date is set yet, 0 if the date is
@@ -5126,15 +5397,22 @@ async function loadLecturerComplianceFromSupabase(){
       heldCountByTeacherId[r.teacher_id] = (heldCountByTeacherId[r.teacher_id]||0) + 1;
     });
 
-    const weeklyByName = {};
+    // Which weekdays each lecturer teaches (one entry per confirmed-live weekly
+    // slot). "Expected" is then counted day by day from the term start up to
+    // yesterday (or the end of the term's semester, if sooner), skipping
+    // anything the academic calendar marks as no-lectures.
+    await loadAcademicCalendarFromSupabase();
+    const weekdaysByName = {};
     SCHEDULE.forEach(day => day.lectures.forEach(l => {
       if(!l._liveSlotId) return; // never count a still-mock timetable slot as "expected"
-      weeklyByName[l.lecturer] = (weeklyByName[l.lecturer]||0) + 1;
+      (weekdaysByName[l.lecturer] = weekdaysByName[l.lecturer] || []).push(day.day);
     }));
+    const yesterday = addDaysISO(localTodayISO(), -1);
+    const countTo = (() => { const cap = termEndCapISO(); return cap && cap < yesterday ? cap : yesterday; })();
 
     const computed = lecturerRows.map(u => {
-      const weekly = weeklyByName[u.name] || 0;
-      const expected = (!weeks || weeks <= 0) ? 0 : weekly * weeks;
+      const expected = (!weeks || weeks <= 0) ? 0
+        : countTeachingOccurrences(weekdaysByName[u.name] || [], SYSTEM_SETTINGS.termStartDate, countTo, ACADEMIC_CALENDAR);
       const held = heldCountByTeacherId[u.id] || 0;
       const rate = expected > 0 ? Math.round(Math.min(100, (held / expected) * 100)) : null;
       return { lecturer: u.name, sessionsHeld: held, sessionsExpected: expected, complianceRate: rate };
@@ -5904,6 +6182,7 @@ function renderLecturerDashboard(){
     </div>
   </div>
   <div class="content">
+    ${todayCalendarBanner()}
     <div class="stat-grid">
       <div class="stat-tile">
         <div class="top"><span class="label">Assigned Courses</span>
@@ -8422,6 +8701,7 @@ function renderStudentHome(){
     </div>
   </div>
   <div class="content">
+    ${todayCalendarBanner()}
     ${sessionOpenForMe ? (State.hasCheckedInToday ? `
     <button class="checkin-cta" onclick="navigate('checkin')" style="background:linear-gradient(135deg, var(--present), #0d8a3e);">
       <div class="ci-icon">${ICONS.checkCircle.replace(/width="\d+" height="\d+"/,'width="26" height="26"')}</div>
@@ -9494,6 +9774,10 @@ async function startSessionForLecture(lecture){
     showToast("You're offline — students can't receive the code until you reconnect");
     return;
   }
+  // Only a notice: a lecturer may well hold a make-up lecture on a calendar
+  // no-teaching day, so this never blocks the session.
+  const noTeachingToday = noTeachingOn(localTodayISO(), ACADEMIC_CALENDAR);
+  if(noTeachingToday) setTimeout(() => showToast(`Note: today is marked "${noTeachingToday.title}" on the academic calendar`), 700);
   LIVE_SESSION.windowSeconds = ATTENDANCE_POLICIES.sessionWindowMinutes * 60;
   LIVE_SESSION.tokenRotateSeconds = ATTENDANCE_POLICIES.qrRotateSeconds;
   // Sept 2026 handoff, Part 1: this is the fix for the session always being
@@ -9748,6 +10032,11 @@ function renderRegistrarDashboard(){
     <a class="quick-action solid" onclick="navigate('dataAnalytics')">
       <div class="qa-icon">${ICONS.chart}</div>
       <div class="qa-text"><div class="t">Data Analytics & Reports</div><div class="s">Student attendance & lecturer compliance</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('calendar')">
+      <div class="qa-icon">${ICONS.calendar}</div>
+      <div class="qa-text"><div class="t">Academic Calendar</div><div class="s">Terms, holidays, breaks and exam periods</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
     <a class="quick-action" onclick="navigate('announcements')">
@@ -11619,6 +11908,7 @@ const SYSTEM_MODULES = [
   { id:'fraudThresholds', label:'Fraud Thresholds', sub:'Tune detection sensitivity', icon:ICONS.flag, color:'#dc2626', bg:'#fee2e2' },
   { id:'notifTemplates', label:'Notification Templates', sub:'Edit system message templates', icon:ICONS.megaphone, color:'#1d4ed8', bg:'#dbeafe' },
   { id:'sendNotification', label:'Send Notification', sub:'Compose and send to students or staff', icon:ICONS.bell, color:'#1d4ed8', bg:'#dbeafe' },
+  { id:'academicCalendar', label:'Academic Calendar', sub:'Holidays, breaks and exam periods', icon:ICONS.calendar, color:'#0f766e', bg:'#ccfbf1' },
   { id:'systemSettings', label:'System Settings', sub:'General configuration', icon:ICONS.settings, color:'#475569', bg:'#f1f5f9' },
   { id:'auditSystem', label:'Audit System', sub:'Full system-wide audit trail', icon:ICONS.fileText, color:'#0f766e', bg:'#ccfbf1' },
   { id:'yearArchives', label:'Academic Year Archives', sub:'End the year, browse past years', icon:ICONS.archive, color:'#475569', bg:'#f1f5f9' },
@@ -11728,6 +12018,10 @@ function openSystemModule(moduleId){
   }
   if(moduleId === 'systemSettings'){
     navigate('systemSettings');
+    return;
+  }
+  if(moduleId === 'academicCalendar'){
+    navigate('calendar');
     return;
   }
   if(moduleId === 'auditSystem'){
@@ -15843,6 +16137,7 @@ const NAV_CONFIG = {
     { id:'dashboard', label:'Dashboard', icon:ICONS.dashboard },
     { id:'markAttendance', label:'Attendance', icon:ICONS.check },
     { id:'schedule', label:'Timetable', icon:ICONS.calendar },
+    { id:'calendar', label:'Calendar', icon:ICONS.calendar },
     { id:'register', label:'Students', icon:ICONS.users },
   ],
   registrar: [
@@ -15861,6 +16156,7 @@ const NAV_CONFIG = {
     { id:'home', label:'Home', icon:ICONS.dashboard },
     { id:'checkin', label:'Check In', icon:ICONS.qrcode },
     { id:'timetable', label:'Timetable', icon:ICONS.calendar },
+    { id:'calendar', label:'Calendar', icon:ICONS.calendar },
   ],
 };
 
@@ -15877,6 +16173,7 @@ function getScreenHTML(screenId){
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
+      case 'calendar': return renderCalendarScreen();
       // Sept 2026 handoff, Part 6: the standalone "Attendance Records"
       // catalog and "Reports & Export" screens are gone for Lecturers —
       // merged into the Attendance screen above (Full Course Records /
@@ -15918,6 +16215,7 @@ function getScreenHTML(screenId){
       case 'analyticsMonthly': return renderMonthlyAnalytics();
       case 'analyticsDevices': return renderDeviceFraudAnalytics();
       case 'analyticsPunctuality': return renderPunctualityAnalytics();
+      case 'calendar': return renderCalendarScreen();
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
@@ -15947,6 +16245,8 @@ function getScreenHTML(screenId){
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
       case 'systemSettings': return renderSystemSettings();
+      case 'calendar': return renderCalendarScreen();
+      case 'academicCalendar': return renderAcademicCalendarEditor();
       case 'auditSystem': return renderAuditSystem();
       case 'yearArchives': return renderYearArchives();
       case 'yearArchiveDetail': return renderYearArchiveDetail();
@@ -15962,6 +16262,7 @@ function getScreenHTML(screenId){
       case 'home': return renderStudentHome();
       case 'checkin': return renderCheckIn();
       case 'timetable': return renderStudentTimetable();
+      case 'calendar': return renderCalendarScreen();
       case 'myAttendance': return renderMyAttendanceRecord();
       case 'profile': return renderStudentProfile();
       case 'announcements': return renderAnnouncements();
@@ -16137,6 +16438,7 @@ function navigate(screenId, opts){
   if(screenId === 'database') loadStaffFromSupabase(); // Database screen's table-count tiles read LECTURERS/REGISTRARS.length directly
   if(screenId === 'compliance') loadLecturerComplianceFromSupabase();
   if(screenId === 'analyticsPunctuality') loadPunctualityFromSupabase();
+  if(screenId === 'calendar' || screenId === 'academicCalendar' || screenId === 'dashboard' || screenId === 'home') loadAcademicCalendarFromSupabase();
   if(screenId === 'fraudCenter' || screenId === 'database') loadSuspicionLogFromSupabase();
   if(screenId === 'appeals') loadAppealsFromSupabase();
   if(screenId === 'supportTickets') loadSupportTicketsFromSupabase();

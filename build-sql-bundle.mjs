@@ -39,6 +39,7 @@ const MIGRATIONS = [
   'migrate-classes-year-column.sql',
   'migrate-live-sessions-class-id.sql',
   'migrate-academic-year-archive.sql',
+  'migrate-academic-calendar.sql',
   'migrate-server-side-checkin.sql',
   'migrate-lock-direct-attendance-insert.sql',
 ];
