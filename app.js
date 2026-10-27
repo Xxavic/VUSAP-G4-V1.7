@@ -10091,6 +10091,21 @@ function renderDataAnalyticsHub(){
       <div class="qa-text"><div class="t">Attendance Heatmap</div><div class="s">Which days and hours are best and worst attended</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+    <a class="quick-action" onclick="navigate('analyticsEligibility')">
+      <div class="qa-icon">${ICONS.fileText}</div>
+      <div class="qa-text"><div class="t">Exam Eligibility</div><div class="s">Who meets the attendance cutoff, per course</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('analyticsCohorts')">
+      <div class="qa-icon">${ICONS.chart}</div>
+      <div class="qa-text"><div class="t">Cohort Comparison</div><div class="s">By programme, course, year, study mode</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('analyticsMonthly')">
+      <div class="qa-icon">${ICONS.calendar}</div>
+      <div class="qa-text"><div class="t">Monthly Report</div><div class="s">Month totals, change and courses</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
     <a class="quick-action" onclick="navigate('compliance')">
       <div class="qa-icon">${ICONS.scaleIcon}</div>
       <div class="qa-text"><div class="t">Lecturer Compliance</div><div class="s">Session delivery vs. expected & export</div></div>
@@ -10336,6 +10351,296 @@ function renderHeatmapAnalytics(){
       ${hm.placed + hm.unplaced > 0 ? `<div style="font-size:12px;line-height:18px;margin-top:10px">${hm.placed} of ${hm.placed + hm.unplaced} records placed.${hm.unplaced ? ` ${hm.unplaced} could not be matched to a single timetable slot (course not on the timetable that day, or held at two different hours that the student's day/evening mode cannot settle) and are left out.` : ''}</div>` : ''}
     </div>
   </div>`;
+}
+
+// ============================================================
+// TIER 2 ANALYTICS (Oct 2026): exam eligibility, cohort comparison and the
+// monthly report. Same rules as Tier 1: records come from scopedRecords()
+// (a Registrar sees only their faculty), credit comes from the shared
+// weighted rules, and thin data is labelled, never turned into a number.
+// ============================================================
+function csvDownload(filename, headers, rows){
+  const csv = [headers.map(csvCell).join(','), ...rows.map(r => r.map(csvCell).join(','))].join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+function printReport(title, meta, headers, rows){
+  const html = `<!DOCTYPE html><html><head><title>${escapeHtmlText(title)}</title><style>
+    body{font-family:sans-serif;font-size:12px;color:#111;padding:24px}h1{font-size:18px;margin-bottom:4px}.meta{color:#666;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}th{background:#1e293b;color:#fff;padding:8px;text-align:left}td{padding:7px 8px;border-bottom:1px solid #e2e8f0}
+    </style></head><body><h1>${escapeHtmlText(title)}</h1><div class="meta">${escapeHtmlText(SYSTEM_SETTINGS.institutionName)} · ${escapeHtmlText(meta)} · Exported ${new Date().toLocaleDateString('en-GB')}</div>
+    <table><thead><tr>${headers.map(h => `<th>${escapeHtmlText(h)}</th>`).join('')}</tr></thead><tbody>
+    ${rows.map(r => `<tr>${r.map(c => `<td>${escapeHtmlText(c == null ? '' : c)}</td>`).join('')}</tr>`).join('')}
+    </tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ showToast('Allow pop-ups to print the PDF'); return false; }
+  w.document.write(html); w.document.close();
+  return true;
+}
+function studentLookup(){
+  const m = new Map(); STUDENTS.forEach(s => m.set(s.reg, s)); return m;
+}
+
+// ---- Exam eligibility (one course) ----
+// pending: fewer than RISK_MIN_SESSIONS lectures recorded. eligible: weighted
+// attendance at or above the cutoff. notEligible: below it.
+function assessEligibility(records, cutoff){
+  cutoff = cutoff == null ? ATTENDANCE_POLICIES.minAttendancePct : cutoff;
+  const n = records.length;
+  const pct = weightedAttendancePct(records);
+  const status = n < RISK_MIN_SESSIONS ? 'pending' : (pct >= cutoff ? 'eligible' : 'notEligible');
+  return { n, pct, status };
+}
+const ELIG_LABEL = { eligible: 'Eligible', notEligible: 'Not eligible', pending: 'Pending' };
+function computeEligibility(records, courseCode){
+  const by = new Map();
+  records.forEach(r => {
+    if(r.code !== courseCode || !r.reg) return;
+    if(!by.has(r.reg)) by.set(r.reg, { reg: r.reg, name: r.name || r.reg, prog: r.prog || '', recs: [] });
+    by.get(r.reg).recs.push(r);
+  });
+  const cap = courseAttendanceMarksCap(courseCode);
+  const order = { notEligible: 0, pending: 1, eligible: 2 };
+  return [...by.values()].map(s => {
+    const a = assessEligibility(s.recs);
+    return { reg: s.reg, name: s.name, prog: s.prog, ...a, marks: attendanceMarksForPct(a.pct, cap), cap };
+  }).sort((a, b) => (order[a.status] - order[b.status]) || ((a.pct ?? 101) - (b.pct ?? 101)) || a.name.localeCompare(b.name));
+}
+
+// ---- Cohort comparison ----
+// Groups records by keyOf(record) (null key = cannot be placed, counted
+// separately) and reports weighted attendance, students and the share of
+// students below the cutoff. Lowest first.
+function computeCohorts(records, keyOf, cutoff){
+  cutoff = cutoff == null ? ATTENDANCE_POLICIES.minAttendancePct : cutoff;
+  const groups = new Map(); let unplaced = 0;
+  records.forEach(r => {
+    const k = keyOf(r);
+    if(k == null){ unplaced++; return; }
+    if(!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  });
+  const rows = [...groups.entries()].map(([key, recs]) => {
+    const perStudent = new Map();
+    recs.forEach(r => { if(!perStudent.has(r.reg)) perStudent.set(r.reg, []); perStudent.get(r.reg).push(r); });
+    let assessed = 0, below = 0;
+    perStudent.forEach(rs => { if(rs.length >= RISK_MIN_SESSIONS){ assessed++; if(weightedAttendancePct(rs) < cutoff) below++; } });
+    return { key, records: recs.length, students: perStudent.size, pct: weightedAttendancePct(recs), assessed, below };
+  }).sort((a, b) => (a.pct - b.pct) || String(a.key).localeCompare(String(b.key)));
+  return { rows, unplaced };
+}
+
+// ---- Monthly report ----
+function recordMonths(records){
+  return [...new Set(records.map(r => String(r.date || '').slice(0, 7)).filter(m => /^\d{4}-\d{2}$/.test(m)))].sort().reverse();
+}
+function previousMonth(ym){
+  const [y, m] = ym.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+}
+function computeMonthly(records, ym){
+  const inMonth = records.filter(r => String(r.date || '').slice(0, 7) === ym);
+  const prev = records.filter(r => String(r.date || '').slice(0, 7) === previousMonth(ym));
+  const count = st => inMonth.filter(r => r.status === st).length;
+  const pct = weightedAttendancePct(inMonth), prevPct = weightedAttendancePct(prev);
+  const byCourse = computeCohorts(inMonth, r => r.code).rows.map(c => ({ ...c, course: (inMonth.find(r => r.code === c.key) || {}).course || c.key }));
+  const risk = computeAtRiskList(inMonth);
+  return {
+    ym, records: inMonth.length, present: count('present'), late: count('late'), absent: count('absent'),
+    pct, prevPct, delta: (pct !== null && prevPct !== null) ? pct - prevPct : null,
+    students: new Set(inMonth.map(r => r.reg)).size,
+    belowCutoff: risk.filter(s => s.state === 'critical' || s.state === 'atRisk').length,
+    assessed: risk.filter(s => s.state !== 'insufficient').length,
+    byCourse
+  };
+}
+function monthLabel(ym){
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
+// ---- screens ----
+let _eligCourse = '';
+let _cohortDim = 'programme';
+let _monthSel = '';
+let _monthFaculty = '';
+function setEligCourse(c){ _eligCourse = c; refreshScreenContentOnly(); }
+function setCohortDim(d){ _cohortDim = d; refreshScreenContentOnly(); }
+function setMonthSel(m){ _monthSel = m; refreshScreenContentOnly(); }
+function setMonthFaculty(f){ _monthFaculty = f; refreshScreenContentOnly(); }
+
+function analyticsHeader(title, exportKey){
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('dataAnalytics')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">${title}</div>
+    </div>
+  </div>`;
+}
+function exportButtons(fn){
+  return `<div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:8px">
+    <button class="link-mini" onclick="${fn}('pdf')">${ICONS.fileText} PDF</button>
+    <button class="link-mini" onclick="${fn}('excel')">${ICONS.fileSpreadsheet} CSV</button></div>`;
+}
+function selectHtml(onchange, options, selected){
+  return `<select onchange="${onchange}(this.value)" style="width:100%;margin-bottom:10px;padding:10px;font-size:14px">
+    ${options.map(([v, l]) => `<option value="${escapeHtmlText(v)}" ${v === selected ? 'selected' : ''}>${escapeHtmlText(l)}</option>`).join('')}</select>`;
+}
+function courseOptions(records){
+  return [...new Map(records.map(r => [r.code, r.course || r.code])).entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, n]) => [c, `${c} — ${n}`]);
+}
+
+function currentEligibility(){
+  const records = scopedRecords();
+  const opts = courseOptions(records);
+  const code = opts.some(o => o[0] === _eligCourse) ? _eligCourse : (opts[0] ? opts[0][0] : '');
+  return { opts, code, list: code ? computeEligibility(records, code) : [] };
+}
+function renderEligibilityAnalytics(){
+  const { opts, code, list } = currentEligibility();
+  const cutoff = ATTENDANCE_POLICIES.minAttendancePct;
+  const n = s => list.filter(x => x.status === s).length;
+  const col = { eligible:'#15803d', notEligible:'#b91c1c', pending:'#64748b' };
+  const cap = courseAttendanceMarksCap(code);
+  const body = opts.length === 0
+    ? `<div class="card section-card">No attendance records yet, so no one can be assessed.</div>`
+    : list.map(s => `
+      <div class="card section-card" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="min-width:0"><div style="font-weight:700;font-size:15px">${escapeHtmlText(s.name)}</div>
+          <div style="font-size:12px">${escapeHtmlText(s.reg)}</div></div>
+          <span style="font-size:11px;font-weight:700;color:${col[s.status]};border:1px solid ${col[s.status]};border-radius:999px;padding:2px 8px;white-space:nowrap">${ELIG_LABEL[s.status]}</span>
+        </div>
+        <div style="margin-top:6px;font-size:13px">${s.pct === null ? 'No data' : `<b>${s.pct}%</b> over ${s.n} lecture${s.n === 1 ? '' : 's'}`}${s.marks !== null ? ` · attendance marks <b>${s.marks}</b> / ${s.cap}` : ''}${s.status === 'pending' ? ' · needs ' + RISK_MIN_SESSIONS + '+ lectures recorded' : ''}</div>
+      </div>`).join('');
+  return `${analyticsHeader('Exam Eligibility')}
+  <div class="content">
+    ${exportButtons('exportEligibilityReport')}
+    <div style="font-size:13px;line-height:19px;margin-bottom:10px">Eligible means ${cutoff}% or more weighted attendance in the course (Late counts ${SYSTEM_SETTINGS.lateCreditPct ?? 100}%). Only students with at least one record in the course are listed; a student with no check-in or absence recorded yet does not appear.</div>
+    ${opts.length ? selectHtml('setEligCourse', opts, code) : ''}
+    ${opts.length ? `<div class="status-chip-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+      <div class="status-chip"><div class="n">${n('eligible')}</div><div class="l">Eligible</div></div>
+      <div class="status-chip"><div class="n">${n('notEligible')}</div><div class="l">Not eligible</div></div>
+      <div class="status-chip"><div class="n">${n('pending')}</div><div class="l">Pending</div></div></div>` : ''}
+    ${body}
+  </div>`;
+}
+function exportEligibilityReport(format){
+  const { code, list } = currentEligibility();
+  if(!code || list.length === 0){ showToast('Nothing to export'); return; }
+  const cap = courseAttendanceMarksCap(code);
+  const headers = ['Name','Registration No.','Programme','Lectures','Attendance %','Status', ...(cap != null ? ['Attendance marks (of ' + cap + ')'] : [])];
+  const rows = list.map(s => [s.name, s.reg, s.prog, s.n, s.pct ?? '', ELIG_LABEL[s.status], ...(cap != null ? [s.marks ?? ''] : [])]);
+  const user = [State.user?.staffId || 'system', State.user?.name || 'System'];
+  if(format === 'excel'){
+    csvDownload(`qrast-eligibility-${code}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    logAuditEvent(user[0], user[1], 'Report exported', code, `Eligibility CSV, ${list.length} students`);
+    showToast(`${list.length} students exported as CSV`);
+  } else if(printReport('Exam Eligibility — ' + code, `cutoff ${ATTENDANCE_POLICIES.minAttendancePct}%`, headers, rows)){
+    logAuditEvent(user[0], user[1], 'Report exported', code, `Eligibility PDF, ${list.length} students`);
+  }
+}
+
+const COHORT_DIMS = {
+  programme: { label: 'Programme', keyOf: () => r => r.prog || null },
+  course: { label: 'Course', keyOf: () => r => r.code ? `${r.code} — ${r.course || ''}` : null },
+  year: { label: 'Year', keyOf: m => r => (m.get(r.reg) || {}).year || null },
+  mode: { label: 'Study mode', keyOf: m => r => { const x = (m.get(r.reg) || {}).mode; return x ? (x === 'evening' ? 'Evening' : 'Day') : null; } },
+  faculty: { label: 'Faculty', keyOf: () => r => facultyKeyForProgrammeName(r.prog) },
+};
+function facultyLabel(key){
+  const f = (typeof FACULTY_COUNTS !== 'undefined' ? FACULTY_COUNTS : []).find(x => x.key === key);
+  return f ? f.label : key;
+}
+function currentCohorts(){
+  const dims = currentRegistrarFacultyKey() ? ['programme','course','year','mode'] : Object.keys(COHORT_DIMS);
+  const dim = dims.includes(_cohortDim) ? _cohortDim : dims[0];
+  const res = computeCohorts(scopedRecords(), COHORT_DIMS[dim].keyOf(studentLookup()));
+  if(dim === 'faculty') res.rows.forEach(r => { r.key = facultyLabel(r.key); });
+  return { dims, dim, ...res };
+}
+function renderCohortAnalytics(){
+  const { dims, dim, rows, unplaced } = currentCohorts();
+  const cutoff = ATTENDANCE_POLICIES.minAttendancePct;
+  const chips = dims.map(d => `<button class="status-chip selectable ${d === dim ? 'chip-active' : ''}" onclick="setCohortDim('${d}')" style="padding:8px 10px;font-size:12px;font-weight:700">${COHORT_DIMS[d].label}</button>`).join('');
+  const body = rows.length === 0
+    ? `<div class="card section-card">No attendance records yet to compare.</div>`
+    : rows.map(r => `
+      <div class="card section-card" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;gap:10px;font-size:14px"><b style="min-width:0">${escapeHtmlText(r.key)}</b><b>${r.pct}%</b></div>
+        <div style="margin:6px 0;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${r.pct}%;height:100%;background:${r.pct >= cutoff ? '#15803d' : '#b91c1c'}"></div></div>
+        <div style="font-size:12px;line-height:18px">${r.students} student${r.students === 1 ? '' : 's'} · ${r.records} record${r.records === 1 ? '' : 's'}${r.assessed ? ` · ${r.below} of ${r.assessed} below ${cutoff}%` : ' · too few lectures per student to assess'}${r.records < HEATMAP_MIN_CELL ? ' · <i>few records, read with care</i>' : ''}</div>
+      </div>`).join('');
+  return `${analyticsHeader('Cohort Comparison')}
+  <div class="content">
+    ${exportButtons('exportCohortReport')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chips}</div>
+    ${body}
+    ${unplaced ? `<div style="font-size:12px;line-height:18px;margin-top:6px">${unplaced} record${unplaced === 1 ? '' : 's'} could not be placed by ${COHORT_DIMS[dim].label.toLowerCase()} (the student's profile has no ${COHORT_DIMS[dim].label.toLowerCase()}) and are left out.</div>` : ''}
+  </div>`;
+}
+function exportCohortReport(format){
+  const { dim, rows } = currentCohorts();
+  if(rows.length === 0){ showToast('Nothing to export'); return; }
+  const headers = [COHORT_DIMS[dim].label, 'Students', 'Records', 'Attendance %', 'Students assessed', 'Below cutoff'];
+  const out = rows.map(r => [r.key, r.students, r.records, r.pct, r.assessed, r.below]);
+  const user = [State.user?.staffId || 'system', State.user?.name || 'System'];
+  if(format === 'excel'){
+    csvDownload(`qrast-cohorts-${dim}-${new Date().toISOString().slice(0, 10)}.csv`, headers, out);
+    logAuditEvent(user[0], user[1], 'Report exported', dim, `Cohort CSV, ${rows.length} groups`);
+    showToast(`${rows.length} groups exported as CSV`);
+  } else if(printReport('Cohort Comparison by ' + COHORT_DIMS[dim].label, `cutoff ${ATTENDANCE_POLICIES.minAttendancePct}%`, headers, out)){
+    logAuditEvent(user[0], user[1], 'Report exported', dim, `Cohort PDF, ${rows.length} groups`);
+  }
+}
+
+function currentMonthly(){
+  let recs = scopedRecords();
+  const fixed = currentRegistrarFacultyKey();
+  if(!fixed && _monthFaculty) recs = recs.filter(r => facultyKeyForProgrammeName(r.prog) === _monthFaculty);
+  const months = recordMonths(recs);
+  const ym = months.includes(_monthSel) ? _monthSel : (months[0] || '');
+  return { recs, months, ym, rep: ym ? computeMonthly(recs, ym) : null, fixed };
+}
+function renderMonthlyAnalytics(){
+  const { months, ym, rep, fixed } = currentMonthly();
+  const cutoff = ATTENDANCE_POLICIES.minAttendancePct;
+  const facOpts = [['', 'All faculties'], ...FACULTY_COUNTS.map(f => [f.key, f.label])];
+  const delta = rep && rep.delta !== null ? `${rep.delta > 0 ? '+' : ''}${rep.delta} pts vs ${monthLabel(previousMonth(ym))}` : (rep ? `no records for ${monthLabel(previousMonth(ym))} to compare` : '');
+  const body = !rep
+    ? `<div class="card section-card">No attendance records yet, so there is no month to report.</div>`
+    : `<div class="card section-card">
+        <div style="font-size:13px">${monthLabel(ym)}</div>
+        <div style="font-size:34px;font-weight:800;line-height:1.1">${rep.pct}%</div>
+        <div style="font-size:13px;margin-bottom:8px">${delta}</div>
+        <div style="font-size:13px;line-height:20px">${rep.records} records · ${rep.students} students<br>${rep.present} present · ${rep.late} late · ${rep.absent} absent<br>${rep.assessed ? `${rep.belowCutoff} of ${rep.assessed} students below ${cutoff}% this month` : 'too few lectures per student to assess this month'}</div>
+      </div>
+      <div class="section-title" style="margin:8px 4px">Courses, lowest first</div>
+      ${rep.byCourse.map(c => `<div class="card section-card" style="padding:10px 14px;font-size:13px;display:flex;justify-content:space-between;gap:10px"><span style="min-width:0">${escapeHtmlText(c.key)} — ${escapeHtmlText(c.course)}<br><span style="font-size:12px">${c.students} students · ${c.records} records</span></span><b style="color:${c.pct >= cutoff ? '#15803d' : '#b91c1c'}">${c.pct}%</b></div>`).join('')}`;
+  return `${analyticsHeader('Monthly Report')}
+  <div class="content">
+    ${rep ? exportButtons('exportMonthlyReport') : ''}
+    ${!fixed ? selectHtml('setMonthFaculty', facOpts, _monthFaculty) : ''}
+    ${months.length ? selectHtml('setMonthSel', months.map(m => [m, monthLabel(m)]), ym) : ''}
+    ${body}
+  </div>`;
+}
+function exportMonthlyReport(format){
+  const { ym, rep, fixed } = currentMonthly();
+  if(!rep){ showToast('Nothing to export'); return; }
+  const headers = ['Course','Students','Records','Attendance %'];
+  const rows = rep.byCourse.map(c => [`${c.key} — ${c.course}`, c.students, c.records, c.pct]);
+  rows.push(['ALL COURSES', rep.students, rep.records, rep.pct]);
+  const scope = fixed ? facultyLabel(fixed) : (_monthFaculty ? facultyLabel(_monthFaculty) : 'All faculties');
+  const user = [State.user?.staffId || 'system', State.user?.name || 'System'];
+  if(format === 'excel'){
+    csvDownload(`qrast-monthly-${ym}.csv`, headers, rows);
+    logAuditEvent(user[0], user[1], 'Report exported', ym, `Monthly CSV, ${scope}`);
+    showToast('Monthly report exported as CSV');
+  } else if(printReport('Monthly Attendance Report — ' + monthLabel(ym), `${scope} · ${rep.present} present, ${rep.late} late, ${rep.absent} absent`, headers, rows)){
+    logAuditEvent(user[0], user[1], 'Report exported', ym, `Monthly PDF, ${scope}`);
+  }
 }
 
 function renderStudentAttendanceAnalytics(){
@@ -15415,6 +15720,9 @@ function getScreenHTML(screenId){
       case 'analyticsAttendance': return renderStudentAttendanceAnalytics();
       case 'analyticsAtRisk': return renderAtRiskAnalytics();
       case 'analyticsHeatmap': return renderHeatmapAnalytics();
+      case 'analyticsEligibility': return renderEligibilityAnalytics();
+      case 'analyticsCohorts': return renderCohortAnalytics();
+      case 'analyticsMonthly': return renderMonthlyAnalytics();
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
