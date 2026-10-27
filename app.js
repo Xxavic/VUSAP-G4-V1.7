@@ -10081,11 +10081,260 @@ function renderDataAnalyticsHub(){
       <div class="qa-text"><div class="t">Student Attendance</div><div class="s">Records, comparison charts & export</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+    <a class="quick-action" onclick="navigate('analyticsAtRisk')">
+      <div class="qa-icon">${ICONS.users}</div>
+      <div class="qa-text"><div class="t">At-Risk Students</div><div class="s">Who is below the cutoff, and who is slipping</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
+    <a class="quick-action" onclick="navigate('analyticsHeatmap')">
+      <div class="qa-icon">${ICONS.chart}</div>
+      <div class="qa-text"><div class="t">Attendance Heatmap</div><div class="s">Which days and hours are best and worst attended</div></div>
+      <div class="chev">${ICONS.chevR}</div>
+    </a>
     <a class="quick-action" onclick="navigate('compliance')">
       <div class="qa-icon">${ICONS.scaleIcon}</div>
       <div class="qa-text"><div class="t">Lecturer Compliance</div><div class="s">Session delivery vs. expected & export</div></div>
       <div class="chev">${ICONS.chevR}</div>
     </a>
+  </div>`;
+}
+
+// ============================================================
+// TIER 1 ANALYTICS (Oct 2026): at-risk students and the attendance heatmap.
+// Both are built from RECORDS (via scopedRecords(), so a Registrar only ever
+// sees their own faculty) and the shared credit rules above -- Present 1,
+// Late SYSTEM_SETTINGS.lateCreditPct, Absent 0 -- so a number here always
+// agrees with the percentage a student sees on their own screen. The maths
+// lives in pure functions (no DOM, no globals except the policy) so it can be
+// checked on known data; the render functions only draw what they return.
+// Nothing is invented: too little data gives "not enough data yet", never 0%.
+// ============================================================
+const RISK_MIN_SESSIONS = 3;     // fewer recorded lectures than this: no verdict
+const RISK_TREND_WINDOW = 4;     // most recent lectures compared against the overall rate
+const RISK_TREND_MIN = 6;        // a trend needs at least this many lectures
+const RISK_CRITICAL_PCT = 50;    // below this is Critical whatever the trend
+const HEATMAP_MIN_CELL = 5;      // a cell with fewer records is shown as too thin to read
+
+// Records for one student -> verdict. `records` must all belong to the one
+// student. State: insufficient | safe | watch | atRisk | critical.
+//   atRisk   overall below the policy cutoff
+//   critical atRisk AND (recent lectures worse than overall, or overall < 50)
+//   watch    overall at/above cutoff but the recent lectures are below it
+function assessStudentRisk(records, cutoff){
+  cutoff = cutoff == null ? ATTENDANCE_POLICIES.minAttendancePct : cutoff;
+  const sorted = [...records].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const n = sorted.length;
+  const earned = sorted.reduce((s, r) => s + attendanceCreditForStatus(r.status), 0);
+  const pct = weightedAttendancePct(sorted);
+  const out = { n, pct, recentPct: null, trend: null, state: 'insufficient', needNext: null };
+  if(n < RISK_MIN_SESSIONS) return out;
+  if(n >= RISK_TREND_MIN){
+    out.recentPct = weightedAttendancePct(sorted.slice(-RISK_TREND_WINDOW));
+    out.trend = out.recentPct > pct ? 'up' : (out.recentPct < pct ? 'down' : 'flat');
+  }
+  if(pct < cutoff){
+    out.state = (out.trend === 'down' || pct < RISK_CRITICAL_PCT) ? 'critical' : 'atRisk';
+    // Consecutive full-credit lectures needed to get back to the cutoff.
+    let x = 0;
+    while(x < 500 && Math.round(((earned + x) / (n + x)) * 100) < cutoff) x++;
+    out.needNext = x;
+  } else if(out.recentPct !== null && out.recentPct < cutoff){
+    out.state = 'watch';
+  } else {
+    out.state = 'safe';
+  }
+  return out;
+}
+
+const RISK_ORDER = { critical: 0, atRisk: 1, watch: 2, safe: 3, insufficient: 4 };
+const RISK_LABEL = { critical: 'Critical', atRisk: 'At risk', watch: 'Watch', safe: 'Safe', insufficient: 'Not enough data' };
+
+// All records -> one row per student, worst first. Optional course filter.
+function computeAtRiskList(records, courseCode){
+  const by = new Map();
+  records.forEach(r => {
+    if(courseCode && r.code !== courseCode) return;
+    if(!r.reg) return;
+    if(!by.has(r.reg)) by.set(r.reg, { reg: r.reg, name: r.name || r.reg, prog: r.prog || '', recs: [] });
+    by.get(r.reg).recs.push(r);
+  });
+  return [...by.values()].map(s => ({ reg: s.reg, name: s.name, prog: s.prog, ...assessStudentRisk(s.recs) }))
+    .sort((a, b) => (RISK_ORDER[a.state] - RISK_ORDER[b.state]) || ((a.pct ?? 101) - (b.pct ?? 101)) || a.name.localeCompare(b.name));
+}
+
+// Start hour of the lecture a record belongs to, from the timetable: the
+// lecture of that course on that weekday. null when the timetable has no
+// such slot, or has more than one at different hours that the student's
+// study mode (day / evening) cannot settle -- we cannot tell which one the
+// record belongs to, so it is left out and counted, not guessed. `mode` is
+// the student's own study mode when known.
+function lectureStartHour(rec, schedule, mode){
+  const day = new Date(rec.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+  const all = new Set(), mine = new Set();
+  (schedule || []).forEach(d => {
+    if(d.day !== day) return;
+    (d.lectures || []).forEach(l => {
+      if(l.code !== rec.code) return;
+      const m = /^(\d{1,2}):\d{2}/.exec(String(l.time || ''));
+      if(!m) return;
+      const h = parseInt(m[1], 10);
+      all.add(h);
+      if(mode && l.mode === mode) mine.add(h);
+    });
+  });
+  if(all.size === 1) return [...all][0];
+  return mine.size === 1 ? [...mine][0] : null;
+}
+
+// Records -> weekday x hour grid of weighted attendance. Returns
+// { days, hours, cells: {"Day|hour": {n, pct}}, placed, unplaced }.
+function computeHeatmap(records, schedule, modeOf){
+  const names = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const buckets = {};
+  let placed = 0, unplaced = 0;
+  records.forEach(r => {
+    const h = r.date ? lectureStartHour(r, schedule, modeOf ? modeOf(r.reg) : null) : null;
+    if(h === null){ unplaced++; return; }
+    const day = new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+    (buckets[`${day}|${h}`] = buckets[`${day}|${h}`] || []).push(r);
+    placed++;
+  });
+  const cells = {};
+  Object.keys(buckets).forEach(k => { cells[k] = { n: buckets[k].length, pct: weightedAttendancePct(buckets[k]) }; });
+  const used = new Set(Object.keys(cells).map(k => k.split('|')[0]));
+  const days = names.filter((d, i) => i < 5 || used.has(d));
+  const hrs = Object.keys(cells).map(k => parseInt(k.split('|')[1], 10));
+  const hours = [];
+  if(hrs.length){ for(let h = Math.min(...hrs); h <= Math.max(...hrs); h++) hours.push(h); }
+  return { days, hours, cells, placed, unplaced };
+}
+
+function csvCell(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+
+let _riskFilter = 'all';
+let _riskCourse = '';
+function setRiskFilter(f){ _riskFilter = f; refreshScreenContentOnly(); }
+function setRiskCourse(c){ _riskCourse = c; refreshScreenContentOnly(); }
+
+function riskBadge(state){
+  const col = { critical:'#b91c1c', atRisk:'#b45309', watch:'#a16207', safe:'#15803d', insufficient:'#64748b' }[state];
+  return `<span style="font-size:11px;font-weight:700;color:${col};border:1px solid ${col};border-radius:999px;padding:2px 8px;white-space:nowrap">${RISK_LABEL[state]}</span>`;
+}
+
+function renderAtRiskAnalytics(){
+  const cutoff = ATTENDANCE_POLICIES.minAttendancePct;
+  const records = scopedRecords();
+  const all = computeAtRiskList(records, _riskCourse);
+  const count = s => all.filter(x => x.state === s).length;
+  const rows = _riskFilter === 'all' ? all : all.filter(x => x.state === _riskFilter);
+  const courses = [...new Map(records.map(r => [r.code, r.course || r.code])).entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const chip = (key, label, n) => `<button class="status-chip selectable ${_riskFilter === key ? 'chip-active' : ''}" onclick="setRiskFilter('${key}')" style="padding:8px 4px;text-align:center"><div class="n">${n}</div><div class="l">${label}</div></button>`;
+  const trendMark = t => t === 'down' ? '↓' : t === 'up' ? '↑' : t === 'flat' ? '→' : '–';
+  const body = all.length === 0
+    ? `<div class="card section-card"><div style="font-size:14px;line-height:21px">No attendance records yet, so there is nothing to assess.</div></div>`
+    : rows.length === 0
+      ? `<div class="card section-card"><div style="font-size:14px;line-height:21px">No students in this group.</div></div>`
+      : rows.map(s => `
+      <div class="card section-card" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="min-width:0"><div style="font-weight:700;font-size:15px">${escapeHtmlText(s.name)}</div>
+          <div style="font-size:12px;color:var(--text-2,#475569)">${escapeHtmlText(s.reg)}${s.prog ? ' · ' + escapeHtmlText(s.prog) : ''}</div></div>
+          ${riskBadge(s.state)}
+        </div>
+        <div style="margin-top:8px;font-size:13px;line-height:20px">
+          ${s.pct === null ? 'No data' : `<b>${s.pct}%</b> over ${s.n} lecture${s.n === 1 ? '' : 's'}`}
+          ${s.recentPct !== null ? ` · last ${RISK_TREND_WINDOW}: <b>${s.recentPct}%</b> ${trendMark(s.trend)}` : ''}
+          ${s.needNext ? `<div>Needs <b>${s.needNext}</b> full-attendance lecture${s.needNext === 1 ? '' : 's'} in a row to reach ${cutoff}%.</div>` : ''}
+        </div>
+      </div>`).join('');
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('dataAnalytics')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">At-Risk Students</div>
+    </div>
+  </div>
+  <div class="content">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:8px">
+      <button class="link-mini" onclick="exportAtRiskReport('pdf')">${ICONS.fileText} PDF</button>
+      <button class="link-mini" onclick="exportAtRiskReport('excel')">${ICONS.fileSpreadsheet} CSV</button>
+    </div>
+    <div style="font-size:13px;line-height:19px;margin-bottom:10px">Cutoff is ${cutoff}% weighted attendance (Late counts ${SYSTEM_SETTINGS.lateCreditPct ?? 100}%). Critical means below the cutoff and getting worse, or under ${RISK_CRITICAL_PCT}%. Watch means above the cutoff overall but under it in the last ${RISK_TREND_WINDOW} lectures.</div>
+    <select onchange="setRiskCourse(this.value)" style="width:100%;margin-bottom:10px;padding:10px;font-size:14px">
+      <option value="">All courses</option>
+      ${courses.map(([c, n]) => `<option value="${escapeHtmlText(c)}" ${c === _riskCourse ? 'selected' : ''}>${escapeHtmlText(c)} — ${escapeHtmlText(n)}</option>`).join('')}
+    </select>
+    <div class="status-chip-grid" style="margin-bottom:12px">
+      ${chip('critical', 'Critical', count('critical'))}${chip('atRisk', 'At risk', count('atRisk'))}${chip('watch', 'Watch', count('watch'))}${chip('all', 'All', all.length)}
+    </div>
+    ${body}
+  </div>`;
+}
+
+function exportAtRiskReport(format){
+  const list = computeAtRiskList(scopedRecords(), _riskCourse).filter(s => s.state !== 'safe' && s.state !== 'insufficient');
+  if(list.length === 0){ showToast('No at-risk students to export'); return; }
+  const stamp = new Date().toISOString().slice(0, 10);
+  const scope = _riskCourse || 'all';
+  if(format === 'excel'){
+    const head = ['Name','Registration No.','Programme','Status','Attendance %','Lectures','Last 4 %','Lectures needed to recover'];
+    const csv = [head.map(csvCell).join(','), ...list.map(s => [s.name, s.reg, s.prog, RISK_LABEL[s.state], s.pct, s.n, s.recentPct ?? '', s.needNext ?? ''].map(csvCell).join(','))].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = `qrast-at-risk-${scope}-${stamp}.csv`; a.click(); URL.revokeObjectURL(url);
+    logAuditEvent(State.user?.staffId || 'system', State.user?.name || 'System', 'Report exported', scope, `At-risk CSV, ${list.length} students`);
+    showToast(`${list.length} students exported as CSV`);
+  } else {
+    const html = `<!DOCTYPE html><html><head><title>QRAST At-Risk Students</title><style>
+      body{font-family:sans-serif;font-size:12px;color:#111;padding:24px}h1{font-size:18px;margin-bottom:4px}.meta{color:#666;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse}th{background:#1e293b;color:#fff;padding:8px;text-align:left}td{padding:7px 8px;border-bottom:1px solid #e2e8f0}
+    </style></head><body><h1>At-Risk Students</h1>
+    <div class="meta">${escapeHtmlText(SYSTEM_SETTINGS.institutionName)} · ${escapeHtmlText(scope === 'all' ? 'All courses' : scope)} · cutoff ${ATTENDANCE_POLICIES.minAttendancePct}% · Exported ${new Date().toLocaleDateString('en-GB')}</div>
+    <table><thead><tr><th>Name</th><th>Reg. No.</th><th>Status</th><th>Attendance</th><th>Last ${RISK_TREND_WINDOW}</th><th>Needs</th></tr></thead><tbody>
+    ${list.map(s => `<tr><td>${escapeHtmlText(s.name)}</td><td>${escapeHtmlText(s.reg)}</td><td>${RISK_LABEL[s.state]}</td><td>${s.pct}% of ${s.n}</td><td>${s.recentPct ?? '–'}${s.recentPct !== null ? '%' : ''}</td><td>${s.needNext ?? '–'}</td></tr>`).join('')}
+    </tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`;
+    const w = window.open('', '_blank');
+    if(!w){ showToast('Allow pop-ups to print the PDF'); return; }
+    w.document.write(html); w.document.close();
+    logAuditEvent(State.user?.staffId || 'system', State.user?.name || 'System', 'Report exported', scope, `At-risk PDF, ${list.length} students`);
+  }
+}
+
+function heatColor(pct){
+  // Red (0) -> amber -> green (100); text colour chosen for contrast.
+  const t = Math.max(0, Math.min(100, pct)) / 100;
+  const hue = Math.round(t * 130);
+  return { bg: `hsl(${hue},70%,30%)`, fg: '#ffffff' };
+}
+
+function renderHeatmapAnalytics(){
+  const records = scopedRecords();
+  const hm = computeHeatmap(records, SCHEDULE, reg => STUDENTS.find(s => s.reg === reg)?.mode || null);
+  const cellHtml = (day, h) => {
+    const c = hm.cells[`${day}|${h}`];
+    if(!c) return `<div style="background:#eef2f1;border-radius:4px;min-height:34px"></div>`;
+    if(c.n < HEATMAP_MIN_CELL) return `<div title="${c.n} records, too few to read" style="background:#eef2f1;color:#475569;border-radius:4px;min-height:34px;display:flex;align-items:center;justify-content:center;font-size:11px">n=${c.n}</div>`;
+    const k = heatColor(c.pct);
+    return `<div title="${c.pct}% of ${c.n} records" style="background:${k.bg};color:${k.fg};border-radius:4px;min-height:34px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${c.pct}%</div>`;
+  };
+  const grid = hm.hours.length === 0
+    ? `<div style="font-size:14px;line-height:21px">${records.length === 0 ? 'No attendance records yet.' : 'None of the records could be placed on the timetable, so there is no pattern to show yet.'}</div>`
+    : `<div style="display:grid;grid-template-columns:44px repeat(${hm.days.length},minmax(0,1fr));gap:4px;align-items:center">
+        <div></div>${hm.days.map(d => `<div style="font-size:11px;font-weight:700;text-align:center">${d.slice(0, 3)}</div>`).join('')}
+        ${hm.hours.map(h => `<div style="font-size:11px;text-align:right;padding-right:4px">${String(h).padStart(2, '0')}:00</div>${hm.days.map(d => cellHtml(d, h)).join('')}`).join('')}
+      </div>`;
+  return `
+  <div class="app-header">
+    <div class="header-back">
+      <button class="back-btn" onclick="navigate('dataAnalytics')">${ICONS.back}</button>
+      <div class="page-title" style="font-size:18px;">Attendance Heatmap</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card section-card">
+      <div style="font-size:13px;line-height:19px;margin-bottom:10px">Weighted attendance by the weekday and start hour of the lecture. Greener is better attended. Grey cells have fewer than ${HEATMAP_MIN_CELL} records and are too thin to read.</div>
+      ${grid}
+      ${hm.placed + hm.unplaced > 0 ? `<div style="font-size:12px;line-height:18px;margin-top:10px">${hm.placed} of ${hm.placed + hm.unplaced} records placed.${hm.unplaced ? ` ${hm.unplaced} could not be matched to a single timetable slot (course not on the timetable that day, or held at two different hours that the student's day/evening mode cannot settle) and are left out.` : ''}</div>` : ''}
+    </div>
   </div>`;
 }
 
@@ -15164,6 +15413,8 @@ function getScreenHTML(screenId){
       case 'compliance': return renderCompliance();
       case 'dataAnalytics': return renderDataAnalyticsHub();
       case 'analyticsAttendance': return renderStudentAttendanceAnalytics();
+      case 'analyticsAtRisk': return renderAtRiskAnalytics();
+      case 'analyticsHeatmap': return renderHeatmapAnalytics();
       case 'announcements': return renderAnnouncements();
       case 'sendNotification': return renderComposeNotification();
       case 'sentNotifications': return renderSentNotifications();
