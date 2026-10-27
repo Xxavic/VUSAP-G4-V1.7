@@ -13846,7 +13846,7 @@ function renderNotifications(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('${jsAttr(backTarget)}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Inbox</div>
+      <div class="page-title" style="font-size:18px;">Messages</div>
     </div>
   </div>
   <div class="content">
@@ -14316,7 +14316,7 @@ function renderAnnouncements(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('${jsAttr(backTarget)}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Announcements</div>
+      <div class="page-title" style="font-size:18px;">Messages</div>
     </div>
   </div>
   <div class="content" ${canPost ? 'style="padding-bottom:90px;"' : ''}>
@@ -14548,25 +14548,21 @@ function renderComposeNotification(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('dashboard')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Send Notification</div>
-      <button class="back-btn" onclick="navigate('sentNotifications')" title="Sent Notifications" style="margin-left:auto;">${ICONS.fileText || ICONS.bell}</button>
+      <div class="page-title" style="font-size:18px;">Messages</div>
     </div>
   </div>
   <div class="content" style="padding-bottom:24px;">
     ${messageTabs('sendNotification')}
     <form id="composeNotificationForm" onsubmit="return submitComposeNotification(event)" style="display:flex;flex-direction:column;gap:16px;">
-      <input type="hidden" id="notifRecipientType" value="${options[0].value}" />
-
-      <div>
-        <div class="section-title" style="margin-bottom:8px;">${ICONS.users} Who should receive this?</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${options.map((o,i) => `
-          <div class="report-option notif-recipient-tile" data-value="${o.value}" onclick="selectNotifRecipientType('${jsAttr(o.value)}')" style="${i===0?'border-color:var(--theme-primary);border-width:2px;box-shadow:0 0 0 1px var(--theme-primary);':''}">
-            <div class="ro-icon" style="background:${o.bg};color:${o.color};">${o.icon}</div>
-            <div class="ro-text"><div class="t">${o.label}</div><div class="s">${o.sub}</div></div>
-            <div class="notif-tile-check" style="color:var(--theme-primary);opacity:${i===0?'1':'0'};transition:opacity .15s;flex-shrink:0;">${ICONS.check}</div>
-          </div>`).join('')}
-        </div>
+      <div class="field">
+        <label>Send to <span class="req">*</span></label>
+        <select class="select" id="notifRecipientType" onchange="selectNotifRecipientType(this.value)">
+          ${[['Students', /student/i], ['Lecturers', /lecturer/i], ['Registrars', /registrar/i]].map(([g, re]) => {
+            const items = options.filter(o => re.test(o.value));
+            return items.length ? `<optgroup label="${g}">${items.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}</optgroup>` : '';
+          }).join('')}
+        </select>
+        <div id="notifRecipientHint" style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">${escapeHtmlText(options.find(o => o.value === (options[0].value)).sub)}</div>
       </div>
 
       <div class="field" id="notifCourseField" style="display:none;">
@@ -14627,16 +14623,11 @@ function renderComposeNotification(){
 // rerenderCurrentScreen(), which would wipe whatever the person has typed
 // into Title/Message so far.
 function selectNotifRecipientType(value){
-  const hidden = document.getElementById('notifRecipientType');
-  if(hidden) hidden.value = value;
-  document.querySelectorAll('.notif-recipient-tile').forEach(el => {
-    const selected = el.dataset.value === value;
-    el.style.borderColor = selected ? 'var(--theme-primary)' : '';
-    el.style.borderWidth = selected ? '2px' : '';
-    el.style.boxShadow = selected ? '0 0 0 1px var(--theme-primary)' : '';
-    const chk = el.querySelector('.notif-tile-check');
-    if(chk) chk.style.opacity = selected ? '1' : '0';
-  });
+  const sel = document.getElementById('notifRecipientType');
+  if(sel && sel.value !== value) sel.value = value;
+  const hint = document.getElementById('notifRecipientHint');
+  const opt = recipientOptionsForRole(State.role).find(o => o.value === value);
+  if(hint && opt) hint.textContent = opt.sub;
   updateComposeNotificationFields(value);
   updateNotifPreview();
 }
@@ -14790,7 +14781,7 @@ function renderSentNotifications(){
   <div class="app-header">
     <div class="header-back">
       <button class="back-btn" onclick="navigate('${State.role === 'student' ? 'home' : 'dashboard'}')">${ICONS.back}</button>
-      <div class="page-title" style="font-size:18px;">Sent</div>
+      <div class="page-title" style="font-size:18px;">Messages</div>
     </div>
   </div>
   <div class="content">
