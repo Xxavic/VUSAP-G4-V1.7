@@ -13992,8 +13992,11 @@ function sortNotifications(list, mode){
 // carrying threadId (the first message of the conversation) and replyToId.
 // A conversation is one thread with one other person, so on a broadcast each
 // reader's reply goes only to the sender and readers never see each other's.
+// Announcements are never replied to. Among students only a Class Coordinator
+// can reply; other students only receive, and raise concerns through Support.
+// migrate-notification-reply-policy.sql enforces the same rules on the server.
 // ------------------------------------------------------------
-const REPLY_TYPES = ['general', 'announcement', 'reply'];
+const REPLY_TYPES = ['general', 'reply'];
 let _thread = { rootId: null, withId: null };
 
 function myNotifId(){ return State.user?.id || State.user?.reg || State.user?.staffId || null; }
@@ -14009,10 +14012,20 @@ function personLookup(id){
 }
 function senderRole(n){ return n.fromRole || personLookup(n.fromId)?.role || null; }
 
+function canSendReplies(){
+  return State.role !== 'student' || !!(State.user?.is_class_coordinator || State.user?.isClassCoordinator);
+}
+
 // Can the current user reply to this message? Only to a person's own message,
 // never to the system or to themselves.
 function canReplyTo(n){
-  return !!(n.fromId && n.fromId !== 'system' && n.fromId !== myNotifId() && REPLY_TYPES.includes(n.type) && senderRole(n));
+  return !!(canSendReplies() && n.fromId && n.fromId !== 'system' && n.fromId !== myNotifId() && REPLY_TYPES.includes(n.type) && senderRole(n));
+}
+
+// A student who cannot reply sees where to take a concern instead.
+function noReplyHint(n){
+  if(canSendReplies() || n.type !== 'general' || !n.fromId || n.fromId === 'system') return '';
+  return `<div style="margin-top:8px;font-size:11px;">Replies are not available. To raise a concern, <a class="link-mini" onclick="event.stopPropagation();navigate('supportTickets')">contact Support</a>.</div>`;
 }
 
 function conversationKey(n){
@@ -14076,7 +14089,7 @@ function renderMessageThread(){
     ${subject ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:4px;">${ICONS.bell.replace(/<svg /,'<svg style="width:12px;height:12px;vertical-align:-2px;" ')} ${escapeHtmlText(subject)}</div>` : ''}
     ${bubbles || '<div class="empty-state-sm">This conversation is empty</div>'}
   </div>
-  ${role ? `
+  ${role && canSendReplies() ? `
   <div class="sticky-footer">
     <div class="sticky-footer-inner" style="padding:8px;display:flex;gap:8px;align-items:flex-end;">
       <textarea class="input" id="threadReplyBody" rows="2" maxlength="1000" placeholder="Write a reply to ${escapeHtmlText(otherName)}..." style="height:auto;resize:none;flex:1;"></textarea>
@@ -14089,6 +14102,7 @@ async function sendThreadReply(){
   const el = document.getElementById('threadReplyBody');
   const body = (el?.value || '').trim();
   if(!body){ showToast('Write a reply first'); return; }
+  if(!canSendReplies()){ showToast('Only Class Coordinators can reply to messages'); return; }
   const me = myNotifId();
   const msgs = conversationMessages(_thread.rootId, _thread.withId);
   const root = msgs.find(m => !m.threadId) || msgs[0];
@@ -14105,7 +14119,7 @@ async function sendThreadReply(){
   if(el) el.value = '';
   refreshScreenContentOnly();
   const result = await saved;
-  if(result === false) showToast('Reply not saved to the server. Check your connection and try again');
+  if(result === false) showToast('Reply not saved. Check your connection, or wait a while if you have sent many replies this hour');
   else if(result === 'unthreaded') showToast('Sent, but it will not appear as a conversation until the database update is applied');
   else showToast('Reply sent');
 }
@@ -14208,7 +14222,7 @@ function renderNotifications(){
                 ${n.courseCode ? `<span class="tag-mini">${escapeHtmlText(n.courseCode)}</span>` : ''}
               </div>
               <div class="notif-preview" id="notif-preview-${escapeHtmlText(n.id)}" style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${unread?'600':'400'};">${preview}</div>
-              <div class="notif-full" id="notif-full-${escapeHtmlText(n.id)}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${escapeHtmlText(n.body)}${canReplyTo(n) ? `<div style="margin-top:8px;"><button class="link-mini" onclick="event.stopPropagation();openMessageThread('${jsAttr(n.threadId || n.id)}','${jsAttr(n.fromId)}')">${ICONS.mail} Reply</button></div>` : ''}</div>
+              <div class="notif-full" id="notif-full-${escapeHtmlText(n.id)}" style="display:none;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;">${escapeHtmlText(n.body)}${canReplyTo(n) ? `<div style="margin-top:8px;"><button class="link-mini" onclick="event.stopPropagation();openMessageThread('${jsAttr(n.threadId || n.id)}','${jsAttr(n.fromId)}')">${ICONS.mail} Reply</button></div>` : noReplyHint(n)}</div>
               <div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;">${n.from ? `${n.fromId === myNotifId() ? 'To' : 'From'} ${escapeHtmlText(n.fromId === myNotifId() ? (personLookup(n.recipientId)?.name || 'them') : n.from)} · ` : ''}${formatNotifTimestamp(n)}</div>
             </div>
             <div id="notif-chevron-${escapeHtmlText(n.id)}" style="color:var(--ink-faint);flex-shrink:0;margin-top:2px;transition:transform .15s;">${ICONS.chevR}</div>

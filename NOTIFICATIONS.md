@@ -102,8 +102,10 @@ in memory only.
 
 A reply is a normal notification (`type: 'reply'`) addressed to the person who
 wrote the message, with `thread_id` (first message of the conversation) and
-`reply_to_id`. Only person-written messages (`general`, `announcement`, `reply`)
-can be replied to, never system messages. On a broadcast each reader's reply
+`reply_to_id`. Only person-written messages (`general`, `reply`) can be
+replied to, never announcements or system messages. Among students only a
+Class Coordinator can reply (at most 10 replies an hour); other students only
+receive messages and raise concerns through Support. On a broadcast each reader's reply
 goes only to the sender, so readers never see each other's replies.
 
 Needs `migrate-notification-threads.sql` (three nullable columns). Before it is
