@@ -108,5 +108,9 @@ goes only to the sender, so readers never see each other's replies.
 
 Needs `migrate-notification-threads.sql` (three nullable columns). Before it is
 run, messages still save but replies are not grouped. Students must also be
-allowed to INSERT into `notifications`; the migration file explains how to
-check, because those policies are not in version control.
+allowed to INSERT a reply into `notifications`: run
+`migrate-notification-reply-policy.sql` after it. That policy accepts a reply
+only when it answers a message addressed to the sender, goes back to that
+message's author, and carries the sender's own ID, role and name (checked
+against `users` on the server), so a student cannot use replies to message
+anyone else, broadcast, or sign as someone else.

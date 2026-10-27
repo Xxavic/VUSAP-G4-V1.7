@@ -34,8 +34,8 @@ create index if not exists notifications_thread_idx
 --   from pg_policies where tablename = 'notifications';
 --
 -- If there is no INSERT policy that lets a signed-in student insert, replies
--- from students will fail to save (the app tells the sender). A minimal fix:
---
---   create policy "signed-in users can send a reply"
---     on public.notifications for insert to authenticated
---     with check (type = 'reply' and from_role is not null);
+-- from students will fail to save (the app tells the sender). The fix is
+-- migrate-notification-reply-policy.sql, run after this file. Do not use a
+-- looser policy such as "type = 'reply' and from_role is not null": it would
+-- let any student message anyone, broadcast to a whole role, or sign as
+-- someone else.

@@ -41,6 +41,7 @@ const MIGRATIONS = [
   'migrate-academic-year-archive.sql',
   'migrate-academic-calendar.sql',
   'migrate-notification-threads.sql',
+  'migrate-notification-reply-policy.sql',
   'migrate-server-side-checkin.sql',
   'migrate-lock-direct-attendance-insert.sql',
 ];
