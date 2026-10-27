@@ -5365,10 +5365,22 @@ async function addCalendarEvent(){
   if((Date.parse(end) - Date.parse(start)) / 86400000 > 366){ showToast('An entry can span at most a year'); return; }
   let id = 'local-' + (++_calLocalSeq);
   if(LIVE_BACKEND){
+    // created_by is a uuid column. State.user.id is the university ID string
+    // (e.g. "VU-ADM-001"), which Postgres rejects as a uuid, so use the signed-in
+    // auth user's real id instead.
+    let authUid = null;
+    try{ authUid = (await SUPABASE_CLIENT.auth.getSession()).data?.session?.user?.id || null; }catch(e){}
     const { data, error } = await SUPABASE_CLIENT.from('academic_calendar_events')
-      .insert({ kind, title, start_date: start, end_date: end, no_teaching: noTeaching, created_by: State.user?.id || null })
+      .insert({ kind, title, start_date: start, end_date: end, no_teaching: noTeaching, created_by: authUid })
       .select('id').single();
-    if(error){ console.warn('addCalendarEvent failed:', error); showToast(error.code === '42501' ? 'Only an Administrator can change the calendar' : 'Could not save. Nothing was added.'); return; }
+    if(error){
+      console.warn('addCalendarEvent failed:', error);
+      const missing = error.code === '42P01' || error.code === 'PGRST205' || /does not exist|schema cache/i.test(error.message || '');
+      showToast(error.code === '42501' ? 'Only an Administrator can change the calendar'
+        : missing ? 'The calendar table is missing. Run migrate-academic-calendar.sql in Supabase.'
+        : `Could not save (${error.code || 'error'}): ${(error.message || '').slice(0, 90)}`);
+      return;
+    }
     id = data.id;
   }
   ACADEMIC_CALENDAR.push({ id, kind, title, start, end, noTeaching });
