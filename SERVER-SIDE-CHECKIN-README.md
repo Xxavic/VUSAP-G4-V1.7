@@ -46,6 +46,23 @@ A phone still running an old cached copy of the app will be refused at check-in 
 11. Offline, back-dated clock: set the phone's date back two days before reconnecting. The synced row still carries the real lecture date.
 12. After step 4: from the browser console as a student, an insert into `attendance` is refused with code 42501, and a normal check-in still works.
 
+## Backup PIN (lecturer-controlled, Oct 2026)
+
+Since cache `qrast-v56` the PIN is hidden until the lecturer taps "Generate
+backup code", shows for 2 minutes, and is then replaced by one nobody has
+seen. `migrate-backup-pin-expiry.sql` (run after this file) makes the server
+enforce that too:
+
+- The server stamps `live_qr_secrets.pin_set_at` whenever the PIN changes and
+  accepts a PIN only for 135 seconds after it (2 minutes plus 15 s grace), so
+  a code stays dead even if the lecturer's phone locks or goes offline before
+  the app swaps it.
+- `get_broadcast_secrets()` returns the PIN only to the owning lecturer. A
+  Class Coordinator still gets the QR token, never the PIN.
+- A PIN typed offline is refused if it syncs more than 135 seconds later.
+  Offline students should scan the QR (accepted for 24 hours); the lecturer's
+  backup-code panel says so.
+
 ## What this does not close
 
 - A student physically in the room can still relay the QR or PIN to a friend outside. That is true of any code-based system; the rotation, the 15-second window, the device and shared-device checks, and the wrong-code lockout limit it.

@@ -9592,6 +9592,7 @@ function pinBlockHTML(){
         ${String(LIVE_SESSION.pin || '').split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
       </div>
       <div class="pin-expiry">Valid for <b id="pinLeft">${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}</b></div>
+      <div class="pin-expiry">Students with no signal should scan the QR instead: a code typed offline expires before it syncs.</div>
       <div class="pin-actions">
         <button class="pin-btn" onclick="generateBackupPin()">New code</button>
         <button class="pin-btn" onclick="hideBackupPin()">Hide now</button>
