@@ -948,6 +948,10 @@ function startStudentDiscoveryPoll(){
     if(await recheckLiveSession()) stopStudentDiscoveryPoll();
   }, DISCOVERY_POLL_MS);
 }
+// Coming back to the app: look straight away rather than waiting for the next tick.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && studentDiscoveryPoll && inStudentLectureWindow()) recheckLiveSession();
+});
 async function checkAgainForSession(){
   showToast('Checking for a live session…');
   if(!(await recheckLiveSession())) showToast('Still no live session. Your lecturer has not started one yet.');
