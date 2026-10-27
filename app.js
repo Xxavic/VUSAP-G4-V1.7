@@ -9571,6 +9571,68 @@ document.addEventListener('keydown', e=>{
   if(e.key === 'Escape' && PRESENTING) setPresenting(false);
 });
 
+// ---- Lecturer-controlled backup PIN ----
+// The PIN used to sit on screen for the whole session, so a student could text
+// it to a friend outside the room. It is now hidden until the lecturer decides
+// to generate one (e.g. a phone camera is failing), is valid for a short
+// window, and is then replaced by a fresh PIN nobody has seen. The server only
+// ever compares against the latest PIN, so a shared one stops working as soon
+// as the lecturer hides/expires it or generates the next.
+const BACKUP_PIN_SECONDS = 120;
+let pinShownUntil = 0;
+
+function backupPinActive(){ return pinShownUntil > Date.now(); }
+
+function pinBlockHTML(){
+  if(backupPinActive()){
+    const left = Math.max(0, Math.ceil((pinShownUntil - Date.now())/1000));
+    return `
+      <div class="live-hero-code-label">Backup code \u2014 say it aloud, don't post it</div>
+      <div class="session-pin-display">
+        ${String(LIVE_SESSION.pin || '').split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
+      </div>
+      <div class="pin-expiry">Valid for <b id="pinLeft">${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}</b></div>
+      <div class="pin-actions">
+        <button class="pin-btn" onclick="generateBackupPin()">New code</button>
+        <button class="pin-btn" onclick="hideBackupPin()">Hide now</button>
+      </div>`;
+  }
+  return `
+    <div class="live-hero-code-label">QR not working for someone?</div>
+    <button class="pin-btn pin-btn-main" onclick="generateBackupPin()">Generate backup code</button>
+    <div class="pin-expiry">Shown only when you ask. Valid ${BACKUP_PIN_SECONDS/60} minutes, then replaced.</div>`;
+}
+
+function refreshPinBlock(){
+  const el = document.getElementById('pinBlock');
+  if(el) el.innerHTML = pinBlockHTML();
+}
+
+function generateBackupPin(){
+  regenerateSessionPin();
+  pinShownUntil = Date.now() + BACKUP_PIN_SECONDS*1000;
+  liveWriteSession();
+  try{ logAuditEvent(State.user?.id || State.user?.staffId, State.user?.name, 'Backup PIN generated', LIVE_SESSION.courseCode, `Valid ${BACKUP_PIN_SECONDS}s`); }catch(e){}
+  refreshPinBlock();
+}
+
+// Hides the code and swaps in a fresh one nobody has seen, so anything already
+// shared stops working.
+function hideBackupPin(){
+  pinShownUntil = 0;
+  regenerateSessionPin();
+  liveWriteSession();
+  refreshPinBlock();
+}
+
+function tickBackupPin(){
+  if(!pinShownUntil) return;
+  if(!backupPinActive()){ hideBackupPin(); return; }
+  const left = Math.max(0, Math.ceil((pinShownUntil - Date.now())/1000));
+  const el = document.getElementById('pinLeft');
+  if(el) el.textContent = `${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+}
+
 function renderStartSession(){
   return `
   <div class="app-header">
@@ -9594,10 +9656,7 @@ function renderStartSession(){
         ${ICONS.refresh.replace(/<svg /,'<svg style="width:13px;height:13px;" ')} <span id="qrRotateLabel">Refreshes in ${LIVE_SESSION.tokenRotateSeconds}s</span>
       </div>
 
-      <div class="live-hero-code-label">Or enter this code</div>
-      <div class="session-pin-display">
-        ${String(LIVE_SESSION.pin || '').split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
-      </div>
+      <div id="pinBlock" class="pin-block">${pinBlockHTML()}</div>
 
       <div class="live-hero-countdown">
         <svg width="84" height="84" viewBox="0 0 84 84">
@@ -9662,6 +9721,7 @@ function startSessionTicker(){
       ringEl.setAttribute('stroke-dashoffset', (circumference * (1 - frac)).toFixed(1));
     }
 
+    tickBackupPin();
     secondsUntilRotate -= 1;
     const rotateLabel = document.getElementById('qrRotateLabel');
     if(rotateLabel) rotateLabel.textContent = `Refreshes in ${Math.max(0, secondsUntilRotate)}s`;
@@ -9755,6 +9815,7 @@ function finalizeSessionAttendance(){
 
 function endSession(){
   if(PRESENTING) setPresenting(false);
+  pinShownUntil = 0;
   {
     const lectures = getLecturerTodayLectures();
     const i = pickLectureRow(lectures, LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.room, LIVE_SESSION.startedAt);
@@ -14537,11 +14598,8 @@ function renderCoordinatorQrDisplay(){
         ${ICONS.shield.replace(/<svg /,'<svg style="width:13px;height:13px;flex-shrink:0;" ')} Authorized by your lecturer · updates live
       </div>
     </div>
-    <div class="card card-pad" style="align-items:center; display:flex; flex-direction:column; gap:10px;">
-      <div style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">OR STUDENTS CAN ENTER THIS CODE</div>
-      <div class="session-pin-display">
-        ${String(LIVE_SESSION.pin || '').split('').map(d=>`<div class="session-pin-digit">${d}</div>`).join('')}
-      </div>
+    <div class="card card-pad" style="font-size:11.5px; color:var(--ink-soft); text-align:center;">
+      Having trouble scanning? Ask the lecturer for a backup code \u2014 only they can generate one.
     </div>
     <button class="btn btn-ghost" onclick="navigate('home')">${ICONS.close} Stop Displaying</button>
     ` : `
