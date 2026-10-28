@@ -38,7 +38,12 @@ p as (
 flag as (
   select
     p.*,
-    (roles ~ '(^|, )(public|anon)(,|$)') as for_anon,
+    -- A policy granted to "public" also covers the not-signed-in role, but it only lets a
+    -- stranger in if its condition does not test who is asking. Conditions that call
+    -- auth.uid()/auth.role()/auth.jwt() are false for a stranger, so they are not flagged.
+    (roles ~ '(^|, )(public|anon)(,|$)'
+       and coalesce(using_expr,'') !~ 'auth\.(uid|role|jwt)'
+       and coalesce(check_expr,'') !~ 'auth\.(uid|role|jwt)') as for_anon,
     (coalesce(using_expr, 'true') in ('true', '(true)') and coalesce(check_expr, 'true') in ('true', '(true)')) as always_true
   from p
 )
