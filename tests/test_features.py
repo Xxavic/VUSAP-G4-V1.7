@@ -325,11 +325,43 @@ def lecturer_courses(url):
         check('the Edit Lecturer save calls it before changing local state', r['src'].index('liveSetLecturerCourses') < r['src'].index('COURSES.forEach'))
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
+def shared_settings(url):
+    print('admin settings are shared across devices')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const out={}; window.__up=[]; LIVE_BACKEND=true;
+          const row={id:1,system_name:'QRAST',attendance_policies:{minAttendancePct:80,lateGraceMinutes:15,qrRotateSeconds:9999,sessionWindowMinutes:'x'},
+            fraud_thresholds:{sharedDeviceWindowMinutes:7,maxCheckInsPerDevice:2,flagOnVPN:true,evil:1},
+            notification_templates:{sessionStarted:{subject:'Open: {courseName}',body:'Hello {studentName}',enabled:false},nonsense:{subject:'x'}}};
+          SUPABASE_CLIENT={from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:row,error:null})})}),upsert:async(r)=>{window.__up.push(r);return {error:null}}})};
+          await loadSystemSettingsFromSupabase();
+          out.minPct=ATTENDANCE_POLICIES.minAttendancePct; out.grace=ATTENDANCE_POLICIES.lateGraceMinutes;
+          out.qrKept=ATTENDANCE_POLICIES.qrRotateSeconds; out.winKept=ATTENDANCE_POLICIES.sessionWindowMinutes;
+          out.ft=[FRAUD_THRESHOLDS.sharedDeviceWindowMinutes,FRAUD_THRESHOLDS.maxCheckInsPerDevice,FRAUD_THRESHOLDS.flagOnVPN];
+          out.tpl=[NOTIFICATION_TEMPLATES.sessionStarted.subject,NOTIFICATION_TEMPLATES.sessionStarted.enabled];
+          out.noJunk=!('nonsense' in NOTIFICATION_TEMPLATES) && !('evil' in FRAUD_THRESHOLDS);
+          // saving
+          State.role='administrator';State.user={name:'G',staffId:'VU-ADM-001',id:'VU-ADM-001'};
+          toggleNotifTemplate('sessionStarted',true); await new Promise(r=>setTimeout(r,100));
+          const last=window.__up.slice(-1)[0]; out.saved=last&&last.notification_templates&&last.notification_templates.sessionStarted.enabled===true&&last.attendance_policies.minAttendancePct===80;
+          // before the migration: nothing extra is sent and the admin is told
+          SYSTEM_SETTINGS.sharedColumnsPresent=false; window.__up.length=0; await saveSystemSettingsToSupabase();
+          out.noExtra=!('attendance_policies' in window.__up[0]);
+          return out}""")
+        check('minimum attendance is picked up from the database', r['minPct'] == 80)
+        check('late grace is picked up from the database', r['grace'] == 15)
+        check('an out-of-range or wrong-type value is ignored', r['qrKept'] == 30 and r['winKept'] == 10, f"{r['qrKept']} {r['winKept']}")
+        check('fraud thresholds are picked up; unknown keys ignored', r['ft'] == [7, 2, True] and r['noJunk'], str(r))
+        check('a template edit is picked up', r['tpl'] == ['Open: {courseName}', False], str(r['tpl']))
+        check('changing a template saves all shared settings to the database', r['saved'])
+        check('before the migration, saving settings leaves the new columns out', r['noExtra'])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

@@ -4122,6 +4122,7 @@ const SYSTEM_SETTINGS = {
   locationCheckMode: 'off',
   locationCheckRadiusM: 150,
   locationColumnsPresent: false, // true once the database has the migration's columns
+  sharedColumnsPresent: false,   // true once migrate-shared-admin-settings.sql has been run
 };
 
 // Given a 'YYYY-MM-DD' date, returns 'Semester 1' / 'Semester 2' / null --
@@ -13779,10 +13780,12 @@ function saveAttendancePolicies(){
     SYSTEM_SETTINGS.locationCheckMode = locModeEl.value === 'flag' ? 'flag' : 'off';
     SYSTEM_SETTINGS.locationCheckRadiusM = locRadius;
   }
-  saveSystemSettingsToSupabase();
+  saveSystemSettingsToSupabase(); // carries the shared rules too once migrate-shared-admin-settings.sql exists
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Policy updated', 'policies', `minPct=${minPct}%, grace=${lateGrace}min, qrRotate=${qrRotate}s, window=${sessionWindow}min, lateCredit=${lateCredit}%`);
 
-  showToast("Attendance policies saved");
+  showToast(LIVE_BACKEND && !SYSTEM_SETTINGS.sharedColumnsPresent
+    ? "Attendance rules saved on this device only — run migrate-shared-admin-settings.sql so every device gets them"
+    : "Attendance policies saved");
   // Stay on the screen — re-render in place so inputs reflect the saved values cleanly.
   navigate('attendancePolicies', { replace: true });
 }
@@ -13887,6 +13890,7 @@ function saveFraudThresholds(){
   FRAUD_THRESHOLDS.flagOnVPN = document.getElementById('ftFlagVPN')?.checked ?? FRAUD_THRESHOLDS.flagOnVPN;
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Fraud thresholds updated', 'fraud', `window=${win}min, maxPerDevice=${max}`);
   showToast("Fraud thresholds saved");
+  persistSharedAdminSettings('Fraud thresholds');
   navigate('fraudThresholds', { replace: true });
 }
 
@@ -13974,6 +13978,7 @@ function notifTemplateCard(key, t){
 function toggleNotifTemplate(key, enabled){
   if(NOTIFICATION_TEMPLATES[key]) NOTIFICATION_TEMPLATES[key].enabled = enabled;
   showToast(`${NOTIFICATION_TEMPLATES[key]?.label} ${enabled?'enabled':'disabled'}`);
+  persistSharedAdminSettings('Template setting');
 }
 
 function openNotifEditSheet(key){
@@ -14099,6 +14104,7 @@ function saveNotifTemplate(key){
   closeSheet('notifEditSheet');
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Notification template updated', key, t.label);
   showToast(`${t.label} saved`);
+  persistSharedAdminSettings(t.label);
   navigate('notifTemplates', { replace: true });
 }
 
@@ -14114,6 +14120,70 @@ function saveNotifTemplate(key){
 // than blocking or showing broken UI) and saveSystemSettingsToSupabase()
 // below back it with the `system_settings` singleton table instead
 // (see migrate-system-settings.sql).
+// Attendance rules, fraud thresholds and notification templates are shared
+// through three JSON columns on system_settings. Only values of the expected
+// type for known keys are accepted, so a bad row can never break the app.
+function applySharedAdminSettings(row){
+  const num = (v, lo, hi) => (typeof v === 'number' && isFinite(v) && v >= lo && v <= hi) ? v : undefined;
+  const pol = row.attendance_policies;
+  if(pol && typeof pol === 'object'){
+    const m = num(pol.minAttendancePct, 1, 100); if(m !== undefined) ATTENDANCE_POLICIES.minAttendancePct = m;
+    const g = num(pol.lateGraceMinutes, 0, 60); if(g !== undefined) ATTENDANCE_POLICIES.lateGraceMinutes = g;
+    const q = num(pol.qrRotateSeconds, 10, 300); if(q !== undefined) ATTENDANCE_POLICIES.qrRotateSeconds = q;
+    const w = num(pol.sessionWindowMinutes, 1, 60); if(w !== undefined) ATTENDANCE_POLICIES.sessionWindowMinutes = w;
+  }
+  const ft = row.fraud_thresholds;
+  if(ft && typeof ft === 'object'){
+    const a = num(ft.sharedDeviceWindowMinutes, 1, 60); if(a !== undefined) FRAUD_THRESHOLDS.sharedDeviceWindowMinutes = a;
+    const b = num(ft.maxCheckInsPerDevice, 1, 10); if(b !== undefined) FRAUD_THRESHOLDS.maxCheckInsPerDevice = b;
+    ['deviceFingerprintCheck', 'autoEscalateHighSeverity', 'flagOnVPN'].forEach(k => {
+      if(typeof ft[k] === 'boolean') FRAUD_THRESHOLDS[k] = ft[k];
+    });
+  }
+  const nt = row.notification_templates;
+  if(nt && typeof nt === 'object'){
+    Object.keys(NOTIFICATION_TEMPLATES).forEach(k => {
+      const t = nt[k]; if(!t || typeof t !== 'object') return;
+      if(typeof t.subject === 'string' && t.subject.trim()) NOTIFICATION_TEMPLATES[k].subject = t.subject;
+      if(typeof t.body === 'string' && t.body.trim()) NOTIFICATION_TEMPLATES[k].body = t.body;
+      if(typeof t.enabled === 'boolean') NOTIFICATION_TEMPLATES[k].enabled = t.enabled;
+    });
+  }
+}
+
+function sharedAdminSettingsPayload(){
+  const templates = {};
+  Object.entries(NOTIFICATION_TEMPLATES).forEach(([k, t]) => { templates[k] = { subject: t.subject, body: t.body, enabled: !!t.enabled }; });
+  return {
+    attendance_policies: {
+      minAttendancePct: ATTENDANCE_POLICIES.minAttendancePct,
+      lateGraceMinutes: ATTENDANCE_POLICIES.lateGraceMinutes,
+      qrRotateSeconds: ATTENDANCE_POLICIES.qrRotateSeconds,
+      sessionWindowMinutes: ATTENDANCE_POLICIES.sessionWindowMinutes,
+    },
+    fraud_thresholds: {
+      sharedDeviceWindowMinutes: FRAUD_THRESHOLDS.sharedDeviceWindowMinutes,
+      maxCheckInsPerDevice: FRAUD_THRESHOLDS.maxCheckInsPerDevice,
+      deviceFingerprintCheck: FRAUD_THRESHOLDS.deviceFingerprintCheck,
+      autoEscalateHighSeverity: FRAUD_THRESHOLDS.autoEscalateHighSeverity,
+      flagOnVPN: FRAUD_THRESHOLDS.flagOnVPN,
+    },
+    notification_templates: templates,
+  };
+}
+
+// Saves the shared settings and tells the administrator if it did not reach
+// the database, instead of letting them believe every device now has it.
+async function persistSharedAdminSettings(what){
+  if(!LIVE_BACKEND) return;
+  if(!SYSTEM_SETTINGS.sharedColumnsPresent){
+    showToast(`${what} saved on this device only — run migrate-shared-admin-settings.sql so every device gets it`);
+    return;
+  }
+  const ok = await saveSystemSettingsToSupabase();
+  if(!ok) showToast(`${what} could not be saved for other devices — please try again`);
+}
+
 async function loadSystemSettingsFromSupabase(){
   if(!LIVE_BACKEND) return;
   try {
@@ -14142,6 +14212,8 @@ async function loadSystemSettingsFromSupabase(){
     SYSTEM_SETTINGS.semester2Start = data.semester2_start ?? SYSTEM_SETTINGS.semester2Start;
     SYSTEM_SETTINGS.semester2End = data.semester2_end ?? SYSTEM_SETTINGS.semester2End;
     SYSTEM_SETTINGS.lateCreditPct = data.late_credit_pct ?? SYSTEM_SETTINGS.lateCreditPct;
+    SYSTEM_SETTINGS.sharedColumnsPresent = ('attendance_policies' in data);
+    if(SYSTEM_SETTINGS.sharedColumnsPresent) applySharedAdminSettings(data);
     SYSTEM_SETTINGS.locationColumnsPresent = ('location_check_mode' in data);
     if(SYSTEM_SETTINGS.locationColumnsPresent){
       SYSTEM_SETTINGS.locationCheckMode = data.location_check_mode === 'flag' ? 'flag' : 'off';
@@ -14168,6 +14240,7 @@ async function saveSystemSettingsToSupabase(){
       id: 1,
       // Only sent once the database is known to have these columns, so saving
       // any other setting keeps working before migrate-location-check.sql is run.
+      ...(SYSTEM_SETTINGS.sharedColumnsPresent ? sharedAdminSettingsPayload() : {}),
       ...(SYSTEM_SETTINGS.locationColumnsPresent ? {
         location_check_mode: SYSTEM_SETTINGS.locationCheckMode,
         location_check_radius_m: SYSTEM_SETTINGS.locationCheckRadiusM,

@@ -50,6 +50,7 @@ const MIGRATIONS = [
   'migrate-scope-staff-attendance-insert.sql',
   'migrate-appeals-faculty-scope.sql',
   'migrate-location-check.sql',
+  'migrate-shared-admin-settings.sql',
 ];
 
 const baseFlag = process.argv.indexOf('--base');
