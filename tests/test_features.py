@@ -424,11 +424,33 @@ def cohort_enrollment(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def no_phantom_broadcast(url):
+    print('only Start Session creates a broadcast')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const out={}, calls=[];
+          const q={insert(p){calls.push('insert');return q},update(p){calls.push('update');return q},eq(){return Promise.resolve({error:null})},select(){return q},single:async()=>({data:{id:'new-1',started_at:new Date().toISOString()},error:null})};
+          SUPABASE_CLIENT={from:()=>q,rpc:async()=>({data:null,error:null})}; LIVE_BACKEND=true;
+          State.role='lecturer'; State.user={name:'P',staffId:'VU-LEC-101',id:'VU-LEC-101',supabaseId:'lec-1'};
+          // a fresh load: active defaults to true, no broadcast id
+          LIVE_SESSION.liveSessionId=null; LIVE_SESSION.active=true;
+          out.rotationSkipped = (await liveWriteSession())==='skipped' && calls.length===0;
+          await rotateSessionToken(); out.tickerCreatesNothing = calls.length===0;
+          await new Promise(r=>setTimeout(r,50));
+          out.created = (await liveWriteSession({create:true}))==='ok' && calls.includes('insert') && LIVE_SESSION.liveSessionId==='new-1';
+          calls.length=0; await liveWriteSession(); out.laterWritesUpdate = calls.length===1 && calls[0]==='update';
+          return out}""")
+        for k, label in [('rotationSkipped', 'a write with no broadcast does nothing'), ('tickerCreatesNothing', 'the QR rotation cannot create a broadcast'),
+                         ('created', 'Start Session still creates one'), ('laterWritesUpdate', 'later writes update that broadcast')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

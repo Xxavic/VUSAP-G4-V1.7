@@ -500,8 +500,15 @@ async function liveDeactivateOtherSessions(courseCode, mode){
 // Resolves to 'ok', 'network' (no connection — see isNetworkError()), 'error'
 // (anything else), or 'skipped' (mock mode). Most callers ignore it; the
 // offline-sync code uses it to pause QR rotation and to queue a session end.
-async function liveWriteSession(){
+// opts.create: only startSessionForLecture() may create a broadcast. Every
+// other caller (QR rotation, backup PIN, coordinator toggle, reconnect, resume,
+// End Session) updates the existing row and does nothing when there is none.
+// They used to INSERT whenever liveSessionId was null, and LIVE_SESSION.active
+// starts out true, so e.g. landing back on the Live Session screen after a
+// reload put a new live broadcast in the database that nobody had started.
+async function liveWriteSession(opts){
   if(!LIVE_BACKEND) return 'skipped';
+  if(!LIVE_SESSION.liveSessionId && !(opts && opts.create)) return 'skipped';
   // Captured up front: endSession() clears LIVE_SESSION.liveSessionId right
   // after calling this without awaiting, so reading it again after an await
   // (the class_id retry below used to) would target `id = null` instead of
@@ -10426,13 +10433,13 @@ async function startSessionForLecture(lecture){
       // for a compliance record" gotcha) — wait for the real write to
       // resolve, then classify against whatever the DB actually recorded.
       liveDeactivateOtherSessions(LIVE_SESSION.courseCode, LIVE_SESSION.mode)
-        .then(liveWriteSession)
+        .then(() => liveWriteSession({ create: true }))
         .then(() => recordLectureComplianceEvent(lecture));
     } else {
       // No live DB round trip to wait for in mock mode — LIVE_SESSION.startedAt
       // (this device's clock) is the only signal available at all, same
       // fallback checkFraudSignals() already relies on elsewhere.
-      liveDeactivateOtherSessions(LIVE_SESSION.courseCode, LIVE_SESSION.mode).then(liveWriteSession);
+      liveDeactivateOtherSessions(LIVE_SESSION.courseCode, LIVE_SESSION.mode).then(() => liveWriteSession({ create: true }));
       recordLectureComplianceEvent(lecture);
     }
   }
