@@ -33,8 +33,21 @@ def page(url, viewport=(1366, 768), splash=True, **ctx):
         pg = c.new_page(); pg.errors = []
         pg.on('pageerror', lambda e: pg.errors.append(str(e)))
         pg.route('**/*.supabase.co/**', lambda r: r.abort())
+        # The app's reachability check (checkBackendStatus) asks Supabase for
+        # /auth/v1/health. It is blocked here, so when its failure arrives the app
+        # sets LIVE_BACKEND = false. It runs at start-up and again on every redraw
+        # of the login screen, which a test causes whenever it re-renders before
+        # setting a role, and its failure could land after the test had set
+        # LIVE_BACKEND = true itself, so the test's writes skipped its mock
+        # database at random. Wait out the start-up check, then switch it off.
+        health = []
+        pg.on('requestfailed', lambda req: health.append(1) if '/auth/v1/health' in req.url else None)
         pg.goto(url); pg.wait_for_timeout(1000)
-        pg.evaluate("()=>{window.consentGate=()=>false;window.mustChangePasswordGate=()=>false}")
+        for _ in range(60):
+            if health: break
+            pg.wait_for_timeout(100)
+        pg.wait_for_timeout(50)
+        pg.evaluate("()=>{window.consentGate=()=>false;window.mustChangePasswordGate=()=>false;window.checkBackendStatus=async()=>{}}")
         if splash: pg.wait_for_timeout(4600)
         try:
             yield pg
