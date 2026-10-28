@@ -17096,12 +17096,45 @@ setInterval(() => {
 // PWA: SERVICE WORKER + INSTALL PROMPT
 // ============================================================
 
+// A new version is detected when a service worker finishes installing while an
+// older one is already controlling the page. The open page keeps running the
+// OLD app.js in memory until it reloads, so say so and let the person choose
+// when, rather than reloading in the middle of a check-in.
+function showUpdateBanner(){
+  if(document.getElementById('updateBanner')) return;
+  const b = document.createElement('div');
+  b.id = 'updateBanner';
+  b.className = 'update-banner';
+  b.setAttribute('role', 'status');
+  b.innerHTML = '<span>A new version of QRAST is ready.</span>' +
+    '<button type="button" id="updateReloadBtn">Reload</button>' +
+    '<button type="button" id="updateLaterBtn" aria-label="Dismiss">Later</button>';
+  document.body.appendChild(b);
+  document.getElementById('updateReloadBtn').onclick = ()=> window.location.reload();
+  document.getElementById('updateLaterBtn').onclick = ()=> b.remove();
+}
+
 function registerServiceWorker(){
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('sw.js').catch(()=>{ /* offline-safe no-op */ });
+  if(!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', ()=>{
+    let controlled = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      // Ask the browser to look for a new sw.js whenever the app comes back to
+      // the front, and every 30 minutes while it stays open. It is a tiny
+      // request and the browser skips it if nothing changed.
+      const look = ()=>{ try{ reg.update(); }catch(e){} };
+      document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') look(); });
+      setInterval(look, 30*60*1000);
+    }).catch(()=>{ /* offline-safe no-op */ });
+    // sw.js calls skipWaiting() + clients.claim(), so a new version takes over
+    // by itself. controllerchange then fires. The first one on a page that
+    // started with no controller is just the first install taking over (there
+    // was no older version to replace), so only later ones are updates.
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(controlled) showUpdateBanner();
+      else controlled = true;
     });
-  }
+  });
 }
 
 let deferredInstallPrompt = null;
