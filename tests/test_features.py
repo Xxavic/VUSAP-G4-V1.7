@@ -88,7 +88,7 @@ def recheck(url):
           State.role='student';State.user={name:'A',reg:'VU-X',id:'VU-X',mode:'day',supabaseId:'u1'};
           let live=false,queries=0,inflight=0,maxInflight=0,delay=0,lastIn=null;
           const row={id:'b1',course_code:STUDENT_COURSES[0].code,course_name:'DS',room:'LT1',mode:'day',active:true,started_at:new Date().toISOString(),window_seconds:600,token_rotate_seconds:30,pin:null,token:null,coordinator_authorized:false,class_id:null};
-          const qb=(t)=>{const q={select(){return q},in(c,v){lastIn=v;return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions'){queries++;inflight++;maxInflight=Math.max(maxInflight,inflight);await wait(delay);inflight--}return {data:live?[row]:[],error:null}},maybeSingle:async()=>({data:null,error:null})};q.then=(res,rej)=>q.limit().then(res,rej);return q};
+          const qb=(t)=>{const q={select(){return q},in(c,v){lastIn=v;return q},eq(){return q},gte(){return q},lt(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions'){queries++;inflight++;maxInflight=Math.max(maxInflight,inflight);await wait(delay);inflight--}return {data:live?[row]:[],error:null}},maybeSingle:async()=>({data:null,error:null})};q.then=(res,rej)=>q.limit().then(res,rej);return q};
           SUPABASE_CLIENT={from:(t)=>qb(t),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel(){},auth:{getSession:async()=>({data:{session:null}})}};
           LIVE_BACKEND=true; LIVE_SESSION.liveSessionId=null;
           const hh=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
@@ -170,7 +170,7 @@ def realtime(url):
           State.role='student';State.user={name:'A',reg:'VU-X',id:'VU-X',mode:'day',supabaseId:'u1'};
           let queries=0, handler=null, statusCb=null, channels=[], filters=[];
           const mk=(extra)=>({course_code:STUDENT_COURSES[0].code,course_name:'DS',room:'LT1',mode:'day',active:true,started_at:new Date().toISOString(),window_seconds:600,token_rotate_seconds:30,pin:null,token:null,coordinator_authorized:false,class_id:null,...extra});
-          const qb=(t)=>{const q={select(){return q},in(){return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions')queries++;return {data:[],error:null}},maybeSingle:async()=>({data:null,error:null})};q.then=(res,rej)=>q.limit().then(res,rej);return q};
+          const qb=(t)=>{const q={select(){return q},in(){return q},eq(){return q},gte(){return q},lt(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions')queries++;return {data:[],error:null}},maybeSingle:async()=>({data:null,error:null})};q.then=(res,rej)=>q.limit().then(res,rej);return q};
           SUPABASE_CLIENT={from:(t)=>qb(t),
             channel:(name)=>{channels.push(name);const ch={on(ev,opts,cb){filters.push(opts.filter);handler=cb;return ch},subscribe(cb){statusCb=cb;return ch}};return ch},
             removeChannel(){},auth:{getSession:async()=>({data:{session:null}})}};
@@ -357,11 +357,51 @@ def shared_settings(url):
         check('before the migration, saving settings leaves the new columns out', r['noExtra'])
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
+def stale_sessions(url):
+    print('sessions left running are not resumed')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const out={}, H=3600000;
+          const cut=new Date(liveSessionCutoffISO()).getTime(), mid=new Date().setHours(0,0,0,0);
+          out.cutoff = cut>=mid && cut>=Date.now()-4*H-1000 && cut<=Date.now();
+          out.oldIsStale = isStaleBroadcastRow({started_at:new Date(Date.now()-5*H).toISOString()}) && isStaleBroadcastRow({started_at:new Date(mid-60000).toISOString()}) && isStaleBroadcastRow({});
+          out.freshIsLive = !isStaleBroadcastRow({started_at:new Date(Math.max(mid, Date.now()-60000)).toISOString()});
+          // record every query's filters
+          const log=[]; let rows=[];
+          const qb=(t)=>{const f=[];const q={select(){return q},update(v){f.push(['update',v]);return q},in(c,v){f.push(['in',c]);return q},eq(c,v){f.push(['eq',c,v]);return q},gte(c,v){f.push(['gte',c,v]);return q},lt(c,v){f.push(['lt',c,v]);return q},order(){return q},limit(){return q},
+            maybeSingle:async()=>{log.push([t,f]);return {data:rows[0]||null,error:null}},then(res,rej){log.push([t,f]);return Promise.resolve({data:rows,error:null}).then(res,rej)}};return q};
+          SUPABASE_CLIENT={from:(t)=>qb(t),rpc:async()=>({data:null,error:null}),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel(){},auth:{getSession:async()=>({data:{session:null}})}};
+          LIVE_BACKEND=true; State.role='lecturer'; State.user={name:'Dr. Patrick Mukasa',staffId:'VU-LEC-101',id:'VU-LEC-101',supabaseId:'lec-1'};
+          await liveFindActiveSession('CSC3101','day',null,'lec-1');
+          const f1=log[log.length-1][1];
+          out.findFilters = f1.some(x=>x[0]==='eq'&&x[1]==='lecturer_id'&&x[2]==='lec-1') && f1.some(x=>x[0]==='gte'&&x[1]==='started_at');
+          log.length=0; await liveEndOwnStaleSessions();
+          const f2=log[0]&&log[0][1]||[];
+          out.endsOwnStale = f2.some(x=>x[0]==='update'&&x[1].active===false) && f2.some(x=>x[0]==='eq'&&x[1]==='lecturer_id'&&x[2]==='lec-1') && f2.some(x=>x[0]==='lt'&&x[1]==='started_at');
+          log.length=0; LIVE_SESSION.mode=null; await checkLecturerActiveSession();
+          out.dashboardEndsStaleFirst = log.length>1 && log[0][1].some(x=>x[0]==='update') && log.slice(1).every(([t,f])=>f.some(x=>x[0]==='eq'&&x[1]==='lecturer_id'));
+          // a student's phone ignores a stale broadcast pushed over Realtime
+          State.role='student'; State.user={name:'A',reg:'VU-X',id:'VU-X',mode:'day',supabaseId:'u1'};
+          LIVE_SESSION.liveSessionId=null; LIVE_SESSION.active=false;
+          const base={course_code:STUDENT_COURSES[0].code,course_name:'DS',room:'LT1',mode:'day',active:true,window_seconds:600,token_rotate_seconds:30,pin:null,token:null,coordinator_authorized:false,class_id:null};
+          handleStudentLiveRow({new:{...base,id:'old',started_at:new Date(Date.now()-26*H).toISOString()}});
+          out.studentIgnoresStale = LIVE_SESSION.liveSessionId!=='old';
+          handleStudentLiveRow({new:{...base,id:'new',started_at:new Date().toISOString()}});
+          out.studentTakesFresh = LIVE_SESSION.liveSessionId==='new';
+          return out}""")
+        for k, label in [('cutoff', 'cutoff is today and at most 4 hours back'), ('oldIsStale', 'a broadcast from yesterday or 5 hours ago is stale'),
+                         ('freshIsLive', 'a broadcast started a minute ago is not stale'), ('findFilters', "the lecturer only resumes their own, recent broadcast"),
+                         ('endsOwnStale', "the lecturer's own stale broadcasts are ended"), ('dashboardEndsStaleFirst', 'the dashboard ends stale broadcasts before looking'),
+                         ('studentIgnoresStale', 'a student ignores a stale broadcast'), ('studentTakesFresh', 'a student still picks up a fresh one')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

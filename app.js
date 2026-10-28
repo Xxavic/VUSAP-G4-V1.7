@@ -596,14 +596,49 @@ async function liveWriteSession(){
 // that doesn't have a classId yet (checkLecturerActiveSession()'s "is
 // anything at all running" discovery loop) keeps the old course_code+mode
 // behavior unchanged.
-async function liveFindActiveSession(courseCode, mode, classId){
+// A broadcast only counts as running if it started today and within the last
+// LIVE_SESSION_MAX_HOURS. One the lecturer never ended (app closed, phone died)
+// otherwise stayed active: true for good, and every later visit "resumed" it,
+// so the lecturer's list showed a lecture as Live that nobody had started.
+const LIVE_SESSION_MAX_HOURS = 4;
+function liveSessionCutoffISO(){
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  return new Date(Math.max(midnight.getTime(), Date.now() - LIVE_SESSION_MAX_HOURS * 3600000)).toISOString();
+}
+function isStaleBroadcastRow(row){
+  const t = row && row.started_at ? new Date(row.started_at).getTime() : NaN;
+  return !isFinite(t) || t < new Date(liveSessionCutoffISO()).getTime();
+}
+
+// Lecturer side: end this lecturer's own broadcasts that are past the cutoff,
+// so students and other screens stop treating them as live.
+async function liveEndOwnStaleSessions(){
+  if(!LIVE_BACKEND || !State.user?.supabaseId) return;
+  try {
+    const { error } = await SUPABASE_CLIENT
+      .from('live_qr_sessions')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('lecturer_id', State.user.supabaseId)
+      .eq('active', true)
+      .lt('started_at', liveSessionCutoffISO());
+    if(error) console.warn('liveEndOwnStaleSessions failed:', error);
+  } catch(e){
+    console.warn('liveEndOwnStaleSessions error:', e);
+  }
+}
+
+// lecturerId: only this lecturer's own broadcasts (the lecturer side never
+// resumes a session someone else started).
+async function liveFindActiveSession(courseCode, mode, classId, lecturerId){
   if(!LIVE_BACKEND) return null;
   try {
     let query = SUPABASE_CLIENT
       .from('live_qr_sessions')
       .select('*')
       .eq('course_code', courseCode)
-      .eq('active', true);
+      .eq('active', true)
+      .gte('started_at', liveSessionCutoffISO());
+    if(lecturerId) query = query.eq('lecturer_id', lecturerId);
     // Sept 2026: a course can have an independent Day section and Evening
     // section broadcasting at the same time now. Without this, starting an
     // Evening session could "discover" the still-active Day session for the
@@ -624,7 +659,8 @@ async function liveFindActiveSession(courseCode, mode, classId){
     // rather than leaving every student unable to discover a live session at all.
     if(error && classId && (error.code === '42703' || error.code === 'PGRST204' || /class_id/i.test(error.message || ''))){
       console.warn('liveFindActiveSession: class_id column missing — has migrate-live-sessions-class-id.sql been run? Retrying without it.');
-      let fallbackQuery = SUPABASE_CLIENT.from('live_qr_sessions').select('*').eq('course_code', courseCode).eq('active', true);
+      let fallbackQuery = SUPABASE_CLIENT.from('live_qr_sessions').select('*').eq('course_code', courseCode).eq('active', true).gte('started_at', liveSessionCutoffISO());
+      if(lecturerId) fallbackQuery = fallbackQuery.eq('lecturer_id', lecturerId);
       if(mode) fallbackQuery = fallbackQuery.eq('mode', mode);
       ({ data, error } = await fallbackQuery.order('updated_at', { ascending: false }).limit(1).maybeSingle());
     }
@@ -649,7 +685,8 @@ async function liveFindActiveSessionForCourses(courses, mode){
       .from('live_qr_sessions')
       .select('*')
       .in('course_code', [...new Set(courses.map(c => c.code))])
-      .eq('active', true);
+      .eq('active', true)
+      .gte('started_at', liveSessionCutoffISO());
     if(mode) query = query.eq('mode', mode);
     const { data, error } = await query.order('updated_at', { ascending: false });
     if(error){ console.warn('liveFindActiveSessionForCourses error:', error); return null; }
@@ -771,7 +808,7 @@ function handleStudentLiveRow(payload){
   const modeOk = !row.mode || !State.user?.mode || row.mode === State.user.mode;
   // Adopt the session we are already following (so we see it end), or the
   // first active one for one of our own courses and our own Day/Evening mode.
-  if(!(tracking || (row.active && course && modeOk && !isLiveSessionActive()))) return;
+  if(!(tracking || (row.active && course && modeOk && !isLiveSessionActive() && !isStaleBroadcastRow(row)))) return;
   const wasOpen = isLiveSessionOpenForStudent();
   applyLiveSessionRow(row);
   if(!tracking) restoreCheckedInStateForBroadcast(row.id);
@@ -868,9 +905,10 @@ async function checkLecturerActiveSession(){
     // module-level default with mode never set) -- see endSession() and the
     // "else if" stale-clear branch below for the two places that reset
     // mode to null, which is what lets this go broad again afterward.
+    await liveEndOwnStaleSessions();
     let row = null, resumedCode = null;
     for(const code of coursesForLecturer().map(c => c.code)){
-      row = await liveFindActiveSession(code, LIVE_SESSION.mode || undefined);
+      row = await liveFindActiveSession(code, LIVE_SESSION.mode || undefined, undefined, State.user?.supabaseId);
       if(row){ resumedCode = code; break; }
     }
     if(row){
@@ -10303,7 +10341,7 @@ async function startSessionForLecture(lecture){
   // disappear from the roster even though it was still perfectly valid.
   // Mirrors the Student side's liveFindActiveSession() use in
   // startStudentLiveSessionSync() — same helper, same idea, other role.
-  const resumed = LIVE_BACKEND ? await liveFindActiveSession(LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.classId) : null;
+  const resumed = LIVE_BACKEND ? await liveFindActiveSession(LIVE_SESSION.courseCode, LIVE_SESSION.mode, LIVE_SESSION.classId, State.user?.supabaseId) : null;
   if(resumed){
     applyLiveSessionRow(resumed);
     subscribeToLiveSession(LIVE_SESSION.courseCode);
