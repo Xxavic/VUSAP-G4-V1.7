@@ -47,6 +47,7 @@ const MIGRATIONS = [
   'migrate-quick-messages.sql',
   'migrate-lock-direct-attendance-insert.sql',
   'migrate-tighten-inserts.sql',
+  'migrate-scope-staff-attendance-insert.sql',
 ];
 
 const baseFlag = process.argv.indexOf('--base');
