@@ -8,4 +8,7 @@ psql -q -v ON_ERROR_STOP=1 \
   -f migrate-server-side-checkin.sql \
   -f migrate-backup-pin-expiry.sql \
   -f migrate-backup-pin-expiry.sql \
-  -f tests/sql/test_backup_pin_expiry.sql
+  -f tests/sql/test_backup_pin_expiry.sql \
+  -f migrate-quick-messages.sql \
+  -f migrate-quick-messages.sql \
+  -f tests/sql/test_quick_messages.sql

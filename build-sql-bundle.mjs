@@ -44,6 +44,7 @@ const MIGRATIONS = [
   'migrate-notification-reply-policy.sql',
   'migrate-server-side-checkin.sql',
   'migrate-backup-pin-expiry.sql',
+  'migrate-quick-messages.sql',
   'migrate-lock-direct-attendance-insert.sql',
 ];
 

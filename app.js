@@ -756,6 +756,70 @@ function subscribeToLiveSession(courseCode){
   };
 }
 
+// ---- Student: ONE subscription covering every course they are enrolled in ----
+// Replaces asking the database again and again. When the lecturer starts a
+// session the student's phone is told at once; the 6-second re-check only runs
+// as a fallback while this connection is not up (see startStudentDiscoveryPoll).
+let studentRealtimeStatus = 'off'; // 'off' | 'connecting' | 'live' | 'failed'
+
+function handleStudentLiveRow(payload){
+  const row = payload && payload.new;
+  if(!row) return;
+  const tracking = row.id === LIVE_SESSION.liveSessionId;
+  const course = STUDENT_COURSES.find(c => c.code === row.course_code && (!c.classId || !row.class_id || c.classId === row.class_id));
+  const modeOk = !row.mode || !State.user?.mode || row.mode === State.user.mode;
+  // Adopt the session we are already following (so we see it end), or the
+  // first active one for one of our own courses and our own Day/Evening mode.
+  if(!(tracking || (row.active && course && modeOk && !isLiveSessionActive()))) return;
+  const wasOpen = isLiveSessionOpenForStudent();
+  applyLiveSessionRow(row);
+  if(!tracking) restoreCheckedInStateForBroadcast(row.id);
+  const nowOpen = isLiveSessionOpenForStudent();
+
+  // A Class Coordinator's open QR display follows rotations and revocations.
+  if(currentScreen === 'coordinatorQrDisplay'){
+    const redraw = () => {
+      if(currentScreen === 'coordinatorQrDisplay'){ refreshScreenContentOnly(); drawQrPlaceholder(); }
+    };
+    if(row.active && row.coordinator_authorized && row.token == null) loadBroadcastSecrets().then(redraw);
+    else redraw();
+  }
+  // Redraw Home / Check In only when the picture changes (a session appeared or
+  // ended), not on every QR rotation.
+  if(wasOpen !== nowOpen && (currentScreen === 'home' || currentScreen === 'checkin')){
+    refreshScreenContentOnly();
+    if(nowOpen && currentScreen === 'checkin' && checkinMethod === 'qr' && !State.hasCheckedInToday) startQrScanner();
+  }
+}
+
+function subscribeStudentToCourses(){
+  if(!LIVE_BACKEND || State.role !== 'student') return;
+  if(liveSessionUpdatesUnsubscribe){ liveSessionUpdatesUnsubscribe(); liveSessionUpdatesUnsubscribe = null; }
+  const codes = [...new Set(STUDENT_COURSES.map(c => c.code))];
+  if(!codes.length) return;
+  studentRealtimeStatus = 'connecting';
+  const channel = SUPABASE_CLIENT
+    .channel('live-qr-student')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'live_qr_sessions',
+      filter: `course_code=in.(${codes.join(',')})`,
+    }, handleStudentLiveRow)
+    .subscribe((status) => {
+      if(status === 'SUBSCRIBED'){
+        studentRealtimeStatus = 'live';
+        // Anything that started between the first search and now would be missed.
+        if(!isLiveSessionActive()) recheckLiveSession();
+      } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+        studentRealtimeStatus = 'failed';
+      }
+    });
+  liveSessionUpdatesUnsubscribe = () => {
+    SUPABASE_CLIENT.removeChannel(channel);
+    liveSessionUpdatesUnsubscribe = null;
+    studentRealtimeStatus = 'off';
+  };
+}
+
 // Mirrors the Student side's active-session discovery, but for the
 // Lecturer's Dashboard tile: LIVE_SESSION.active defaults to true even
 // before any real session exists (a mock-mode convenience), so this checks
@@ -862,10 +926,10 @@ async function startStudentLiveSessionSync(force){
   if(!LIVE_BACKEND) return;
   if(studentLiveSyncDoneForThisVisit && !(force && !isLiveSessionActive())) return;
   studentLiveSyncDoneForThisVisit = true;
+  if(studentRealtimeStatus === 'off' || studentRealtimeStatus === 'failed') subscribeStudentToCourses();
   const row = await liveFindActiveSessionForCourses(STUDENT_COURSES, State.user?.mode);
   if(row){
     applyLiveSessionRow(row);
-    subscribeToLiveSession(row.course_code);
     await restoreCheckedInStateForBroadcast(row.id);
     // A check-in still waiting in the offline queue counts too.
     if(!State.hasCheckedInToday && await hasQueuedCheckIn(row.id)){
@@ -944,6 +1008,7 @@ function startStudentDiscoveryPoll(){
   studentDiscoveryPoll = setInterval(async ()=>{
     if(currentScreen !== 'home' && currentScreen !== 'checkin'){ stopStudentDiscoveryPoll(); return; }
     if(isLiveSessionOpenForStudent()){ stopStudentDiscoveryPoll(); return; }
+    if(studentRealtimeStatus === 'live') return;        // the server tells us; no need to ask
     if(document.hidden || discoveryInFlight || !inStudentLectureWindow()) return;
     if(await recheckLiveSession()) stopStudentDiscoveryPoll();
   }, DISCOVERY_POLL_MS);
@@ -3932,6 +3997,28 @@ const QUICK_MESSAGES = [
 let _qmSeq = 100;
 let _qmDeleteArmed = null;
 const QM_PLACEHOLDER = /\[[^\]\n]+\]/;
+
+// Shared across staff once migrate-quick-messages.sql has been run. Until then
+// (or if the table cannot be reached) the built-in list above is used and edits
+// last only until reload, exactly as before.
+let quickMessagesLive = false;
+async function loadQuickMessagesFromSupabase(){
+  if(!LIVE_BACKEND) return false;
+  try {
+    const { data, error } = await SUPABASE_CLIENT.from('quick_messages')
+      .select('id,label,title,body').order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    if(error){ quickMessagesLive = false; if(!isMissingTableError(error)) console.warn('loadQuickMessagesFromSupabase failed:', error); return false; }
+    QUICK_MESSAGES.splice(0, QUICK_MESSAGES.length, ...(data || []).map(r => ({ id: String(r.id), label: r.label, title: r.title, body: r.body })));
+    quickMessagesLive = true;
+    return true;
+  } catch(e){
+    quickMessagesLive = false;
+    return false;
+  }
+}
+function isMissingTableError(error){
+  return !!error && (error.code === '42P01' || error.code === 'PGRST205' || /does not exist|schema cache/i.test(error.message || ''));
+}
 
 // ============================================================
 // SYSTEM SETTINGS
@@ -13784,13 +13871,27 @@ function openQuickMessageSheet(id){
   openSheet('notifEditSheet');
 }
 
-function saveQuickMessage(id){
+async function saveQuickMessage(id){
   const label = document.getElementById('qmLabel')?.value.trim();
   const title = document.getElementById('qmTitle')?.value.trim();
   const body = document.getElementById('qmBody')?.value.trim();
   if(!label || !title || !body){ showToast('Fill in the name, title and message'); return; }
+  if(label.length > 60 || title.length > 160 || body.length > 2000){ showToast('That is too long (name 60, title 160, message 2000 characters)'); return; }
   let q = id ? QUICK_MESSAGES.find(x => x.id === id) : null;
-  if(q){ q.label = label; q.title = title; q.body = body; }
+  if(quickMessagesLive){
+    let authUid = null;
+    try{ authUid = (await SUPABASE_CLIENT.auth.getSession()).data?.session?.user?.id || null; }catch(e){}
+    const res = q
+      ? await SUPABASE_CLIENT.from('quick_messages').update({ label, title, body }).eq('id', q.id).select('id')
+      : await SUPABASE_CLIENT.from('quick_messages').insert({ label, title, body, created_by: authUid }).select('id').single();
+    if(res.error || (q && !(res.data || []).length)){
+      console.warn('saveQuickMessage failed:', res.error);
+      showToast(res.error && res.error.code === '42501' ? 'Only an Administrator can change quick messages' : 'Could not save. Nothing was changed.');
+      return;
+    }
+    if(q){ q.label = label; q.title = title; q.body = body; }
+    else { q = { id: String(res.data.id), label, title, body }; QUICK_MESSAGES.push(q); }
+  } else if(q){ q.label = label; q.title = title; q.body = body; }
   else { q = { id: 'qm' + (++_qmSeq), label, title, body }; QUICK_MESSAGES.push(q); }
   closeSheet('notifEditSheet');
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', id ? 'Quick message updated' : 'Quick message added', q.id, label);
@@ -13798,11 +13899,20 @@ function saveQuickMessage(id){
   navigate('notifTemplates', { replace: true });
 }
 
-function deleteQuickMessage(id){
+async function deleteQuickMessage(id){
   const i = QUICK_MESSAGES.findIndex(x => x.id === id);
   if(i < 0) return;
   if(_qmDeleteArmed !== id){ _qmDeleteArmed = id; refreshScreenContentOnly(); return; }
   _qmDeleteArmed = null;
+  if(quickMessagesLive){
+    const { data, error } = await SUPABASE_CLIENT.from('quick_messages').delete().eq('id', id).select('id');
+    if(error || !(data || []).length){
+      console.warn('deleteQuickMessage failed:', error);
+      showToast(error && error.code === '42501' ? 'Only an Administrator can change quick messages' : 'Could not remove it. Nothing was changed.');
+      refreshScreenContentOnly();
+      return;
+    }
+  }
   const [q] = QUICK_MESSAGES.splice(i, 1);
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Quick message removed', q.id, q.label);
   showToast(`${q.label} removed`);
@@ -16659,6 +16769,9 @@ function navigate(screenId, opts){
     startRosterPolling();
     updateLiveCheckinCount(); // Gate 4: show a real count immediately, don't wait for the first tick
     updateLiveRoster();
+  }
+  if(screenId === 'notifTemplates' || screenId === 'sendNotification'){
+    loadQuickMessagesFromSupabase().then(ok => { if(ok && currentScreen === screenId && !openSheetId) refreshScreenContentOnly(); });
   }
   if(screenId === 'checkin'){
     // force: Home may already have searched and found nothing; look again now

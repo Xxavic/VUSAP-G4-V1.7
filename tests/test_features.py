@@ -115,10 +115,104 @@ def recheck(url):
                          ('found', 'finds a session that starts late'), ('stops', 'stops polling once found')]:
             check(label, r[k])
 
+def quick_messages(url):
+    print('quick messages persist')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          State.role='administrator';State.user={name:'G',staffId:'VU-ADM-001',id:'VU-ADM-001'};renderApp();
+          const UUID='11111111-2222-3333-4444-555555555555';
+          let table=[{id:'u1',label:'From DB',title:'T',body:'B'}]; let missing=false, failNext=null; const calls=[];
+          const qb=()=>{let op='select', payload=null, filt=null;
+            const q={select(){return q},order(){return q},eq(c,v){filt=v;return q},
+              insert(row){op='insert';payload=row;return q},update(row){op='update';payload=row;return q},delete(){op='delete';return q},single(){return q},
+              then(res,rej){return (async()=>{
+                calls.push([op,payload,filt]);
+                if(missing) return {data:null,error:{code:'PGRST205',message:'schema cache'}};
+                if(failNext){const e=failNext;failNext=null;return {data:null,error:e}}
+                if(op==='select') return {data:table,error:null};
+                if(op==='insert'){const row={id:'new1',...payload};table.push(row);return {data:{id:'new1'},error:null}}
+                if(op==='update'){const t=table.find(x=>x.id===filt);Object.assign(t,payload);return {data:[{id:filt}],error:null}}
+                if(op==='delete'){table=table.filter(x=>x.id!==filt);return {data:[{id:filt}],error:null}}
+              })().then(res,rej)}};
+            return q};
+          SUPABASE_CLIENT={from:(t)=>t==='quick_messages'?qb():{insert:async()=>({}),select(){return this},order(){return this},limit:async()=>({data:[],error:null}),eq(){return this},update(){return this},upsert:async()=>({})},auth:{getSession:async()=>({data:{session:{user:{id:UUID}}}})}}; LIVE_BACKEND=true;
+          const out={};
+          const defaults=QUICK_MESSAGES.length;
+          navigate('notifTemplates'); await wait(300);
+          out.loaded=QUICK_MESSAGES.length===1&&QUICK_MESSAGES[0].label==='From DB'&&quickMessagesLive;
+          const set=(id,v)=>{const e=document.getElementById(id); if(e) e.value=v};
+          openQuickMessageSheet(null); set('qmLabel','New one');set('qmTitle','Hello [x]');set('qmBody','Body [x]');
+          await saveQuickMessage(null); await wait(200);
+          const ins=calls.find(c=>c[0]==='insert');
+          out.insertsWithAuthUuid=!!ins&&ins[1].created_by===UUID&&ins[1].label==='New one';
+          out.addedLocally=QUICK_MESSAGES.some(q=>q.id==='new1');
+          failNext={code:'42501',message:'rls'}; openQuickMessageSheet(null); set('qmLabel','Nope');set('qmTitle','t');set('qmBody','b');
+          await saveQuickMessage(null); out.refusedNotAdded=!QUICK_MESSAGES.some(q=>q.label==='Nope');
+          await deleteQuickMessage('new1'); await deleteQuickMessage('new1'); await wait(200);
+          out.deleted=!QUICK_MESSAGES.some(q=>q.id==='new1')&&table.every(x=>x.id!=='new1');
+          missing=true; quickMessagesLive=false; QUICK_MESSAGES.splice(0,QUICK_MESSAGES.length,{id:'qm1',label:'Built-in',title:'t',body:'b'});
+          const ok=await loadQuickMessagesFromSupabase();
+          out.fallsBackWhenNoTable=ok===false&&QUICK_MESSAGES.length===1&&QUICK_MESSAGES[0].label==='Built-in'&&!quickMessagesLive;
+          return out}""")
+        for k, label in [('loaded', 'messages are loaded from the database'), ('insertsWithAuthUuid', 'a new message is saved with the auth user id'),
+                         ('addedLocally', 'it appears in the list'), ('refusedNotAdded', 'a refused save is not added'),
+                         ('deleted', 'delete removes it from the database and the list'),
+                         ('fallsBackWhenNoTable', 'built-in messages are kept if the table is missing')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+def realtime(url):
+    print('student realtime (no polling while connected)')
+    with page(url, viewport=(390, 800), splash=False, has_touch=True, is_mobile=True, screen={'width': 390, 'height': 800}) as pg:
+        r = pg.evaluate("""async()=>{
+          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          State.role='student';State.user={name:'A',reg:'VU-X',id:'VU-X',mode:'day',supabaseId:'u1'};
+          let queries=0, handler=null, statusCb=null, channels=[], filters=[];
+          const mk=(extra)=>({course_code:STUDENT_COURSES[0].code,course_name:'DS',room:'LT1',mode:'day',active:true,started_at:new Date().toISOString(),window_seconds:600,token_rotate_seconds:30,pin:null,token:null,coordinator_authorized:false,class_id:null,...extra});
+          const qb=(t)=>{const q={select(){return q},in(){return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions')queries++;return {data:[],error:null}},maybeSingle:async()=>({data:null,error:null})};return q};
+          SUPABASE_CLIENT={from:(t)=>qb(t),
+            channel:(name)=>{channels.push(name);const ch={on(ev,opts,cb){filters.push(opts.filter);handler=cb;return ch},subscribe(cb){statusCb=cb;return ch}};return ch},
+            removeChannel(){},auth:{getSession:async()=>({data:{session:null}})}};
+          LIVE_BACKEND=true; LIVE_SESSION.liveSessionId=null; studentRealtimeStatus='off';
+          let redraws=0; const origRefresh=refreshScreenContentOnly; refreshScreenContentOnly=()=>{redraws++;return origRefresh()};
+          const hh=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+          getStudentTodayLectures=()=>{const s=new Date(Date.now()+10*60000),e=new Date(s.getTime()+3600000);return [{code:STUDENT_COURSES[0].code,name:'DS',room:'LT1',time:hh(s)+'–'+hh(e)}]};
+          const out={};
+          renderApp(); navigate('home'); await wait(300);
+          out.subscribedOnce = channels.length===1 && channels[0]==='live-qr-student';
+          out.filterCoversCourses = filters[0].startsWith('course_code=in.(') && STUDENT_COURSES.every(c=>filters[0].includes(c.code));
+          out.notOpenYet = !isLiveSessionOpenForStudent();
+          // connected: the catch-up check runs once, then polling stays silent
+          statusCb('SUBSCRIBED'); await wait(300); queries=0; await wait(7000);
+          out.silentWhileConnected = queries===0;
+          // other mode / other course are ignored
+          handler({new:mk({id:'x1',mode:'evening'})}); out.ignoresOtherMode = !isLiveSessionOpenForStudent();
+          handler({new:mk({id:'x2',course_code:'ZZZ999'})}); out.ignoresOtherCourse = !isLiveSessionOpenForStudent();
+          // our session starts: picked up instantly, with no query
+          queries=0; handler({new:mk({id:'b1'})}); await wait(100);
+          out.opensInstantly = isLiveSessionOpenForStudent() && queries===0 && LIVE_SESSION.liveSessionId==='b1';
+          const before=redraws; handler({new:mk({id:'b1',token:'T2'})}); handler({new:mk({id:'b1',token:'T3'})});
+          out.rotationsDoNotRedraw = redraws===before;
+          // it ends: closes
+          handler({new:mk({id:'b1',active:false})}); out.closesOnEnd = !isLiveSessionOpenForStudent();
+          // connection lost: polling resumes as the fallback
+          LIVE_SESSION.liveSessionId=null; statusCb('CHANNEL_ERROR'); queries=0; await wait(6800);
+          out.pollsWhenDown = queries>=1;
+          return out}""")
+        for k, label in [('subscribedOnce', 'one subscription is opened'), ('filterCoversCourses', 'it covers every enrolled course'),
+                         ('notOpenYet', 'nothing is shown before a session exists'), ('silentWhileConnected', 'no polling while connected'),
+                         ('ignoresOtherMode', 'ignores the other Day/Evening mode'), ('ignoresOtherCourse', 'ignores a course the student is not in'),
+                         ('opensInstantly', 'a started session appears at once with no query'), ('rotationsDoNotRedraw', 'QR rotations do not redraw the screen'),
+                         ('closesOnEnd', 'an ended session closes the check-in'), ('pollsWhenDown', 'polling resumes when the connection is lost')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url)
-        if not quick: recheck(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url)
+        if not quick:
+            recheck(url); realtime(url)
     finish()
