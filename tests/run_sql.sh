@@ -14,4 +14,5 @@ psql -q -v ON_ERROR_STOP=1 \
   -f tests/sql/test_quick_messages.sql \
   -f tests/sql/test_tighten_inserts.sql \
   -f tests/sql/test_staff_attendance_insert.sql \
-  -f tests/sql/test_appeals_scope.sql
+  -f tests/sql/test_appeals_scope.sql \
+  -f tests/sql/test_location_check.sql

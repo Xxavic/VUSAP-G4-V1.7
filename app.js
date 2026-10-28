@@ -578,6 +578,7 @@ async function liveWriteSession(){
       if(data){
         LIVE_SESSION.liveSessionId = data.id;
         LIVE_SESSION.serverStartedAt = data.started_at; // authoritative — from the DB's own clock
+        shareLecturerLocation(data.id); // fire-and-forget; does nothing unless the location check is on
       }
     }
     return 'ok';
@@ -1198,6 +1199,57 @@ function checkInReasonText(reason){
 //   { state:'network' }                no connection
 //   { state:'error', message }         anything else unexpected
 //   { state:'unavailable' }            migration not run (or mock mode): use the old path
+// ------------------------------------------------------------
+// In-room location check (phase 1: flag only, off by default). The server
+// decides everything; the phone only reports where it is, once, and only
+// when an Administrator has switched the check on. A failure here is always
+// silent: nobody is ever refused a check-in because of location.
+// ------------------------------------------------------------
+function locationCheckOn(){
+  return LIVE_BACKEND && SYSTEM_SETTINGS.locationColumnsPresent && SYSTEM_SETTINGS.locationCheckMode === 'flag';
+}
+
+// One position fix, or null (denied, unavailable, timed out). Never throws.
+function getPositionOnce(timeoutMs){
+  return new Promise(resolve => {
+    if(!('geolocation' in navigator)) return resolve(null);
+    let done = false;
+    const finish = v => { if(!done){ done = true; clearTimeout(guard); resolve(v); } };
+    const guard = setTimeout(() => finish(null), timeoutMs + 1500);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        p => finish({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }),
+        () => finish(null),
+        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30000 }
+      );
+    } catch(e){ finish(null); }
+  });
+}
+
+// Lecturer: tell the server where this session started.
+async function shareLecturerLocation(broadcastId){
+  if(!locationCheckOn() || !broadcastId) return;
+  try {
+    const pos = await getPositionOnce(10000);
+    if(!pos) return;
+    await SUPABASE_CLIENT.rpc('set_session_location', { p_broadcast_id: broadcastId, p_lat: pos.lat, p_lng: pos.lng, p_accuracy: pos.acc });
+  } catch(e){ console.warn('shareLecturerLocation:', e); }
+}
+
+// Student: right after a successful LIVE check-in. The coordinates go to the
+// server for a one-off distance calculation and are not stored.
+async function reportCheckInLocation(broadcastId){
+  if(!locationCheckOn() || !broadcastId) return;
+  try {
+    showToast('Sharing your location once to confirm you are in the room');
+    const pos = await getPositionOnce(8000);
+    await SUPABASE_CLIENT.rpc('record_checkin_location', {
+      p_broadcast_id: broadcastId,
+      p_lat: pos ? pos.lat : null, p_lng: pos ? pos.lng : null, p_accuracy: pos ? pos.acc : null,
+    });
+  } catch(e){ console.warn('reportCheckInLocation:', e); }
+}
+
 async function serverCheckIn({ broadcastId, token, pin, offline }){
   if(!LIVE_BACKEND || serverCheckInAvailable === false || !broadcastId || String(broadcastId).startsWith('mock-')){
     return { state: 'unavailable' };
@@ -4063,6 +4115,13 @@ const SYSTEM_SETTINGS = {
   // silently using two different weights would make the resulting
   // percentage/marks meaningless. See attendanceCreditForStatus() below.
   lateCreditPct: 75,
+  // In-room location check (see IN-ROOM-CHECK.md, migrate-location-check.sql).
+  // 'off' = nobody is asked for a location. 'flag' = each live check-in shares
+  // the phone's position once; far-away check-ins are flagged for the Registrar
+  // but never refused. Off until an Administrator turns it on.
+  locationCheckMode: 'off',
+  locationCheckRadiusM: 150,
+  locationColumnsPresent: false, // true once the database has the migration's columns
 };
 
 // Given a 'YYYY-MM-DD' date, returns 'Semester 1' / 'Semester 2' / null --
@@ -5930,7 +5989,9 @@ function renderConsentScreen(){
         <h1>Before you continue, ${escapeHtmlText(firstName(u.name))}</h1>
         <p class="sub">QRAST verifies your attendance using your device and session data. Please review before continuing.</p>
         <ul style="margin:0 0 18px; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink-soft);">
-          <li>Attendance is verified using a rotating check-in code and an anonymized device identifier — not your camera, microphone, or location.</li>
+          ${SYSTEM_SETTINGS.locationCheckMode === 'flag'
+            ? `<li>Attendance is verified using a rotating check-in code and an anonymized device identifier — not your camera or microphone. At check-in your phone may ask to share its location once, to confirm you are near the lecture room. Only the distance is kept, never your coordinates, and you can still check in if you decline.</li>`
+            : `<li>Attendance is verified using a rotating check-in code and an anonymized device identifier — not your camera, microphone, or location.</li>`}
           <li>This data is used only to verify attendance and detect fraud, such as duplicate or expired check-ins.</li>
           <li>Access to your records is limited to your Lecturer, your faculty Registrar, and system Administrators, enforced at the database level.</li>
           <li>QRAST will never sell, lease, or share this data with any third party.</li>
@@ -9700,6 +9761,9 @@ async function completeCheckIn(){
   if(server.state === 'network') outcome.offline = true;
 
   State.hasCheckedInToday = true;
+  // Located only for a live check-in the server just recorded; a queued one
+  // syncs later from wherever the phone is, which says nothing about the room.
+  if(server.state === 'ok' && !outcome.offline) reportCheckInLocation(LIVE_SESSION.liveSessionId);
 
   // Gate 4: keep the local RECORDS list (same shape as its seeded mock
   // rows) in sync immediately, so any screen reading RECORDS reflects this
@@ -13605,6 +13669,27 @@ function renderAttendancePolicies(){
       </div>
     </div>
 
+    ${SYSTEM_SETTINGS.locationColumnsPresent ? `
+    <div class="card card-pad">
+      <div class="section-title">${ICONS.pin || ICONS.flag} In-room location check</div>
+      <div class="field">
+        <label>Mode</label>
+        <div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px;">When on, each phone shares its position once at check-in. A student far from the lecturer is flagged in the Fraud Center for review — nobody is ever refused a check-in because of it. Students and lecturers are asked for location permission by their phone. Only the distance is kept, never the student's coordinates.</div>
+        <select class="input" id="policyLocationMode" style="max-width:260px;">
+          <option value="off" ${SYSTEM_SETTINGS.locationCheckMode === 'off' ? 'selected' : ''}>Off (no location requested)</option>
+          <option value="flag" ${SYSTEM_SETTINGS.locationCheckMode === 'flag' ? 'selected' : ''}>Flag far-away check-ins</option>
+        </select>
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <label>Flag when further than</label>
+        <div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px;">GPS indoors can be off by tens of metres, so keep this generous. Reported phone accuracy is allowed for on top.</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <input class="input" type="number" id="policyLocationRadius" value="${SYSTEM_SETTINGS.locationCheckRadiusM}" min="50" max="2000" style="max-width:90px;" />
+          <span style="font-size:14px; font-weight:700; color:var(--ink-soft);">metres</span>
+        </div>
+      </div>
+    </div>` : ''}
+
     <button class="btn btn-primary" onclick="saveAttendancePolicies()">${ICONS.check} Save Policies</button>
   </div>`;
 }
@@ -13621,6 +13706,9 @@ function saveAttendancePolicies(){
   if(qrRotate < 10 || qrRotate > 300){ showToast("QR rotation must be 10–300 seconds"); return; }
   if(sessionWindow < 1 || sessionWindow > 60){ showToast("Session window must be 1–60 minutes"); return; }
   if(lateCredit < 0 || lateCredit > 100){ showToast("Late check-in credit must be 0–100%"); return; }
+  const locModeEl = document.getElementById('policyLocationMode');
+  const locRadius = parseInt(document.getElementById('policyLocationRadius')?.value || String(SYSTEM_SETTINGS.locationCheckRadiusM), 10);
+  if(locModeEl && (isNaN(locRadius) || locRadius < 50 || locRadius > 2000)){ showToast("Location radius must be 50–2000 metres"); return; }
 
   ATTENDANCE_POLICIES.minAttendancePct = minPct;
   ATTENDANCE_POLICIES.lateGraceMinutes = lateGrace;
@@ -13630,6 +13718,10 @@ function saveAttendancePolicies(){
   // pre-existing gap), lateCreditPct lives on SYSTEM_SETTINGS specifically
   // so it's the same number on every device -- see its own comment there.
   SYSTEM_SETTINGS.lateCreditPct = lateCredit;
+  if(locModeEl){
+    SYSTEM_SETTINGS.locationCheckMode = locModeEl.value === 'flag' ? 'flag' : 'off';
+    SYSTEM_SETTINGS.locationCheckRadiusM = locRadius;
+  }
   saveSystemSettingsToSupabase();
   logAuditEvent(State.user?.staffId||'system', State.user?.name||'System', 'Policy updated', 'policies', `minPct=${minPct}%, grace=${lateGrace}min, qrRotate=${qrRotate}s, window=${sessionWindow}min, lateCredit=${lateCredit}%`);
 
@@ -13993,6 +14085,11 @@ async function loadSystemSettingsFromSupabase(){
     SYSTEM_SETTINGS.semester2Start = data.semester2_start ?? SYSTEM_SETTINGS.semester2Start;
     SYSTEM_SETTINGS.semester2End = data.semester2_end ?? SYSTEM_SETTINGS.semester2End;
     SYSTEM_SETTINGS.lateCreditPct = data.late_credit_pct ?? SYSTEM_SETTINGS.lateCreditPct;
+    SYSTEM_SETTINGS.locationColumnsPresent = ('location_check_mode' in data);
+    if(SYSTEM_SETTINGS.locationColumnsPresent){
+      SYSTEM_SETTINGS.locationCheckMode = data.location_check_mode === 'flag' ? 'flag' : 'off';
+      SYSTEM_SETTINGS.locationCheckRadiusM = data.location_check_radius_m ?? SYSTEM_SETTINGS.locationCheckRadiusM;
+    }
 
     // Unlike FACULTIES/PROGRAMMES etc., this data can already be on screen
     // by the time this resolves (the splash paints synchronously at boot,
@@ -14012,6 +14109,12 @@ async function saveSystemSettingsToSupabase(){
   try {
     const { error } = await SUPABASE_CLIENT.from('system_settings').upsert({
       id: 1,
+      // Only sent once the database is known to have these columns, so saving
+      // any other setting keeps working before migrate-location-check.sql is run.
+      ...(SYSTEM_SETTINGS.locationColumnsPresent ? {
+        location_check_mode: SYSTEM_SETTINGS.locationCheckMode,
+        location_check_radius_m: SYSTEM_SETTINGS.locationCheckRadiusM,
+      } : {}),
       system_name: SYSTEM_SETTINGS.systemName,
       institution_name: SYSTEM_SETTINGS.institutionName,
       portal_name: SYSTEM_SETTINGS.portalName,

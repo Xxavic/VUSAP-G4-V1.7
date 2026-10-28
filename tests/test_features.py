@@ -238,11 +238,62 @@ def a11y(url):
         check('print hides navigation', hidden)
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
+def location_check(url):
+    print('location check (flag only, off by default)')
+    SETUP = """()=>{ window.__rpc=[]; window.__upserts=[]; LIVE_BACKEND=true;
+      SUPABASE_CLIENT={ rpc: async(n,a)=>{window.__rpc.push([n,a]); return {data:{ok:true},error:null}},
+        from:()=>({upsert: async(row)=>{window.__upserts.push(row); return {error:null}}}) }; }"""
+    with page(url, splash=False, geolocation={'latitude': 0.3476, 'longitude': 32.5825, 'accuracy': 12}, permissions=['geolocation']) as pg:
+        pg.evaluate(SETUP)
+        pg.evaluate("()=>{SYSTEM_SETTINGS.locationColumnsPresent=true; SYSTEM_SETTINGS.locationCheckMode='off'}")
+        pg.evaluate("async()=>{await shareLecturerLocation('b1'); await reportCheckInLocation('b1')}")
+        check('off: no position is requested or sent', pg.evaluate("()=>window.__rpc.length") == 0)
+        pg.evaluate("()=>{SYSTEM_SETTINGS.locationColumnsPresent=false; SYSTEM_SETTINGS.locationCheckMode='flag'}")
+        pg.evaluate("async()=>{await reportCheckInLocation('b1')}")
+        check('migration not run: nothing is sent', pg.evaluate("()=>window.__rpc.length") == 0)
+        pg.evaluate("()=>{SYSTEM_SETTINGS.locationColumnsPresent=true}")
+        pg.evaluate("async()=>{await shareLecturerLocation('b1')}")
+        r = pg.evaluate("()=>window.__rpc.slice()")
+        check('lecturer start sends position to set_session_location', len(r) == 1 and r[0][0] == 'set_session_location' and abs(r[0][1]['p_lat'] - 0.3476) < 1e-6 and r[0][1]['p_broadcast_id'] == 'b1', str(r))
+        pg.evaluate("()=>{window.__rpc.length=0}")
+        pg.evaluate("async()=>{await reportCheckInLocation('b1')}")
+        r = pg.evaluate("()=>window.__rpc.slice()")
+        check('student check-in sends position to record_checkin_location', len(r) == 1 and r[0][0] == 'record_checkin_location' and abs(r[0][1]['p_lng'] - 32.5825) < 1e-6, str(r))
+        src = pg.evaluate("()=>completeCheckIn.toString()")
+        check('only a live, server-recorded check-in is located (never a queued one)',
+              "server.state === 'ok' && !outcome.offline" in src and 'reportCheckInLocation' in src)
+        pg.evaluate("()=>{State.role='administrator';State.user={name:'G',staffId:'VU-ADM-001',id:'VU-ADM-001'};renderApp();navigate('attendancePolicies')}")
+        pg.wait_for_timeout(400)
+        check('policy screen shows the location setting once the migration exists', pg.evaluate("()=>!!document.getElementById('policyLocationMode')"))
+        pg.evaluate("()=>{document.getElementById('policyLocationMode').value='flag';document.getElementById('policyLocationRadius').value='200';saveAttendancePolicies()}")
+        pg.wait_for_timeout(300)
+        up = pg.evaluate("()=>window.__upserts.slice(-1)[0]")
+        check('saving sends the mode and radius', up and up.get('location_check_mode') == 'flag' and up.get('location_check_radius_m') == 200, str(up))
+        pg.evaluate("()=>{document.getElementById('policyLocationRadius').value='5';window.__before=window.__upserts.length;saveAttendancePolicies()}")
+        check('a radius outside 50-2000 m is refused', pg.evaluate("()=>window.__upserts.length===window.__before"))
+        pg.evaluate("()=>{SYSTEM_SETTINGS.locationColumnsPresent=false; window.__upserts.length=0; saveSystemSettingsToSupabase()}")
+        pg.wait_for_timeout(200)
+        up = pg.evaluate("()=>window.__upserts[0]")
+        check('before the migration, saving settings leaves the new columns out', up and 'location_check_mode' not in up, str(up))
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+    with page(url, splash=False, permissions=[]) as pg:
+        pg.evaluate(SETUP)
+        pg.evaluate("()=>{SYSTEM_SETTINGS.locationColumnsPresent=true; SYSTEM_SETTINGS.locationCheckMode='flag'; navigator.geolocation.getCurrentPosition=(ok,err)=>err({code:1})}")
+        pg.evaluate("async()=>{await reportCheckInLocation('b1')}")
+        r = pg.evaluate("()=>window.__rpc.slice()")
+        check('permission denied: the server is told "no location", the check-in stands',
+              len(r) == 1 and r[0][1]['p_lat'] is None, str(r))
+        txt = pg.evaluate("()=>{State.user={name:'Aisha Nakamya'};renderConsentScreen();return document.getElementById('screens').innerText}")
+        check('consent notice explains the location request when it is on', 'share its location once' in txt)
+        pg.evaluate("()=>{SYSTEM_SETTINGS.locationCheckMode='off';renderConsentScreen()}")
+        txt = pg.evaluate("()=>document.getElementById('screens').innerText")
+        check('consent notice keeps the old wording when it is off', 'not your camera, microphone, or location' in txt)
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

@@ -1,4 +1,10 @@
-# In-room check: design note (not built yet)
+# In-room check: design note (phase 1 built, off by default)
+
+**Status.** Phase 1 (flag, never block) is built: `migrate-location-check.sql`, `shareLecturerLocation()` /
+`reportCheckInLocation()` in `app.js`, a switch under Attendance Rules -> Policies, tests in
+`tests/sql/test_location_check.sql` and `tests/test_features.py`. It does nothing until an
+Administrator sets the mode to "Flag far-away check-ins". Only the distance is stored, never a
+student's coordinates. Phase 2 (blocking) is not built.
 
 **Problem.** The QR can be photographed and sent to a friend who is not in the room. The
 backup PIN now expires on the server, but a QR image shared within its 30-second window
