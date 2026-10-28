@@ -6683,6 +6683,19 @@ function renderLecturerDashboard(){
     <div style="display:flex; flex-direction:column; gap:10px;">
       ${lectureListMarkup(todayLectures, false, { sheetPicker:true })}
     </div>
+  </div>
+
+  <div class="sheet" id="startSessionConfirmSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <span>Start live session?</span>
+      <button onclick="cancelStartSession()">${ICONS.close}</button>
+    </div>
+    <div id="startSessionConfirmBody"></div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button type="button" class="btn btn-ghost" onclick="cancelStartSession()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="confirmStartSession()">Start session</button>
+    </div>
   </div>`;
 }
 
@@ -10333,10 +10346,37 @@ function handleStartLiveSessionTap(){
     return;
   }
   if(todayLectures.length === 1){
-    startSessionForLecture(todayLectures[0]);
+    askStartSession(todayLectures[0]);
     return;
   }
   openSheet('startSessionPickerSheet');
+}
+
+// Starting a session notifies the whole class and opens check-in, and one
+// tap on a lecture row used to do it straight away, so a stray click put a
+// lecture "Live" that the lecturer never meant to start. A new session now
+// waits for an explicit "Start session"; going back into the one already
+// running needs no confirmation.
+let pendingSessionStart = null;
+function askStartSession(lecture){
+  if(isLiveSessionActive()){ startSessionForLecture(lecture); return; }
+  pendingSessionStart = lecture;
+  const body = document.getElementById('startSessionConfirmBody');
+  if(body) body.innerHTML = `
+    <div class="lecture-code">${escapeHtmlText(lecture.code)} — ${escapeHtmlText(lecture.name)}</div>
+    <div class="lecture-meta" style="margin-top:4px;">${ICONS.clock}${escapeHtmlText(lecture.time)} · ${escapeHtmlText(lecture.room || '')}</div>
+    <div style="font-size:12px; color:var(--ink-faint); margin-top:10px;">Students in this class are notified and can check in as soon as it starts.</div>`;
+  openSheet('startSessionConfirmSheet');
+}
+function cancelStartSession(){
+  pendingSessionStart = null;
+  closeSheet('startSessionConfirmSheet');
+}
+function confirmStartSession(){
+  const lecture = pendingSessionStart;
+  pendingSessionStart = null;
+  closeSheet('startSessionConfirmSheet');
+  if(lecture) startSessionForLecture(lecture);
 }
 
 // Row-tap handler shared by the dashboard's Today's Lectures card and the
@@ -10349,7 +10389,7 @@ function handleStartLiveSessionTap(){
 function handleLectureRowTap(code, time){
   const lecture = getLecturerTodayLectures().find(l => l.code === code && l.time === time);
   if(!lecture) return;
-  startSessionForLecture(lecture);
+  askStartSession(lecture);
 }
 
 async function startSessionForLecture(lecture){

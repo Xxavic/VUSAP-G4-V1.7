@@ -478,11 +478,42 @@ def slot_lecturer_sync(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def start_confirmation(url):
+    print('starting a session asks first')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const wait=ms=>new Promise(r=>setTimeout(r,ms)); const out={}; const started=[];
+          State.role='lecturer'; State.user={name:'Dr. Patrick Mukasa',staffId:'VU-LEC-101',id:'VU-LEC-101'};
+          const lec={code:'CSC3103',name:'Software Engineering',room:'LT4 - Main Building',time:'17:00 – 19:00',mode:'day'};
+          getLecturerTodayLectures=()=>[lec];
+          LIVE_SESSION.liveSessionId=null; LIVE_SESSION.active=false;
+          renderApp(); navigate('dashboard'); await wait(200);
+          startSessionForLecture=(l)=>{started.push(l.code+' '+l.time)};
+          const sheet=()=>document.getElementById('startSessionConfirmSheet');
+          document.querySelector('.lecture-row').click(); await wait(50);
+          out.rowAsks = sheet().classList.contains('show') && started.length===0 && document.getElementById('startSessionConfirmBody').textContent.includes('CSC3103');
+          cancelStartSession(); await wait(50);
+          out.cancelStartsNothing = !sheet().classList.contains('show') && started.length===0;
+          document.querySelector('.lecture-row').click(); await wait(50); confirmStartSession();
+          out.confirmStarts = started.length===1 && started[0]==='CSC3103 17:00 – 19:00';
+          handleStartLiveSessionTap(); await wait(50);
+          out.quickActionAsks = sheet().classList.contains('show') && started.length===1;
+          cancelStartSession();
+          LIVE_SESSION.liveSessionId='b-1'; LIVE_SESSION.active=true; askStartSession(lec);
+          out.resumeNoAsk = started.length===2 && !sheet().classList.contains('show');
+          return out}""")
+        for k, label in [('rowAsks', 'tapping a lecture row asks before starting'), ('cancelStartsNothing', 'Cancel starts nothing'),
+                         ('confirmStarts', 'Start session starts the lecture that was tapped'), ('quickActionAsks', 'the Start Live Session button asks too'),
+                         ('resumeNoAsk', 'going back into a running session does not ask')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url)
         if not quick:
             recheck(url); realtime(url)
     finish()
