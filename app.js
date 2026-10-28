@@ -16511,7 +16511,7 @@ function renderNewSessionFormBody(existing){
       <div class="field">
         <label>Mode</label>
         <select class="select" id="sessionMode">
-          <option value="" ${!lecture || !lecture.mode ? 'selected' : ''}>No restriction</option>
+          <option value="" ${!lecture || !lecture.mode ? 'selected' : ''} disabled>Choose Day or Evening</option>
           <option value="day" ${lecture && lecture.mode==='day' ? 'selected' : ''}>Day</option>
           <option value="evening" ${lecture && lecture.mode==='evening' ? 'selected' : ''}>Evening</option>
         </select>
@@ -16549,6 +16549,21 @@ function openNewSessionSheet(day, index){
   openSheet('newSessionSheet');
 }
 
+// A timetable slot is for the Day or the Evening group: students only see the
+// slots of their own mode (no mode showed a slot to both, which is how a stray
+// "TBA" slot reached every student). Evening classes start at EVENING_STARTS_AT;
+// a slot whose mode does not fit its start time (e.g. a Day slot at 20:00) is
+// almost always a mistake, so saving it asks once more.
+const EVENING_STARTS_AT = '17:00';
+let sessionModeWarnedKey = null;
+function sessionModeProblem(mode, startTime){
+  if(mode !== 'day' && mode !== 'evening') return { block: true, message: 'Choose Day or Evening for this session' };
+  const evening = String(startTime) >= EVENING_STARTS_AT;
+  if(mode === 'day' && evening) return { message: `This starts at ${startTime}, after ${EVENING_STARTS_AT}, but is set to Day.` };
+  if(mode === 'evening' && !evening) return { message: `This starts at ${startTime}, before ${EVENING_STARTS_AT}, but is set to Evening.` };
+  return null;
+}
+
 async function submitNewSession(e){
   e.preventDefault();
   const editDay = document.getElementById('sessionEditDay')?.value;
@@ -16567,6 +16582,19 @@ async function submitNewSession(e){
   if(!lecturer){ showToast("Select a lecturer"); return false; }
   if(!room){ showToast("Enter a room"); return false; }
   if(!startTime || !endTime || startTime >= endTime){ showToast("End time must be after start time"); return false; }
+  const modeProblem = sessionModeProblem(mode, startTime);
+  if(modeProblem && modeProblem.block){ showToast(modeProblem.message); return false; }
+  if(modeProblem){
+    // A warning, not a block: the first Save explains, a second Save with the
+    // same values keeps it.
+    const key = `${courseCode}|${day}|${startTime}|${mode}`;
+    if(sessionModeWarnedKey !== key){
+      sessionModeWarnedKey = key;
+      showToast(modeProblem.message + ' Press Save again to keep it.');
+      return false;
+    }
+  }
+  sessionModeWarnedKey = null;
 
   const course = COURSES.find(c => c.code === courseCode);
   const timeStr = `${startTime} – ${endTime}`;

@@ -569,11 +569,45 @@ def student_edit_enrolls(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def session_form_mode_checks(url):
+    print('the session form checks Day/Evening')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const wait=ms=>new Promise(r=>setTimeout(r,ms)); const out={}; const toasts=[];
+          State.role='administrator'; State.user={name:'G',staffId:'VU-ADM-001',id:'VU-ADM-001'};
+          renderApp(); navigate('allSchedules'); await wait(150);
+          showToast=(m)=>toasts.push(m); LIVE_BACKEND=false;
+          openNewSessionSheet(); await wait(100);
+          out.noDefaultMode = document.getElementById('sessionMode').value==='';
+          const set=(id,v)=>{const el=document.getElementById(id); if(el.tagName==='SELECT' && ![...el.options].some(o=>o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);} el.value=v;};
+          set('sessionDay','Monday'); set('sessionCourse','CSC3103'); set('sessionLecturer','Dr. Patrick Mukasa');
+          set('sessionRoom','LT5 - Engineering Block'); set('sessionStart','20:00'); set('sessionEnd','22:00');
+          const form=document.getElementById('sessionStart').closest('form');
+          const count=()=>SCHEDULE.find(d=>d.day==='Monday').lectures.filter(l=>l.code==='CSC3103'&&l.time==='20:00 – 22:00').length;
+          const before=count();
+          await submitNewSession({preventDefault(){},target:form});
+          out.blocksNoMode = count()===before && toasts.slice(-1)[0]==='Choose Day or Evening for this session';
+          set('sessionMode','day');
+          await submitNewSession({preventDefault(){},target:form});
+          out.warnsFirst = count()===before && /after 17:00, but is set to Day/.test(toasts.slice(-1)[0]);
+          await submitNewSession({preventDefault(){},target:form});
+          out.savesSecond = count()===before+1;
+          out.helper = sessionModeProblem('evening','18:00')===null && sessionModeProblem('day','08:00')===null
+            && !!sessionModeProblem('evening','09:00') && sessionModeProblem(null,'09:00').block===true;
+          return out}""")
+        check('a new session has no mode chosen yet', r['noDefaultMode'])
+        check('saving without Day or Evening is refused', r['blocksNoMode'])
+        check('a Day session at 20:00 asks first', r['warnsFirst'])
+        check('a second Save keeps it', r['savesSecond'])
+        check('a mode that fits its time saves without asking', r['helper'])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url); live_timetable_only(url); student_edit_enrolls(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url); live_timetable_only(url); student_edit_enrolls(url); session_form_mode_checks(url)
         if not quick:
             recheck(url); realtime(url)
     finish()
