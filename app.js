@@ -13538,8 +13538,25 @@ function courseByYearRow(c){
 // faculty's lecturers here. Falls back to the original free-text input when
 // offline/demo (!LIVE_BACKEND) or if the live fetch fails, since neither
 // case can produce a usable live teacher_id anyway.
+// Under the Lecturer field: who teaches this course's timetable slots, and a
+// prompt when that is not the course lecturer (see liveAdoptCourseLecturer()).
+function timetableLecturersNote(course){
+  if(!course) return '';
+  const byName = new Map();
+  SCHEDULE.forEach(d => (d.lectures || []).forEach(l => {
+    if(l.code !== course.code || !l.lecturer || l.lecturer === 'TBA') return;
+    if(!byName.has(l.lecturer)) byName.set(l.lecturer, []);
+    byName.get(l.lecturer).push(`${d.day.slice(0,3)} ${String(l.time || '').split(' – ')[0]}`);
+  }));
+  if(!byName.size) return '';
+  const list = [...byName].map(([name, slots]) => `${name} (${slots.join(', ')})`).join('; ');
+  const differs = [...byName.keys()].some(name => name !== course.lecturer);
+  return `<div class="course-timetable-note" style="font-size:11px;color:var(--ink-faint);margin-top:4px;">In the timetable: ${escapeHtmlText(list)}${differs ? '. Only the course lecturer can see and correct attendance for this course.' : ''}</div>`;
+}
+
 async function courseLecturerFieldHtml(course, fk){
-  const fallback = `<input class="input" id="courseLecturerInput" value="${escapeHtmlText(course && course.lecturer ? course.lecturer : '')}" placeholder="e.g. Dr. Patrick Mukasa" />`;
+  const note = timetableLecturersNote(course);
+  const fallback = `<input class="input" id="courseLecturerInput" value="${escapeHtmlText(course && course.lecturer ? course.lecturer : '')}" placeholder="e.g. Dr. Patrick Mukasa" />` + note;
   if(!LIVE_BACKEND) return fallback;
   try {
     let query = SUPABASE_CLIENT.from('users').select('id, name, faculty_key').eq('role', 'lecturer').order('name');
@@ -13550,7 +13567,7 @@ async function courseLecturerFieldHtml(course, fk){
       <select class="select" id="courseLecturerInput">
         <option value="">No lecturer assigned</option>
         ${scoped.map(l => `<option value="${escapeHtmlText(l.id)}" data-name="${escapeHtmlText(l.name)}" ${course && course.lecturer===l.name ? 'selected':''}>${escapeHtmlText(l.name)}</option>`).join('')}
-      </select>`;
+      </select>${note}`;
   } catch(e){
     console.warn('Course form: lecturer list fetch failed, falling back to free text:', e);
     return fallback;
@@ -16530,6 +16547,31 @@ async function submitNewSession(e){
 // "keep the local-only fallback working" stance the original fire-and-forget
 // version had — only an actual conflict from the database should block the
 // form now).
+// A lecturer is assigned per timetable slot, but the database's access rules
+// (reading and correcting attendance, creating the day's session row) check
+// the course's own classes.teacher_id. A course with no course lecturer left
+// the slot's lecturer able to run sessions yet unable to see or fix their
+// attendance. So when a slot is saved for a course that has none, its
+// lecturer becomes the course lecturer. A course that already has one is
+// left alone.
+async function liveAdoptCourseLecturer(classId, teacherId, courseCode, lecturerName){
+  try {
+    const { data, error } = await SUPABASE_CLIENT
+      .from('classes')
+      .update({ teacher_id: teacherId })
+      .eq('id', classId)
+      .is('teacher_id', null)
+      .select('id');
+    if(error){ console.warn('liveAdoptCourseLecturer failed:', error); return false; }
+    if(!data || !data.length) return false;
+    COURSES.filter(c => c.code === courseCode && !c.lecturer).forEach(c => { c.lecturer = lecturerName; });
+    return true;
+  } catch(e){
+    console.warn('liveAdoptCourseLecturer error:', e);
+    return false;
+  }
+}
+
 async function writeSessionLive({ isEdit, editDay, editIndex, day, courseCode, lecturer, room, startTime, endTime, timeStr, mode, oldLecture, course }){
   try {
     // Resolve class_id and teacher_id from course code and lecturer name
@@ -16665,6 +16707,7 @@ async function writeSessionLive({ isEdit, editDay, editIndex, day, courseCode, l
       console.warn('Timetable write rejected by database trigger:', result.error);
       return result.error;
     }
+    if(!classRow.teacher_id) await liveAdoptCourseLecturer(classRow.id, userRow.id, courseCode, lecturer);
     return null;
   } catch(err){
     console.warn('Timetable write error, keeping local change:', err);

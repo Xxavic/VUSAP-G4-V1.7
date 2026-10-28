@@ -446,11 +446,43 @@ def no_phantom_broadcast(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def slot_lecturer_sync(url):
+    print('a timetable slot lecturer becomes the course lecturer')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const out={}; let log=[]; let classTeacher=null;
+          const mk=(t)=>{const f=[];let op='select';const q={select(){return q},eq(c,v){f.push(['eq',c,v]);return q},is(c,v){f.push(['is',c,v]);return q},
+            update(v){op='update';f.push(['update',v]);return q},insert(v){op='insert';log.push([t,'insert']);return Promise.resolve({error:null})},
+            maybeSingle:async()=>{log.push([t,op,f]);return {data:t==='classes'?{id:'c1',teacher_id:classTeacher}:{id:'lec-9'},error:null}},
+            then(res,rej){log.push([t,op,f]);return Promise.resolve({data:op==='update'?[{id:'c1'}]:[],error:null}).then(res,rej)}};return q};
+          SUPABASE_CLIENT={from:mk}; LIVE_BACKEND=true;
+          COURSES.push({code:'ZZ101',name:'Test',lecturer:null});
+          const args={isEdit:false,day:'Wednesday',courseCode:'ZZ101',lecturer:'Dr. Zed',room:'LT1',startTime:'08:00',endTime:'10:00',timeStr:'08:00 – 10:00',mode:'day',course:{name:'Test'}};
+          await writeSessionLive(args);
+          const up=log.find(x=>x[0]==='classes'&&x[1]==='update');
+          out.adopts = !!up && up[2].some(x=>x[0]==='update'&&x[1].teacher_id==='lec-9') && up[2].some(x=>x[0]==='is'&&x[1]==='teacher_id'&&x[2]===null);
+          out.localUpdated = COURSES.find(c=>c.code==='ZZ101').lecturer==='Dr. Zed';
+          log=[]; classTeacher='someone-else'; await writeSessionLive(args);
+          out.keepsExisting = !log.some(x=>x[0]==='classes'&&x[1]==='update');
+          // the note under the Lecturer field
+          SCHEDULE.push({day:'Wednesday',isToday:false,lectures:[{code:'ZZ101',name:'Test',lecturer:'Dr. Zed',room:'LT1',time:'08:00 – 10:00'}]});
+          const n1=timetableLecturersNote({code:'ZZ101',lecturer:null}), n2=timetableLecturersNote({code:'ZZ101',lecturer:'Dr. Zed'});
+          out.noteLists = n1.includes('Dr. Zed (Wed 08:00)') && n1.includes('Only the course lecturer');
+          out.noteQuietWhenSame = n2.includes('Dr. Zed') && !n2.includes('Only the course lecturer');
+          out.noNoteWithoutSlots = timetableLecturersNote({code:'NOPE1',lecturer:null})==='';
+          return out}""")
+        for k, label in [('adopts', 'a course with no lecturer takes the slot lecturer'), ('localUpdated', 'the course list shows the new lecturer'),
+                         ('keepsExisting', 'a course that already has a lecturer is left alone'), ('noteLists', 'Edit Course lists who teaches its slots'),
+                         ('noteQuietWhenSame', 'no warning when they already match'), ('noNoteWithoutSlots', 'no note for a course with no slots')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url)
         if not quick:
             recheck(url); realtime(url)
     finish()
