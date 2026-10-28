@@ -5144,7 +5144,23 @@ function editCourse(code, updates){
   const course = COURSES.find(c => c.code === code);
   if(!course) return { error: 'Course not found' };
   Object.assign(course, updates);
+  syncScheduleWithCourse(course);
   return { ok: true };
+}
+
+// Each timetable entry carries its own copy of the course's name, year and
+// programme (taken when the timetable loads), so after a course edit the
+// schedule kept grouping it under the old year until a reload. Copy the
+// edited values across; the slot's own day, time, room, mode and lecturer
+// are left alone.
+function syncScheduleWithCourse(course){
+  SCHEDULE.forEach(day => (day.lectures || []).forEach(l => {
+    if(l.code !== course.code) return;
+    if(course.classId && l.classId && l.classId !== course.classId) return;
+    if(course.name) l.name = course.name;
+    l.year = course.year || null;
+    if(course.programme) l.dept = course.programme;
+  }));
 }
 
 // Course code is used as the connecting identifier across the whole mock

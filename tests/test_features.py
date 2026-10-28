@@ -509,11 +509,26 @@ def start_confirmation(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def course_edit_reaches_schedule(url):
+    print('a course edit reaches the timetable')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""()=>{
+          COURSES.push({code:'ZZ300',name:'Old name',programme:'Computer Science',year:'Year 3',mode:'day'});
+          SCHEDULE.push({day:'Friday',isToday:false,lectures:[{code:'ZZ300',name:'Old name',dept:'Computer Science',year:'Year 3',lecturer:'Dr. X',room:'LT9',time:'09:00 – 10:00',mode:'evening'}]});
+          editCourse('ZZ300',{name:'New name',year:'Year 2',programme:'Information Technology',mode:'day'});
+          const l=SCHEDULE.flatMap(d=>d.lectures||[]).find(x=>x.code==='ZZ300');
+          return {year:l.year, name:l.name, dept:l.dept, slotKept:l.room==='LT9'&&l.time==='09:00 – 10:00'&&l.mode==='evening'&&l.lecturer==='Dr. X'}}""")
+        check('the timetable entry moves to the new year', r['year'] == 'Year 2', r['year'])
+        check('the name and programme follow the edit', r['name'] == 'New name' and r['dept'] == 'Information Technology')
+        check("the slot's own day, time, room, mode and lecturer are kept", r['slotKept'])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url)
         if not quick:
             recheck(url); realtime(url)
     finish()
