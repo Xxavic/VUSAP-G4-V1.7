@@ -289,11 +289,47 @@ def location_check(url):
         txt = pg.evaluate("()=>document.getElementById('screens').innerText")
         check('consent notice keeps the old wording when it is off', 'not your camera, microphone, or location' in txt)
 
+def lecturer_courses(url):
+    print('lecturer course assignments reach the database')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const db={classes:[{code:'C1',teacher_id:'L'},{code:'C2',teacher_id:null},{code:'C3',teacher_id:'X'},{code:'C4',teacher_id:'L'}],
+                    users:[{id:'L',university_id:'VU-LEC-101'}]};
+          let blocked=false;
+          const mk=(table)=>{ let op='select',patch=null,f=[],cols=null;
+            const rows=()=>db[table].filter(r=>f.every(x=>x(r)));
+            const q={select(c){cols=c;return q},update(p){op='update';patch=p;return q},in(c,v){f.push(r=>v.includes(r[c]));return q},eq(c,v){f.push(r=>r[c]===v);return q},
+              maybeSingle(){return Promise.resolve({data:rows()[0]||null,error:null})},
+              then(res,rej){ let out;
+                if(op==='update'){ if(blocked) out={data:[],error:null}; else { const hit=rows(); hit.forEach(r=>Object.assign(r,patch)); out={data:hit.map(r=>({code:r.code})),error:null}; } }
+                else out={data:rows().map(r=>({code:r.code})),error:null};
+                return Promise.resolve(out).then(res,rej); }};
+            return q};
+          SUPABASE_CLIENT={from:mk}; LIVE_BACKEND=true;
+          const out={};
+          out.res1=await liveSetLecturerCourses('VU-LEC-101',['C2','C4']);
+          out.after1=db.classes.map(c=>c.code+':'+c.teacher_id).join(',');
+          blocked=true;
+          out.res2=await liveSetLecturerCourses('VU-LEC-101',['C4']);
+          out.res3=await liveSetLecturerCourses('NOPE',['C4']);
+          blocked=false;
+          out.res4=await liveSetLecturerCourses('VU-LEC-101',['C2','C4','GHOST']);
+          out.src=submitEditStaff.toString();
+          LIVE_BACKEND=false; out.offline=await liveSetLecturerCourses('VU-LEC-101',['C1']);
+          return out}""")
+        check('assigning and unassigning writes teacher_id', r['res1'] == {'ok': True} and r['after1'] == 'C1:null,C2:L,C3:X,C4:L', f"{r['res1']} {r['after1']}")
+        check('a write blocked by access rules is reported, not trusted', 'error' in (r['res2'] or {}), str(r['res2']))
+        check('a lecturer with no live account is reported', 'error' in (r['res3'] or {}), str(r['res3']))
+        check('a demo-only course is skipped without failing the save', r['res4'] == {'ok': True}, str(r['res4']))
+        check('offline/demo mode keeps the local-only behaviour', r['offline'] is None)
+        check('the Edit Lecturer save calls it before changing local state', r['src'].index('liveSetLecturerCourses') < r['src'].index('COURSES.forEach'))
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

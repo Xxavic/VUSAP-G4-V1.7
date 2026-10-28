@@ -8844,6 +8844,55 @@ function renderEditStaffFormBody(p, role){
     </form>`;
 }
 
+// Persists which courses a lecturer teaches (classes.teacher_id). Until this
+// existed, the Edit Lecturer sheet changed the assignments only in the
+// administrator's own browser memory, so no other device or role ever saw them.
+// Returns null (no live backend), { ok:true } or { error }. An UPDATE that RLS
+// filters out succeeds with zero rows, so each write is checked against what
+// was expected rather than trusted. A course that exists only in the demo
+// catalog (never in `classes`) cannot be saved here and is skipped.
+async function liveSetLecturerCourses(universityId, checkedCodes){
+  if(!LIVE_BACKEND) return null;
+  try {
+    const { data: u, error: uErr } = await SUPABASE_CLIENT
+      .from('users').select('id').eq('university_id', universityId).maybeSingle();
+    if(uErr) return { error: uErr.message || 'Could not look up the lecturer' };
+    if(!u) return { error: 'That lecturer has no live account yet' };
+    const teacherId = u.id;
+
+    const { data: mine, error: mErr } = await SUPABASE_CLIENT
+      .from('classes').select('code').eq('teacher_id', teacherId);
+    if(mErr) return { error: mErr.message || 'Could not read the current assignments' };
+    const have = new Set((mine || []).map(r => r.code));
+    const want = new Set(checkedCodes);
+    const release = [...have].filter(c => !want.has(c));
+    const claim = [...want].filter(c => !have.has(c));
+
+    if(release.length){
+      const { data, error } = await SUPABASE_CLIENT
+        .from('classes').update({ teacher_id: null }).in('code', release).eq('teacher_id', teacherId).select('code');
+      if(error) return { error: error.message || 'Could not release courses' };
+      if((data || []).length < release.length) return { error: 'Not saved — you may not have permission to unassign some of these courses.' };
+    }
+    if(claim.length){
+      const { data: existing, error: eErr } = await SUPABASE_CLIENT
+        .from('classes').select('code').in('code', claim);
+      if(eErr) return { error: eErr.message || 'Could not check the courses' };
+      const liveCodes = [...new Set((existing || []).map(r => r.code))];
+      if(liveCodes.length){
+        const { data, error } = await SUPABASE_CLIENT
+          .from('classes').update({ teacher_id: teacherId }).in('code', liveCodes).select('code');
+        if(error) return { error: error.message || 'Could not assign courses' };
+        const done = new Set((data || []).map(r => r.code));
+        if(liveCodes.some(c => !done.has(c))) return { error: 'Not saved — you may not have permission to assign some of these courses.' };
+      }
+    }
+    return { ok: true };
+  } catch(err){
+    return { error: String(err.message || err) };
+  }
+}
+
 async function submitEditStaff(e, personId, role){
   e.preventDefault();
   let directoryArray;
@@ -8868,6 +8917,14 @@ async function submitEditStaff(e, personId, role){
       program: dept || null,
     });
     if(live && live.error){ showToast(live.error); return false; }
+    if(role === 'lecturer'){
+      const checkedNow = Array.from(document.querySelectorAll('.editStaffCourseChk:checked')).map(el => el.value);
+      const courseSave = await liveSetLecturerCourses(personId, checkedNow);
+      if(courseSave && courseSave.error){
+        showToast('Profile saved, but the course assignments were not: ' + courseSave.error);
+        return false;
+      }
+    }
   }
 
   if(role === 'lecturer'){
