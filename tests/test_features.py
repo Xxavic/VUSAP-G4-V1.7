@@ -88,7 +88,7 @@ def recheck(url):
           State.role='student';State.user={name:'A',reg:'VU-X',id:'VU-X',mode:'day',supabaseId:'u1'};
           let live=false,queries=0,inflight=0,maxInflight=0,delay=0,lastIn=null;
           const row={id:'b1',course_code:STUDENT_COURSES[0].code,course_name:'DS',room:'LT1',mode:'day',active:true,started_at:new Date().toISOString(),window_seconds:600,token_rotate_seconds:30,pin:null,token:null,coordinator_authorized:false,class_id:null};
-          const qb=(t)=>{const q={select(){return q},in(c,v){lastIn=v;return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions'){queries++;inflight++;maxInflight=Math.max(maxInflight,inflight);await wait(delay);inflight--}return {data:live?[row]:[],error:null}},maybeSingle:async()=>({data:null,error:null})};return q};
+          const qb=(t)=>{const q={select(){return q},in(c,v){lastIn=v;return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions'){queries++;inflight++;maxInflight=Math.max(maxInflight,inflight);await wait(delay);inflight--}return {data:live?[row]:[],error:null}},maybeSingle:async()=>({data:null,error:null})};q.then=(res,rej)=>q.limit().then(res,rej);return q};
           SUPABASE_CLIENT={from:(t)=>qb(t),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel(){},auth:{getSession:async()=>({data:{session:null}})}};
           LIVE_BACKEND=true; LIVE_SESSION.liveSessionId=null;
           const hh=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
@@ -101,9 +101,9 @@ def recheck(url):
           getStudentTodayLectures=()=>lectureAt(40,60); out.windowFar=!inStudentLectureWindow();
           getStudentTodayLectures=()=>lectureAt(-90,60); out.windowAfter=!inStudentLectureWindow();
           getStudentTodayLectures=()=>lectureAt(10,60); queries=0; await wait(6500); out.polls=queries>=1;
-          Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});
+          Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});
           queries=0; await wait(7000); out.quietHidden=queries===0;
-          Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'});
+          Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'});Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});
           delay=9000; maxInflight=0; await wait(14000); out.noOverlap=maxInflight<=1;
           delay=0; live=true; await wait(16000); out.found=isLiveSessionOpenForStudent();
           queries=0; await wait(7000); out.stops=queries===0;
@@ -170,7 +170,7 @@ def realtime(url):
           State.role='student';State.user={name:'A',reg:'VU-X',id:'VU-X',mode:'day',supabaseId:'u1'};
           let queries=0, handler=null, statusCb=null, channels=[], filters=[];
           const mk=(extra)=>({course_code:STUDENT_COURSES[0].code,course_name:'DS',room:'LT1',mode:'day',active:true,started_at:new Date().toISOString(),window_seconds:600,token_rotate_seconds:30,pin:null,token:null,coordinator_authorized:false,class_id:null,...extra});
-          const qb=(t)=>{const q={select(){return q},in(){return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions')queries++;return {data:[],error:null}},maybeSingle:async()=>({data:null,error:null})};return q};
+          const qb=(t)=>{const q={select(){return q},in(){return q},eq(){return q},order(){return q},limit:async()=>{if(t==='live_qr_sessions')queries++;return {data:[],error:null}},maybeSingle:async()=>({data:null,error:null})};q.then=(res,rej)=>q.limit().then(res,rej);return q};
           SUPABASE_CLIENT={from:(t)=>qb(t),
             channel:(name)=>{channels.push(name);const ch={on(ev,opts,cb){filters.push(opts.filter);handler=cb;return ch},subscribe(cb){statusCb=cb;return ch}};return ch},
             removeChannel(){},auth:{getSession:async()=>({data:{session:null}})}};
