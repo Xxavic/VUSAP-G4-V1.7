@@ -5694,14 +5694,30 @@ function fireConfetti(){
   setTimeout(()=>layer.remove(), 2600);
 }
 
+let sheetReturnFocus = null;
 function openSheet(id){
+  sheetReturnFocus = document.activeElement;
   document.getElementById('sheetOverlay').classList.add('show');
-  document.getElementById(id).classList.add('show');
+  const el = document.getElementById(id);
+  el.classList.add('show');
+  // Keyboard users land inside the sheet instead of on the page behind it.
+  setTimeout(()=>{
+    const f = el.querySelector('input:not([type=hidden]),select,textarea,button,[tabindex]:not([tabindex="-1"])');
+    if(f && el.classList.contains('show')) try{ f.focus({preventScroll:true}); }catch(e){}
+  }, 60);
 }
 function closeSheet(id){
   document.getElementById('sheetOverlay').classList.remove('show');
   document.getElementById(id).classList.remove('show');
+  if(sheetReturnFocus && document.contains(sheetReturnFocus)) try{ sheetReturnFocus.focus({preventScroll:true}); }catch(e){}
+  sheetReturnFocus = null;
 }
+// Esc closes whichever sheet is open (same path as tapping the dimmed backdrop).
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Escape' || PRESENTING) return;
+  const ov = document.getElementById('sheetOverlay');
+  if(ov && ov.classList.contains('show')) ov.click();
+});
 
 // ============================================================
 // LOGIN SCREEN

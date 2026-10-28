@@ -208,11 +208,41 @@ def realtime(url):
             check(label, r[k])
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
+def a11y(url):
+    print('keyboard and print')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          State.role='lecturer';State.user=%s;renderApp();
+          const wait=ms=>new Promise(r=>setTimeout(r,ms)); const out={};
+          document.body.insertAdjacentHTML('beforeend','<div class="sheet" id="tSheet"><input id="tIn"><button id="tB">x</button></div><button id="opener">o</button>');
+          const op=document.getElementById('opener'); op.focus();
+          out.hiddenWhenClosed = getComputedStyle(document.getElementById('tSheet')).visibility==='hidden';
+          openSheet('tSheet'); await wait(400);
+          out.opens = document.getElementById('sheetOverlay').classList.contains('show');
+          out.focusInside = document.getElementById('tSheet').contains(document.activeElement);
+          out.visibleWhenOpen = getComputedStyle(document.getElementById('tSheet')).visibility==='visible';
+          document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); await wait(100);
+          out.escCloses = !document.getElementById('sheetOverlay').classList.contains('show') && !document.getElementById('tSheet').classList.contains('show');
+          out.focusReturns = document.activeElement===op;
+          return out}""" % __import__('json').dumps(USERS['lecturer']))
+        for k, label in [('hiddenWhenClosed', 'a closed sheet is out of the tab order'), ('opens', 'a sheet opens'),
+                         ('focusInside', 'focus moves into the sheet'), ('visibleWhenOpen', 'an open sheet is visible'),
+                         ('escCloses', 'Esc closes the sheet'), ('focusReturns', 'focus returns to the opener')]:
+            check(label, r[k])
+        pg.evaluate("()=>{document.getElementById('opener').remove();document.getElementById('tSheet').remove();document.activeElement.blur()}")
+        pg.keyboard.press('Tab')
+        ring = pg.evaluate("()=>{const e=document.activeElement;const cs=getComputedStyle(e);return e!==document.body && cs.outlineStyle!=='none' && parseFloat(cs.outlineWidth)>0}")
+        check('Tab shows a focus ring', ring)
+        pg.emulate_media(media='print')
+        hidden = pg.evaluate("()=>['bottomNav','sheetOverlay'].every(i=>{const e=document.getElementById(i);return !e||getComputedStyle(e).display==='none'})")
+        check('print hides navigation', hidden)
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

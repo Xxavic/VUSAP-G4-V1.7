@@ -1296,6 +1296,23 @@ body.presenting-session .bottom-nav,body.presenting-session .app-header{display:
 #updateReloadBtn{background:var(--theme-primary); color:#fff}
 #updateLaterBtn{background:transparent; color:inherit; opacity:.75}
 @media (min-width:1024px){ body.wide-shell .update-banner{left:260px; bottom:24px} }
+
+/* ---- Keyboard focus, sheet tab order, print ---- */
+:where(button,a,[onclick],[tabindex],input,select,textarea,summary):focus-visible{
+  outline:2px solid var(--theme-primary); outline-offset:2px;
+}
+.input:focus-visible{outline-offset:0;}
+/* a closed sheet is off-screen; keep it out of the tab order too */
+.sheet:not(.show){visibility:hidden; transition:transform .28s cubic-bezier(.32,.72,0,1), visibility 0s .3s;}
+@media print{
+  .bottom-nav,.side-nav,.side-only,.sheet,.sheet-overlay,.update-banner,.toast,
+  .app-header .icon-btn,.present-btn,#splashScreen,button.btn,.fab{display:none !important;}
+  html,body{background:#fff !important; color:#000 !important;}
+  body.wide-shell #app{margin:0 !important; padding:0 !important; max-width:none !important; display:block !important;}
+  .card{box-shadow:none !important; border:1px solid #bbb !important; break-inside:avoid;}
+  table{break-inside:auto;} tr{break-inside:avoid;}
+  @page{margin:14mm;}
+}
 </style>
 </head>
 <body>
