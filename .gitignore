@@ -7,3 +7,7 @@ dist/
 students-missing-enrollments.json
 students-missing-enrollments.csv
 backfill-enrollments-results.json
+
+# Python bytecode from the test runs
+__pycache__/
+*.pyc
