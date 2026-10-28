@@ -53,13 +53,17 @@ backup code", shows for 2 minutes, and is then replaced by one nobody has
 seen. `migrate-backup-pin-expiry.sql` (run after this file) makes the server
 enforce that too:
 
-- The server stamps `live_qr_secrets.pin_set_at` whenever the PIN changes and
-  accepts a PIN only for 135 seconds after it (2 minutes plus 15 s grace), so
-  a code stays dead even if the lecturer's phone locks or goes offline before
-  the app swaps it.
+- The lecturer's app sets each backup code through `set_backup_pin()`, which
+  stores `live_qr_secrets.pin_expires_at` from the server clock; "Hide now"
+  retires the code at once (lifetime 0). The app shows only a code the server
+  accepted.
+- A PIN written any other way (an older cached app) gets `pin_set_at`, stamped
+  by the server whenever the PIN changes, and is accepted only for 135 seconds
+  after it (2 minutes plus 15 s grace). Either way a code stays dead even if
+  the lecturer's phone locks or goes offline before the app swaps it.
 - `get_broadcast_secrets()` returns the PIN only to the owning lecturer. A
   Class Coordinator still gets the QR token, never the PIN.
-- A PIN typed offline is refused if it syncs more than 135 seconds later.
+- A PIN typed offline is refused if it syncs after the code expired.
   Offline students should scan the QR (accepted for 24 hours); the lecturer's
   backup-code panel says so.
 

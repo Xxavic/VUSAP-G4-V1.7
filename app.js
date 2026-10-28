@@ -9717,21 +9717,60 @@ function refreshPinBlock(){
   if(el) el.innerHTML = pinBlockHTML();
 }
 
-function generateBackupPin(){
-  regenerateSessionPin();
-  pinShownUntil = Date.now() + BACKUP_PIN_SECONDS*1000;
-  liveWriteSession();
-  try{ logAuditEvent(State.user?.id || State.user?.staffId, State.user?.name, 'Backup PIN generated', LIVE_SESSION.courseCode, `Valid ${BACKUP_PIN_SECONDS}s`); }catch(e){}
-  refreshPinBlock();
+// The server holds the real expiry (set_backup_pin in migrate-backup-pin-expiry.sql,
+// server clock), so a code stops working even if this device closes or loses
+// signal. Before that migration is run, the old behaviour (expiry on this
+// device only) is used.
+let backupPinRpcAvailable = null;
+async function serverSetBackupPin(pin, seconds){
+  const id = LIVE_SESSION.liveSessionId;
+  if(!LIVE_BACKEND || backupPinRpcAvailable === false || !id || String(id).startsWith('mock-')) return { state: 'unavailable' };
+  try {
+    const { data, error } = await SUPABASE_CLIENT.rpc('set_backup_pin', { p_broadcast_id: id, p_pin: pin, p_seconds: seconds });
+    if(error){
+      if(isMissingFunctionError(error)){ backupPinRpcAvailable = false; return { state: 'unavailable' }; }
+      return { state: 'error', message: error.message };
+    }
+    backupPinRpcAvailable = true;
+    return data && data.ok ? { state: 'ok' } : { state: 'rejected', reason: data && data.reason };
+  } catch(e){
+    return { state: 'error', message: e.message };
+  }
 }
 
-// Hides the code and swaps in a fresh one nobody has seen, so anything already
-// shared stops working.
+let backupPinBusy = false;
+async function generateBackupPin(){
+  if(backupPinBusy) return;
+  backupPinBusy = true;
+  try {
+    const pin = secureRandomString("0123456789", 6);
+    // Only show a code the server has accepted, otherwise students would be
+    // typing one that does not work.
+    const res = await serverSetBackupPin(pin, BACKUP_PIN_SECONDS);
+    if(res.state === 'error' || res.state === 'rejected'){
+      showToast(res.state === 'rejected' ? 'Could not create a backup code for this session' : 'No connection. Try the backup code again in a moment.');
+      return;
+    }
+    LIVE_SESSION.pin = pin;
+    pinShownUntil = Date.now() + BACKUP_PIN_SECONDS*1000;
+    liveWriteSession();
+    try{ logAuditEvent(State.user?.id || State.user?.staffId, State.user?.name, 'Backup PIN generated', LIVE_SESSION.courseCode, `Valid ${BACKUP_PIN_SECONDS}s`); }catch(e){}
+    refreshPinBlock();
+  } finally {
+    backupPinBusy = false;
+  }
+}
+
+// Hides the code and retires it on the server straight away (lifetime 0), so
+// anything already shared stops working. A different PIN nobody has seen is
+// kept locally.
 function hideBackupPin(){
   pinShownUntil = 0;
-  regenerateSessionPin();
-  liveWriteSession();
+  const pin = secureRandomString("0123456789", 6);
+  LIVE_SESSION.pin = pin;
   refreshPinBlock();
+  serverSetBackupPin(pin, 0);
+  liveWriteSession();
 }
 
 function tickBackupPin(){

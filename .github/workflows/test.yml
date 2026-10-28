@@ -7,6 +7,14 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: scratch
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,3 +57,14 @@ jobs:
 
       - name: Screen crawl and feature checks
         run: python3 tests/run_all.py
+
+      - name: Database function checks (scratch Postgres, never the live project)
+        env:
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: scratch
+          PGDATABASE: postgres
+        run: |
+          sudo apt-get install -y postgresql-client >/dev/null
+          bash tests/run_sql.sh

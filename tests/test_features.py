@@ -23,22 +23,42 @@ def layout(url):
 def backup_pin(url):
     print('backup PIN')
     with page(url, splash=False) as pg:
-        r = pg.evaluate("""()=>{
+        r = pg.evaluate("""async()=>{
           State.role='lecturer';State.user={name:'L',staffId:'L1',id:'L1'};renderApp();navigate('startSession',{replace:true});
           const out={}; const html=()=>document.getElementById('pinBlock').innerHTML;
           out.hidden=!html().includes('session-pin-digit');
-          const p0=LIVE_SESSION.pin; generateBackupPin(); const p1=LIVE_SESSION.pin;
+          const p0=LIVE_SESSION.pin; await generateBackupPin(); const p1=LIVE_SESSION.pin;
           out.shown=html().includes('session-pin-digit')&&document.getElementById('pinBlock').textContent.includes(p1);
           out.newPin=p0!==p1; out.audit=AUDIT_LOG[0].action==='Backup PIN generated';
           pinShownUntil=Date.now()-1; tickBackupPin();
           out.expires=!html().includes('session-pin-digit')&&LIVE_SESSION.pin!==p1;
-          generateBackupPin(); const p2=LIVE_SESSION.pin; hideBackupPin(); out.hideRotates=LIVE_SESSION.pin!==p2&&!backupPinActive();
+          await generateBackupPin(); const p2=LIVE_SESSION.pin; hideBackupPin(); out.hideRotates=LIVE_SESSION.pin!==p2&&!backupPinActive();
+
+          // With a live backend: the server is asked, and only an accepted code is shown.
+          LIVE_BACKEND=true; LIVE_SESSION.liveSessionId='b-1'; backupPinRpcAvailable=null;
+          const calls=[]; let reply={data:{ok:true},error:null};
+          SUPABASE_CLIENT={rpc:async(name,args)=>{calls.push([name,args]);return reply}, from:()=>({upsert:async()=>({}),update(){return this},eq:async()=>({}),insert:async()=>({})})};
+          reply={data:{ok:true},error:null}; await generateBackupPin();
+          out.rpcCalled=calls.length>=1&&calls[0][0]==='set_backup_pin'&&calls[0][1].p_seconds===BACKUP_PIN_SECONDS&&/^[0-9]{6}$/.test(calls[0][1].p_pin);
+          out.shownAfterOk=backupPinActive()&&LIVE_SESSION.pin===calls[0][1].p_pin;
+          hideBackupPin(); await new Promise(r=>setTimeout(r,50));
+          const last=calls[calls.length-1]; out.hideRetires=last[0]==='set_backup_pin'&&last[1].p_seconds===0;
+          reply={data:{ok:false,reason:'not_owner'},error:null}; await generateBackupPin(); out.rejectedNotShown=!backupPinActive();
+          reply={data:null,error:{message:'Failed to fetch'}}; await generateBackupPin(); out.networkNotShown=!backupPinActive();
+          reply={data:null,error:{code:'PGRST202',message:'Could not find the function public.set_backup_pin in the schema cache'}};
+          await generateBackupPin(); out.fallsBackWhenMigrationMissing=backupPinActive();
           return out}""")
         check('PIN is hidden until the lecturer asks', r['hidden'])
         check('generating shows a fresh PIN', r['shown'] and r['newPin'])
         check('generating is written to the audit log', r['audit'])
         check('an expired PIN is replaced by an unseen one', r['expires'])
         check('Hide now rotates the PIN', r['hideRotates'])
+        check('server is asked to set the PIN with the 2-minute lifetime', r['rpcCalled'])
+        check('the code is shown once the server accepts it', r['shownAfterOk'])
+        check('Hide now retires the code on the server (lifetime 0)', r['hideRetires'])
+        check('a code the server refuses is not shown', r['rejectedNotShown'])
+        check('a code is not shown when the server cannot be reached', r['networkNotShown'])
+        check('falls back to device-side expiry if the migration is not run', r['fallsBackWhenMigrationMissing'])
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 def calendar(url):

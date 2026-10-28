@@ -21,5 +21,5 @@ Needs `pip install playwright && playwright install chromium`. It renders all 84
 routed screens for the four roles and fails on render errors, dead links and
 nav items that go nowhere, then checks device layout, the backup PIN, calendar
 saving and the student session re-check. The same runs on every push through
-`.github/workflows/test.yml`, which also fails if the app changed but the
+`.github/workflows/test.yml` (which also runs `tests/run_sql.sh` against a scratch Postgres), and also fails if the app changed but the
 service worker `CACHE_NAME` did not.

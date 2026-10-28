@@ -1,6 +1,8 @@
 -- Backup PIN: expires on the server, and only the lecturer can read it.
 --
--- Run AFTER migrate-server-side-checkin.sql. Safe to run more than once.
+-- Run AFTER migrate-server-side-checkin.sql. Safe to run more than once, and
+-- safe to run over the earlier version of this file (pin_set_at only), which
+-- is already on the live project.
 --
 -- Since the lecturer-controlled backup PIN (app cache qrast-v56), the app
 -- hides the PIN until the lecturer generates a code, shows it for 2 minutes
@@ -11,24 +13,30 @@
 -- shows it but whose browser console could.
 --
 -- This file:
---   1. adds live_qr_secrets.pin_set_at, stamped by the server whenever the
---      PIN changes (the lecturer's app is unchanged)
---   2. check_in_to_broadcast(): a PIN is accepted only within 135 seconds
---      (2 minutes + 15 s grace) of pin_set_at. QR scans are unaffected.
---   3. get_broadcast_secrets(): returns the PIN only to the owning lecturer
+--   1. live_qr_secrets.pin_set_at, stamped by the server whenever the PIN
+--      changes, and live_qr_secrets.pin_expires_at, set by set_backup_pin()
+--   2. set_backup_pin(broadcast, pin, seconds): lets the lecturer who owns an
+--      active broadcast set the PIN and its lifetime (server clock). seconds
+--      = 0 retires it at once; the app then keeps a fresh PIN nobody has seen
+--   3. check_in_to_broadcast(): a PIN is accepted until pin_expires_at when
+--      set_backup_pin() set one, otherwise only within 135 seconds (2 minutes
+--      + 15 s grace) of pin_set_at. QR scans are unaffected.
+--   4. get_broadcast_secrets(): returns the PIN only to the owning lecturer
 --
--- The two functions are copied unchanged from migrate-server-side-checkin.sql
--- apart from the lines marked in comments.
+-- The functions are copied from migrate-server-side-checkin.sql apart from
+-- the lines marked in comments.
 --
 -- Effect on offline check-ins: a PIN typed with no signal is refused if the
--- phone syncs more than 135 seconds after the code was generated. Offline
--- students should scan the QR, which is still accepted for 24 hours.
+-- phone syncs after the code expired. Offline students should scan the QR,
+-- which is still accepted for 24 hours.
 --
--- A lecturer still running an older cached app (before qrast-v56) shows one
--- PIN for the whole session; after this runs that PIN stops working 135
--- seconds after the session starts. Reopening the app fixes it.
+-- A lecturer still running an older cached app (before set_backup_pin) gets
+-- the 135-second rule. One running an app from before qrast-v56 shows one PIN
+-- for the whole session; that PIN stops working 135 seconds after the
+-- session starts. Reopening the app fixes it.
 
 alter table public.live_qr_secrets add column if not exists pin_set_at timestamptz;
+alter table public.live_qr_secrets add column if not exists pin_expires_at timestamptz;
 
 create or replace function public.divert_broadcast_secrets()
 returns trigger
@@ -58,6 +66,8 @@ begin
     token      = coalesce(excluded.token, s.token),
     pin_set_at = case when excluded.pin is not null and s.pin is distinct from excluded.pin
                       then now() else s.pin_set_at end,
+    pin_expires_at = case when excluded.pin is not null and s.pin is distinct from excluded.pin
+                      then null else s.pin_expires_at end,
     pin        = coalesce(excluded.pin, s.pin);
 
   new.token := null;
@@ -65,6 +75,57 @@ begin
   return new;
 end;
 $$;
+
+-- ---------- Lecturer sets / retires the backup PIN ----------
+
+create or replace function public.set_backup_pin(
+  p_broadcast_id uuid,
+  p_pin          text,
+  p_seconds      int
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  b     public.live_qr_sessions%rowtype;
+  v_exp timestamptz;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  select * into b from public.live_qr_sessions where id = p_broadcast_id;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found');
+  end if;
+  if b.lecturer_id is distinct from v_uid then
+    return jsonb_build_object('ok', false, 'reason', 'not_owner');
+  end if;
+  if not b.active then
+    return jsonb_build_object('ok', false, 'reason', 'ended');
+  end if;
+  if coalesce(p_pin, '') !~ '^[0-9]{6}$' then
+    return jsonb_build_object('ok', false, 'reason', 'bad_pin');
+  end if;
+  if p_seconds is null or p_seconds < 0 or p_seconds > 600 then
+    return jsonb_build_object('ok', false, 'reason', 'bad_lifetime');
+  end if;
+
+  v_exp := now() + make_interval(secs => p_seconds);
+
+  insert into public.live_qr_secrets as s (broadcast_id, pin, pin_set_at, pin_expires_at)
+  values (b.id, p_pin, now(), v_exp)
+  on conflict (broadcast_id) do update set
+    pin = excluded.pin, pin_set_at = excluded.pin_set_at, pin_expires_at = excluded.pin_expires_at;
+
+  return jsonb_build_object('ok', true, 'expires_at', v_exp);
+end;
+$$;
+
+revoke all on function public.set_backup_pin(uuid, text, int) from public, anon;
+grant execute on function public.set_backup_pin(uuid, text, int) to authenticated;
 
 create or replace function public.check_in_to_broadcast(
   p_broadcast_id uuid,
@@ -163,11 +224,13 @@ begin
       v_ok := true;   -- queued scan of a token that has rotated since
     end if;
   end if;
-  -- A PIN only works for 2 minutes (plus 15 s for slow networks) after the
-  -- lecturer's app set it. pin_set_at is null for a PIN set before
-  -- migrate-backup-pin-expiry.sql ran: treated as expired.
+  -- A PIN set through set_backup_pin() works until its pin_expires_at. Any
+  -- other PIN (written onto the broadcast row by the app) works for 2
+  -- minutes plus 15 s for slow networks after pin_set_at; a null pin_set_at
+  -- (set before this file first ran) is treated as expired.
   if not v_ok and coalesce(p_pin, '') <> '' and p_pin = sec.pin
-     and sec.pin_set_at > now() - interval '135 seconds' then
+     and (sec.pin_expires_at > now()
+          or (sec.pin_expires_at is null and sec.pin_set_at > now() - interval '135 seconds')) then
     v_ok := true;
   end if;
 
@@ -290,13 +353,18 @@ revoke all on function public.get_broadcast_secrets(uuid) from public, anon;
 grant execute on function public.get_broadcast_secrets(uuid) to authenticated;
 
 -- Checks (run after):
---   1. The column exists (one row):
---        select column_name from information_schema.columns
---        where table_name = 'live_qr_secrets' and column_name = 'pin_set_at';
---   2. Lecturer: start a session, tap Generate backup code. A student enters
---      it within 2 minutes: checked in.
---   3. Generate a code, lock the lecturer's phone for 3 minutes, then a
+--   1. The columns and function exist (three rows):
+--        select 'column', column_name from information_schema.columns
+--        where table_name = 'live_qr_secrets' and column_name in ('pin_set_at', 'pin_expires_at')
+--        union all
+--        select 'function', proname from pg_proc where proname = 'set_backup_pin';
+--   2. A student cannot call set_backup_pin for someone else's broadcast:
+--        signed in as a student, select public.set_backup_pin('<broadcast id>', '123456', 60);
+--        must return {"ok": false, "reason": "not_owner"}.
+--   3. Lecturer: start a session, tap New code. A student enters it within
+--      2 minutes: checked in.
+--   4. Generate a code, lock the lecturer's phone for 3 minutes, then a
 --      student enters that code: "That code didn't match".
---   4. Class Coordinator with display authorized: QR shows and rotates. From
+--   5. Class Coordinator with display authorized: QR shows and rotates. From
 --      the browser console, supabase.rpc('get_broadcast_secrets', ...) returns
 --      a token and "pin": null.
