@@ -2764,11 +2764,12 @@ async function loadClassesFromSupabase(){
 // as a Postgres/RLS error, not a silent no-op.
 async function liveCreateClass({ code, name, programmeId, teacherId, mode, year }){
   if(!LIVE_BACKEND) return { ok: true };
-  const { error } = await SUPABASE_CLIENT
+  const { data, error } = await SUPABASE_CLIENT
     .from('classes')
-    .insert({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null, year: year || null });
+    .insert({ code, name, programme_id: programmeId || null, teacher_id: teacherId || null, mode: mode || null, year: year || null })
+    .select('id');
   if(error) return { error: error.message };
-  return { ok: true };
+  return { ok: true, id: data && data[0] ? data[0].id : null };
 }
 
 async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mode, year }){
@@ -2789,7 +2790,53 @@ async function liveUpdateClass(oldCode, { code, name, programmeId, teacherId, mo
     // it live now instead, using this edit's values.
     return liveCreateClass({ code, name, programmeId, teacherId, mode, year });
   }
-  return { ok: true };
+  return { ok: true, id: data[0].id };
+}
+
+// Enrolls every student in this class's cohort (programme + year, and mode
+// unless the class has none) who is not in it yet. autoEnrollStudentInCourses()
+// only runs when a student's account is created, so a course added or
+// re-tagged later never reached the students already registered: it was
+// missing from their course list, timetable and check-in. Only adds; a
+// student already enrolled is left alone, and nobody is removed. facultyKey
+// keeps a programme name shared by two faculties from crossing over.
+async function liveEnrollCohortInClass(classId, programmeName, year, mode, facultyKey){
+  if(!LIVE_BACKEND || !classId || !programmeName || !year) return { count: 0 };
+  try {
+    let query = SUPABASE_CLIENT
+      .from('users')
+      .select('id')
+      .eq('role', 'student')
+      .eq('program', programmeName)
+      .eq('year', year);
+    if(mode) query = query.eq('mode', mode);
+    if(facultyKey) query = query.eq('faculty_key', facultyKey);
+    const { data: students, error: findErr } = await query;
+    if(findErr) return { error: findErr.message };
+    if(!students || !students.length) return { count: 0 };
+
+    const { data: existing, error: existErr } = await SUPABASE_CLIENT
+      .from('enrollments').select('student_id').eq('class_id', classId);
+    if(existErr) return { error: existErr.message };
+    const enrolled = new Set((existing || []).map(e => e.student_id));
+    const missing = students.filter(u => !enrolled.has(u.id));
+    if(!missing.length) return { count: 0 };
+
+    const { error: insertErr } = await SUPABASE_CLIENT
+      .from('enrollments')
+      .insert(missing.map(u => ({ student_id: u.id, class_id: classId })));
+    if(insertErr) return { error: insertErr.message };
+    return { count: missing.length };
+  } catch(e){
+    return { error: String(e) };
+  }
+}
+
+// Toast suffix for the cohort enrollment that rides along with a course save.
+function cohortEnrollNote(outcome){
+  if(!outcome) return '';
+  if(outcome.error) return ' (students in its programme and year could not be enrolled automatically)';
+  return outcome.count ? ` · ${outcome.count} student${outcome.count === 1 ? '' : 's'} enrolled` : '';
 }
 
 async function liveDeleteClass(code){
@@ -13557,7 +13604,7 @@ async function openCourseFormSheet(code){
           <option value="Year 2" ${course && course.year==='Year 2' ? 'selected' : ''}>Year 2</option>
           <option value="Year 3" ${course && course.year==='Year 3' ? 'selected' : ''}>Year 3</option>
         </select>
-        <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Which year of the programme this course belongs to — drives automatic enrollment when a student is registered.</div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Which year of the programme this course belongs to — drives automatic enrollment: new students are enrolled when they register, and students already in this programme and year (and mode, if set) are enrolled when you save.</div>
       </div>
       <div class="btn-row" style="margin-top:16px;">
         <button type="button" class="btn btn-ghost" onclick="closeSheet('courseFormSheet')">Cancel</button>
@@ -13608,7 +13655,7 @@ async function submitCourseForm(existingCode){
     return;
   }
 
-  let result;
+  let result, liveClassId = null;
   if(existingCode){
     const newCode = document.getElementById('courseCodeInput')?.value.trim().toUpperCase();
     if(!newCode){
@@ -13624,13 +13671,15 @@ async function submitCourseForm(existingCode){
       showToast(live.error);
       return;
     }
+    liveClassId = live.id || null;
     let touched = 0;
     if(newCode !== existingCode){
       touched = cascadeRenameCourseCode(existingCode, newCode);
     }
     result = editCourse(existingCode, { code: newCode, name, programmeKey, programme: prog ? prog.name : null, lecturer: lecturer || null, room: room || null, mode: mode || null, year: year || null });
     if(!result.error && touched > 0){
-      showToast(`${existingCode} renamed to ${newCode} — updated ${touched} reference${touched===1?'':'s'} across the app`);
+      const note = cohortEnrollNote(await liveEnrollCohortInClass(liveClassId, prog ? prog.name : null, year, mode, prog ? prog.facultyKey : null));
+      showToast(`${existingCode} renamed to ${newCode} — updated ${touched} reference${touched===1?'':'s'} across the app${note}`);
       closeSheet('courseFormSheet');
       navigate('courseCatalog', { replace: true });
       return;
@@ -13651,14 +13700,16 @@ async function submitCourseForm(existingCode){
       showToast(live.error);
       return;
     }
+    liveClassId = live.id || null;
     result = createCourse(code, name, programmeKey, lecturer, room, mode, year);
   }
   if(result.error){
     showToast(result.error);
     return;
   }
+  const note = cohortEnrollNote(await liveEnrollCohortInClass(liveClassId, prog ? prog.name : null, year, mode, prog ? prog.facultyKey : null));
   closeSheet('courseFormSheet');
-  showToast(existingCode ? `${existingCode} updated` : `${result.code} added to the catalog`);
+  showToast((existingCode ? `${existingCode} updated` : `${result.code} added to the catalog`) + note);
   navigate('courseCatalog', { replace: true });
 }
 

@@ -397,11 +397,38 @@ def stale_sessions(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def cohort_enrollment(url):
+    print('saving a course enrolls its existing cohort')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const out={}, log=[]; let inserted=null;
+          const students=[{id:'s1'},{id:'s2'},{id:'s3'}];
+          const qb=(t)=>{const f=[];const q={select(){return q},eq(c,v){f.push([c,v]);return q},
+            insert(rows){inserted=rows;log.push([t,'insert']);return Promise.resolve({error:null})},
+            then(res,rej){log.push([t,f]);const data=t==='users'?students:t==='enrollments'?[{student_id:'s2'}]:[];return Promise.resolve({data,error:null}).then(res,rej)}};return q};
+          SUPABASE_CLIENT={from:(t)=>qb(t)}; LIVE_BACKEND=true;
+          const res=await liveEnrollCohortInClass('c1','Computer Science','Year 2','day','computing');
+          const uf=log.find(x=>x[0]==='users')[1];
+          out.filters=['role','program','year','mode','faculty_key'].every(k=>uf.some(x=>x[0]===k)) && uf.find(x=>x[0]==='program')[1]==='Computer Science' && uf.find(x=>x[0]==='mode')[1]==='day';
+          out.onlyMissing=res.count===2 && inserted.length===2 && inserted.every(r=>r.class_id==='c1') && !inserted.some(r=>r.student_id==='s2');
+          log.length=0; await liveEnrollCohortInClass('c1','Computer Science','Year 2',null);
+          out.noModeMeansAll=!log.find(x=>x[0]==='users')[1].some(x=>x[0]==='mode');
+          log.length=0; const skip=await liveEnrollCohortInClass('c1','Computer Science',null,'day');
+          out.skipsWithoutYear=skip.count===0 && log.length===0;
+          out.notes=cohortEnrollNote({count:2}).includes('2 students enrolled') && cohortEnrollNote({count:0})==='' && cohortEnrollNote({error:'x'}).includes('could not');
+          return out}""")
+        for k, label in [('filters', 'looks up students by programme, year and mode'), ('onlyMissing', 'enrolls only the students not already in the class'),
+                         ('noModeMeansAll', 'a class with no mode takes Day and Evening students'), ('skipsWithoutYear', 'nothing happens until the course has a year'),
+                         ('notes', 'the save message says how many were enrolled')]:
+            check(label, r[k])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url)
         if not quick:
             recheck(url); realtime(url)
     finish()
