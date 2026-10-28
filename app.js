@@ -3114,6 +3114,17 @@ async function loadTimetableFromSupabase(){
     });
 
     try { localStorage.setItem(CLAIMS_KEY, JSON.stringify(claims)); } catch(e){ /* storage unavailable — merge still works this run, just won't persist across reloads */ }
+
+    // Once the database has a timetable, it is the whole timetable: drop the
+    // built-in demo lectures no live slot replaced. Left in, they showed as
+    // real lectures (e.g. a demo "CSC3103 Wed 08:00 LT1" with a permanent
+    // "Pending" badge in an enrolled student's timetable, and as "Not held"
+    // in the lecturer's list). Same as the staff directory, whose demo rows
+    // go once live staff exist.
+    const liveSlotIds = new Set(rows.map(r => r.id));
+    SCHEDULE.forEach(d => {
+      d.lectures = (d.lectures || []).filter(l => l._liveSlotId && liveSlotIds.has(l._liveSlotId));
+    });
   } catch(e){
     console.warn('loadTimetableFromSupabase error, keeping mock SCHEDULE:', e);
   }

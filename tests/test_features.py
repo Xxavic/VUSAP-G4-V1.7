@@ -524,11 +524,34 @@ def course_edit_reaches_schedule(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def live_timetable_only(url):
+    print('the live timetable replaces the demo one')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          try{localStorage.removeItem('qrast-timetable-claims')}catch(e){}
+          const demoBefore = SCHEDULE.flatMap(d=>d.lectures).some(l=>l.code==='CSC3103'&&l.time==='08:00 – 10:00'&&l.status==='pending');
+          const slots=[
+            {id:'s1',day_of_week:'Wednesday',start_time:'14:00:00',end_time:'16:00:00',room:'LT4 - Main Building',mode:'day',teacher_id:'t1',classes:{id:'c1',code:'CSC3101',name:'Data Structures & Algorithms',year:'Year 2',programmes:{name:'Computer Science'}}},
+            {id:'s2',day_of_week:'Monday',start_time:'08:00:00',end_time:'10:00:00',room:'LT1 - Main Building',mode:'day',teacher_id:'t1',classes:{id:'c1',code:'CSC3101',name:'Data Structures & Algorithms',year:'Year 2',programmes:{name:'Computer Science'}}}];
+          const q=(t)=>{const o={select(){return o},order(){return o},in(){return o},eq(){return o},
+            then(res,rej){return Promise.resolve({data:t==='timetable_slots'?slots:[{id:'t1',name:'Dr. Patrick Mukasa'}],error:null}).then(res,rej)}};return o};
+          SUPABASE_CLIENT={from:q}; LIVE_BACKEND=true;
+          await loadTimetableFromSupabase();
+          const all=SCHEDULE.flatMap(d=>d.lectures);
+          return {demoBefore, total:all.length, onlyLive:all.every(l=>l._liveSlotId==='s1'||l._liveSlotId==='s2'),
+                  demoGone:!all.some(l=>l.status==='pending'), wed:SCHEDULE.find(d=>d.day==='Wednesday').lectures.map(l=>l.code+' '+l.time)}}""")
+        check('the demo timetable had the stray CSC3103 entry', r['demoBefore'])
+        check('only the database slots are left', r['onlyLive'] and r['total'] == 2, str(r))
+        check('the demo "Pending" entry is gone', r['demoGone'])
+        check('a live slot still shows on its day', r['wed'] == ['CSC3101 14:00 – 16:00'], str(r['wed']))
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url); live_timetable_only(url)
         if not quick:
             recheck(url); realtime(url)
     finish()
