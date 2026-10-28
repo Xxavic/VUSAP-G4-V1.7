@@ -547,11 +547,33 @@ def live_timetable_only(url):
         check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
 
 
+def student_edit_enrolls(url):
+    print('editing a student enrolls them in their new courses')
+    with page(url, splash=False) as pg:
+        r = pg.evaluate("""async()=>{
+          const out={}, log=[]; let inserted=null;
+          const q=(t)=>{const f=[];const o={select(){return o},eq(c,v){f.push(['eq',c,v]);return o},or(v){f.push(['or',v]);return o},
+            insert(rows){inserted=rows;return Promise.resolve({error:null})},
+            then(res,rej){log.push([t,f]);const data=t==='classes'?[{id:'c1'},{id:'c2'},{id:'c3'}]:[{class_id:'c2'}];return Promise.resolve({data,error:null}).then(res,rej)}};return o};
+          SUPABASE_CLIENT={from:q}; LIVE_BACKEND=true;
+          const res=await liveEnrollStudentInCohort('stu-1','prog-cs','Year 2','evening');
+          const cf=log.find(x=>x[0]==='classes')[1];
+          out.filters = cf.some(x=>x[1]==='programme_id'&&x[2]==='prog-cs') && cf.some(x=>x[1]==='year'&&x[2]==='Year 2') && cf.some(x=>x[0]==='or'&&x[1]==='mode.eq.evening,mode.is.null');
+          out.onlyMissing = res.count===2 && inserted.length===2 && inserted.every(r=>r.student_id==='stu-1') && !inserted.some(r=>r.class_id==='c2');
+          log.length=0; const none=await liveEnrollStudentInCohort('stu-1','prog-cs',null,'evening');
+          out.needsYear = none.count===0 && log.length===0;
+          return out}""")
+        check('looks up the courses for the new programme, year and mode', r['filters'])
+        check('enrolls only the courses they are not in yet', r['onlyMissing'])
+        check('nothing happens without a year', r['needsYear'])
+        check('no page errors', not pg.errors, '; '.join(pg.errors)[:200])
+
+
 if __name__ == '__main__':
     import sys
     quick = '--quick' in sys.argv
     with site() as url:
-        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url); live_timetable_only(url)
+        layout(url); backup_pin(url); calendar(url); quick_messages(url); a11y(url); location_check(url); lecturer_courses(url); shared_settings(url); stale_sessions(url); cohort_enrollment(url); no_phantom_broadcast(url); slot_lecturer_sync(url); start_confirmation(url); course_edit_reaches_schedule(url); live_timetable_only(url); student_edit_enrolls(url)
         if not quick:
             recheck(url); realtime(url)
     finish()

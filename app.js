@@ -7910,9 +7910,40 @@ async function liveUpdateUserProfile(universityId, fields){
       return { error: dup ? 'That email is already used by another account.' : (error.message || 'Could not save changes') };
     }
     if(!data || !data.length) return { error: 'Not saved — you may not have permission to edit this account.' };
-    return { ok: true };
+    return { ok: true, id: data[0].id };
   } catch(err){
     return { error: String(err.message || err) };
+  }
+}
+
+// After a student's programme, year or mode is edited: enroll them in every
+// course of that cohort (programme + year, and mode unless the course has
+// none) they are not in yet. Enrollment otherwise only happened when the
+// account was created, so a student moved to another year kept the old
+// year's courses and never got the new ones: missing from their course
+// list, timetable and check-in. Only adds; old enrollments, and the
+// attendance history behind them, are left alone.
+async function liveEnrollStudentInCohort(studentId, programmeId, year, mode){
+  if(!LIVE_BACKEND || !studentId || !programmeId || !year) return { count: 0 };
+  try {
+    let query = SUPABASE_CLIENT.from('classes').select('id').eq('programme_id', programmeId).eq('year', year);
+    if(mode) query = query.or(`mode.eq.${mode},mode.is.null`);
+    const { data: classRows, error: findErr } = await query;
+    if(findErr) return { error: findErr.message };
+    if(!classRows || !classRows.length) return { count: 0 };
+    const { data: existing, error: existErr } = await SUPABASE_CLIENT
+      .from('enrollments').select('class_id').eq('student_id', studentId);
+    if(existErr) return { error: existErr.message };
+    const have = new Set((existing || []).map(e => e.class_id));
+    const missing = classRows.filter(c => !have.has(c.id));
+    if(!missing.length) return { count: 0 };
+    const { error: insertErr } = await SUPABASE_CLIENT
+      .from('enrollments')
+      .insert(missing.map(c => ({ student_id: studentId, class_id: c.id })));
+    if(insertErr) return { error: insertErr.message };
+    return { count: missing.length };
+  } catch(e){
+    return { error: String(e) };
   }
 }
 
@@ -7941,6 +7972,7 @@ async function submitEditStudent(e, studentId){
   // Save to the database FIRST (only for accounts that exist live), so the
   // screen never claims "updated" for a change that didn't persist — the
   // in-memory STUDENTS/USERS copies alone are lost on the next login.
+  let enrollNote = '';
   if(LIVE_BACKEND && isProvisionedAccount(s.reg)){
     const fields = {
       name,
@@ -7956,6 +7988,11 @@ async function submitEditStudent(e, studentId){
     if(prog){ fields.program = prog.name; fields.faculty_key = prog.facultyKey; }
     const live = await liveUpdateUserProfile(s.reg, fields);
     if(live && live.error){ showToast(live.error); return false; }
+    if(live && live.id && prog){
+      const outcome = await liveEnrollStudentInCohort(live.id, prog.id, newYear, newMode);
+      enrollNote = outcome.error ? ' (could not enroll them in their courses automatically)'
+        : outcome.count ? ` · enrolled in ${outcome.count} course${outcome.count === 1 ? '' : 's'}` : '';
+    }
   }
 
   s.name = name;
@@ -7983,9 +8020,9 @@ async function submitEditStudent(e, studentId){
   }
 
   closeSheet('editStudentSheet');
-  showToast(wantsCoordinator ? `${s.name} updated - Class Coordinator`
+  showToast((wantsCoordinator ? `${s.name} updated - Class Coordinator`
     : wasCoordinator ? `${s.name} updated - no longer a Class Coordinator`
-    : `${s.name} updated`);
+    : `${s.name} updated`) + enrollNote);
   // This action already knows the correct new state (we just mutated STUDENTS
   // directly) and isn't a fetch triggered by a navigate() hook, so refresh the
   // visible screen's HTML directly rather than going through navigate() again.
