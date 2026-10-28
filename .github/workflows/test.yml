@@ -1,0 +1,51 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax check
+        run: |
+          node --check app.js
+          node --check sw.js
+          node --check tools/rls-probe.mjs
+
+      - name: Service worker cache must change when the app changes
+        run: |
+          # Without a new CACHE_NAME the service worker keeps serving the old files.
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || echo "$BASE" | grep -qE '^0+$' || ! git cat-file -e "$BASE" 2>/dev/null; then
+            echo "No base commit to compare with; skipping."; exit 0
+          fi
+          if git diff --name-only "$BASE" HEAD | grep -qE '^(app\.js|index\.html|client-config\.js|manifest\.json)$'; then
+            OLD=$(git show "$BASE":sw.js | grep -m1 "CACHE_NAME =")
+            NEW=$(grep -m1 "CACHE_NAME =" sw.js)
+            if [ "$OLD" = "$NEW" ]; then
+              echo "::error::app files changed but CACHE_NAME in sw.js did not. Bump it (e.g. qrast-v63 -> qrast-v64)."
+              exit 1
+            fi
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install browser
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Screen crawl and feature checks
+        run: python3 tests/run_all.py

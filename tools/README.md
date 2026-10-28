@@ -1,4 +1,4 @@
-# tools/
+# tools and tests
 
 ## Database access check (run these first)
 
@@ -13,3 +13,13 @@
 
 Neither tool takes a password or key: the probe reads the public settings already in
 `client-config.js`. Share the *output* (table names and verdicts) when asking for fixes.
+
+## Automated checks
+
+`python3 tests/run_all.py` (add `--quick` to skip the ~40 s session re-check test).
+Needs `pip install playwright && playwright install chromium`. It renders all 84
+routed screens for the four roles and fails on render errors, dead links and
+nav items that go nowhere, then checks device layout, the backup PIN, calendar
+saving and the student session re-check. The same runs on every push through
+`.github/workflows/test.yml`, which also fails if the app changed but the
+service worker `CACHE_NAME` did not.
