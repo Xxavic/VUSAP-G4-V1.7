@@ -11,4 +11,5 @@ psql -q -v ON_ERROR_STOP=1 \
   -f tests/sql/test_backup_pin_expiry.sql \
   -f migrate-quick-messages.sql \
   -f migrate-quick-messages.sql \
-  -f tests/sql/test_quick_messages.sql
+  -f tests/sql/test_quick_messages.sql \
+  -f tests/sql/test_tighten_inserts.sql

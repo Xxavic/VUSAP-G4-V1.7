@@ -46,6 +46,7 @@ const MIGRATIONS = [
   'migrate-backup-pin-expiry.sql',
   'migrate-quick-messages.sql',
   'migrate-lock-direct-attendance-insert.sql',
+  'migrate-tighten-inserts.sql',
 ];
 
 const baseFlag = process.argv.indexOf('--base');
